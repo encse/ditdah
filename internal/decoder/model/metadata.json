@@ -28,7 +28,7 @@
     "max_noise_only_seconds": 4.0,
     "max_rise_fall_ms": 10.0,
     "max_wpm": 40.0,
-    "min_amplitude_percent": 40.0,
+    "min_amplitude_percent": 30.0,
     "min_characters": 2,
     "min_extended_space_multiplier": 2,
     "min_fade_frequency_hz": 0.1,
@@ -39,7 +39,7 @@
     "min_wpm": 10.0,
     "noise_only_probability": 0.2,
     "noise_percent": 0.0,
-    "noise_power": 35.0,
+    "noise_power": 40.0,
     "space_probability": 0.12,
     "spectrogram": {
       "frequency_bins": 65,
@@ -156,7 +156,7 @@
     "Unsqueeze": 2
   },
   "opset_version": 17,
-  "source_checkpoint": "0728/models/morse-lstm-curriculum.working-stage-063.pt",
+  "source_checkpoint": "models/final.pt",
   "waveform_reference": {
     "directory": "reference",
     "metadata": "metadata.json"

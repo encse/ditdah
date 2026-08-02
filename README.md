@@ -10,8 +10,9 @@ It implements:
 - comparison against PyTorch reference tensors.
 
 To export the model from python:
+
 ```
-python -m morse_timing.export_onnx 0728/models/morse-lstm-curriculum.working-stage-063.pt --output qqq
+python -m morse_timing.export_onnx models/final.pt --output qqq
 ```
 
 Then replace the contents of `decoder/model` with `qqq`. 
