@@ -38,10 +38,8 @@ func main() {
 			return d.Process(
 				ctx,
 				chunk,
-				func(ctx context.Context, token decoder.AudioToken) error {
-					if token != decoder.CTCBlank {
-						fmt.Printf("%s ", token)
-					}
+				func(ctx context.Context, text string) error {
+					fmt.Print(text)
 					return nil
 				},
 			)

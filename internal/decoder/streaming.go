@@ -40,13 +40,14 @@ type streaming struct {
 	pending       []float32
 	model         Model
 	previousToken AudioToken
+	morseTokens   []AudioToken
 }
 
 type Streaming interface {
 	Process(
 		ctx context.Context,
 		chunk audio.Chunk,
-		consume func(context.Context, AudioToken) error,
+		consume func(context.Context, string) error,
 	) error
 }
 
@@ -64,7 +65,7 @@ func NewStreaming(weightsDirectory string) (Streaming, error) {
 func (s *streaming) Process(
 	ctx context.Context,
 	chunk audio.Chunk,
-	consume func(context.Context, AudioToken) error,
+	consume func(context.Context, string) error,
 ) error {
 	if err := ctx.Err(); err != nil {
 		return err
@@ -92,6 +93,7 @@ func (s *streaming) Process(
 
 		token := AudioToken(argmax(logits))
 
+		// Online CTC collapse.
 		emit := token != s.previousToken && token != CTCBlank
 		s.previousToken = token
 
@@ -99,12 +101,39 @@ func (s *streaming) Process(
 			continue
 		}
 
-		if err := consume(ctx, token); err != nil {
-			return err
+		switch token {
+		case Dit, Dah:
+			s.morseTokens = append(s.morseTokens, token)
+
+		case EndCharacter:
+			text := s.finishCharacter()
+			if text != "" {
+				if err := consume(ctx, text); err != nil {
+					return err
+				}
+			}
+
+		case EndWord:
+			text := s.finishCharacter()
+			text += " "
+			if err := consume(ctx, text); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
+}
+
+func (s *streaming) finishCharacter() string {
+	if len(s.morseTokens) == 0 {
+		return ""
+	}
+
+	text := decodeMorseTokens(s.morseTokens)
+	s.morseTokens = s.morseTokens[:0]
+
+	return text
 }
 
 func argmax(values []float32) int {
