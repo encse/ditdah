@@ -236,7 +236,7 @@ func (m *model) lstmStep(input []float32) {
 }
 
 func loadFloat32(name string, count int) ([]float32, error) {
-	path := "weights/" + name
+	path := "model/weights/" + name
 
 	data, err := modelWeights.ReadFile(path)
 	if err != nil {

@@ -1,0 +1,141 @@
+{
+  "byte_order": "little-endian",
+  "dtype": "float32",
+  "tensors": {
+    "classifier.bias": {
+      "element_count": 5,
+      "file": "classifier__bias.f32",
+      "shape": [
+        5
+      ]
+    },
+    "classifier.weight": {
+      "element_count": 1280,
+      "file": "classifier__weight.f32",
+      "shape": [
+        5,
+        256
+      ]
+    },
+    "frame_projection.0.bias": {
+      "element_count": 256,
+      "file": "frame_projection__0__bias.f32",
+      "shape": [
+        256
+      ]
+    },
+    "frame_projection.0.weight": {
+      "element_count": 16640,
+      "file": "frame_projection__0__weight.f32",
+      "shape": [
+        256,
+        65
+      ]
+    },
+    "frame_projection.2.bias": {
+      "element_count": 256,
+      "file": "frame_projection__2__bias.f32",
+      "shape": [
+        256
+      ]
+    },
+    "frame_projection.2.weight": {
+      "element_count": 65536,
+      "file": "frame_projection__2__weight.f32",
+      "shape": [
+        256,
+        256
+      ]
+    },
+    "frame_projection.4.bias": {
+      "element_count": 256,
+      "file": "frame_projection__4__bias.f32",
+      "shape": [
+        256
+      ]
+    },
+    "frame_projection.4.weight": {
+      "element_count": 65536,
+      "file": "frame_projection__4__weight.f32",
+      "shape": [
+        256,
+        256
+      ]
+    },
+    "frame_projection.6.bias": {
+      "element_count": 256,
+      "file": "frame_projection__6__bias.f32",
+      "shape": [
+        256
+      ]
+    },
+    "frame_projection.6.weight": {
+      "element_count": 65536,
+      "file": "frame_projection__6__weight.f32",
+      "shape": [
+        256,
+        256
+      ]
+    },
+    "frequency_head.bias": {
+      "element_count": 1,
+      "file": "frequency_head__bias.f32",
+      "shape": [
+        1
+      ]
+    },
+    "frequency_head.weight": {
+      "element_count": 256,
+      "file": "frequency_head__weight.f32",
+      "shape": [
+        1,
+        256
+      ]
+    },
+    "sequence_encoder.bias_hh_l0": {
+      "element_count": 1024,
+      "file": "sequence_encoder__bias_hh_l0.f32",
+      "shape": [
+        1024
+      ]
+    },
+    "sequence_encoder.bias_ih_l0": {
+      "element_count": 1024,
+      "file": "sequence_encoder__bias_ih_l0.f32",
+      "shape": [
+        1024
+      ]
+    },
+    "sequence_encoder.weight_hh_l0": {
+      "element_count": 262144,
+      "file": "sequence_encoder__weight_hh_l0.f32",
+      "shape": [
+        1024,
+        256
+      ]
+    },
+    "sequence_encoder.weight_ih_l0": {
+      "element_count": 262144,
+      "file": "sequence_encoder__weight_ih_l0.f32",
+      "shape": [
+        1024,
+        256
+      ]
+    },
+    "tone_activity_head.bias": {
+      "element_count": 1,
+      "file": "tone_activity_head__bias.f32",
+      "shape": [
+        1
+      ]
+    },
+    "tone_activity_head.weight": {
+      "element_count": 256,
+      "file": "tone_activity_head__weight.f32",
+      "shape": [
+        1,
+        256
+      ]
+    }
+  }
+}

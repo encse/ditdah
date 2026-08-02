@@ -1,0 +1,164 @@
+{
+  "dataset_config": {
+    "apply_input_filter": true,
+    "audio": {
+      "amplitude": 0.5,
+      "frequency_hz": 700.0,
+      "rise_fall_ms": 0.0,
+      "sample_rate": 8000
+    },
+    "extended_space_probability": 0.5,
+    "fade_depth_percent": 60.0,
+    "gap_timing": {
+      "character_extreme_probability": 0.6,
+      "character_extreme_width_units": 0.3,
+      "max_character_units": 4.5,
+      "max_intra_character_units": 1.5,
+      "max_word_units": 9.0,
+      "min_character_units": 2.0,
+      "min_intra_character_units": 0.5,
+      "min_word_units": 5.5
+    },
+    "leading_silence_seconds": 0.7,
+    "max_amplitude_percent": 150.0,
+    "max_characters": 12,
+    "max_extended_space_multiplier": 20,
+    "max_fade_frequency_hz": 2.0,
+    "max_frequency_hz": 2000.0,
+    "max_noise_only_seconds": 4.0,
+    "max_rise_fall_ms": 10.0,
+    "max_wpm": 40.0,
+    "min_amplitude_percent": 40.0,
+    "min_characters": 2,
+    "min_extended_space_multiplier": 2,
+    "min_fade_frequency_hz": 0.1,
+    "min_frequency_hz": 100.0,
+    "min_noise_only_power": 1.0,
+    "min_noise_only_seconds": 2.0,
+    "min_rise_fall_ms": 0.0,
+    "min_wpm": 10.0,
+    "noise_only_probability": 0.2,
+    "noise_percent": 0.0,
+    "noise_power": 35.0,
+    "space_probability": 0.12,
+    "spectrogram": {
+      "frequency_bins": 65,
+      "hop_length": 160,
+      "minimum_db": -80.0,
+      "n_fft": 160,
+      "scale": "power",
+      "win_length": 160
+    },
+    "timing_jitter": 0.08,
+    "trailing_silence_seconds": 0.7,
+    "word_boundary_sample_probability": 0.5,
+    "wpm": 20.0
+  },
+  "example_chunk_frames": 25,
+  "expected_outputs": {
+    "logits": {
+      "byte_order": "little-endian",
+      "dtype": "float32",
+      "element_count": 125,
+      "file": "expected_logits.f32",
+      "onnx_name": "logits",
+      "shape": [
+        1,
+        25,
+        5
+      ]
+    },
+    "next_cell_state": {
+      "byte_order": "little-endian",
+      "dtype": "float32",
+      "element_count": 256,
+      "file": "expected_cell_state.f32",
+      "onnx_name": "next_cell_state",
+      "shape": [
+        1,
+        1,
+        256
+      ]
+    },
+    "next_hidden_state": {
+      "byte_order": "little-endian",
+      "dtype": "float32",
+      "element_count": 256,
+      "file": "expected_hidden_state.f32",
+      "onnx_name": "next_hidden_state",
+      "shape": [
+        1,
+        1,
+        256
+      ]
+    }
+  },
+  "inputs": {
+    "cell_state": {
+      "byte_order": "little-endian",
+      "dtype": "float32",
+      "element_count": 256,
+      "file": "cell_state.f32",
+      "onnx_name": "cell_state",
+      "shape": [
+        1,
+        1,
+        256
+      ]
+    },
+    "features": {
+      "byte_order": "little-endian",
+      "dtype": "float32",
+      "element_count": 1625,
+      "file": "features.f32",
+      "onnx_name": "features",
+      "shape": [
+        1,
+        25,
+        65
+      ]
+    },
+    "hidden_state": {
+      "byte_order": "little-endian",
+      "dtype": "float32",
+      "element_count": 256,
+      "file": "hidden_state.f32",
+      "onnx_name": "hidden_state",
+      "shape": [
+        1,
+        1,
+        256
+      ]
+    }
+  },
+  "model_config": {
+    "auxiliary_heads": true,
+    "bidirectional": true,
+    "dense_layers": 4,
+    "first_conv_channels": 8,
+    "frequency_bins": 65,
+    "hidden_size": 256,
+    "num_gru_layers": 2,
+    "num_lstm_layers": 1,
+    "projection_size": 256,
+    "second_conv_channels": 16,
+    "sequence_model": "lstm",
+    "tcn_layers": 4
+  },
+  "onnx_model": "model.onnx",
+  "operators": {
+    "Constant": 5,
+    "Gemm": 5,
+    "LSTM": 1,
+    "Relu": 4,
+    "Squeeze": 3,
+    "Transpose": 2,
+    "Unsqueeze": 2
+  },
+  "opset_version": 17,
+  "source_checkpoint": "0728/models/morse-lstm-curriculum.working-stage-063.pt",
+  "waveform_reference": {
+    "directory": "reference",
+    "metadata": "metadata.json"
+  }
+}

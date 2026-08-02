@@ -1,0 +1,28 @@
+{
+  "duration_seconds": 0.5,
+  "expected_outputs": {
+    "logits": {
+      "byte_order": "little-endian",
+      "dtype": "float32",
+      "element_count": 125,
+      "file": "expected_logits.f32",
+      "shape": [
+        25,
+        5
+      ]
+    }
+  },
+  "input": {
+    "waveform": {
+      "byte_order": "little-endian",
+      "dtype": "float32",
+      "element_count": 4000,
+      "file": "waveform.f32",
+      "shape": [
+        4000
+      ]
+    }
+  },
+  "sample_rate": 8000,
+  "source_checkpoint": "0728/models/morse-lstm-curriculum.working-stage-063.pt"
+}
