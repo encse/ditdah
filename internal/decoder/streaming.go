@@ -51,8 +51,8 @@ type Streaming interface {
 	) error
 }
 
-func NewStreaming(weightsDirectory string) (Streaming, error) {
-	model, err := LoadModel(weightsDirectory)
+func NewStreaming() (Streaming, error) {
+	model, err := LoadModel()
 	if err != nil {
 		return nil, err
 	}

@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math"
-	"os"
-	"path/filepath"
 )
 
 const (
@@ -57,7 +55,7 @@ type Model interface {
 	Reset()
 }
 
-func LoadModel(weightsDirectory string) (Model, error) {
+func LoadModel() (Model, error) {
 	projectionIndices := [...]int{0, 2, 4, 6}
 
 	model := &model{
@@ -75,10 +73,7 @@ func LoadModel(weightsDirectory string) (Model, error) {
 		prefix := fmt.Sprintf("frame_projection__%d", weightIndex)
 
 		weight, err := loadFloat32(
-			filepath.Join(
-				weightsDirectory,
-				prefix+"__weight.f32",
-			),
+			prefix+"__weight.f32",
 			hiddenSize*inputSize,
 		)
 		if err != nil {
@@ -86,10 +81,7 @@ func LoadModel(weightsDirectory string) (Model, error) {
 		}
 
 		bias, err := loadFloat32(
-			filepath.Join(
-				weightsDirectory,
-				prefix+"__bias.f32",
-			),
+			prefix+"__bias.f32",
 			hiddenSize,
 		)
 		if err != nil {
@@ -107,10 +99,7 @@ func LoadModel(weightsDirectory string) (Model, error) {
 	}
 
 	classifierWeight, err := loadFloat32(
-		filepath.Join(
-			weightsDirectory,
-			"classifier__weight.f32",
-		),
+		"classifier__weight.f32",
 		tokenCount*hiddenSize,
 	)
 	if err != nil {
@@ -118,10 +107,7 @@ func LoadModel(weightsDirectory string) (Model, error) {
 	}
 
 	classifierBias, err := loadFloat32(
-		filepath.Join(
-			weightsDirectory,
-			"classifier__bias.f32",
-		),
+		"classifier__bias.f32",
 		tokenCount,
 	)
 	if err != nil {
@@ -136,10 +122,7 @@ func LoadModel(weightsDirectory string) (Model, error) {
 	}
 
 	model.weightIH, err = loadFloat32(
-		filepath.Join(
-			weightsDirectory,
-			"sequence_encoder__weight_ih_l0.f32",
-		),
+		"sequence_encoder__weight_ih_l0.f32",
 		4*hiddenSize*hiddenSize,
 	)
 	if err != nil {
@@ -147,10 +130,7 @@ func LoadModel(weightsDirectory string) (Model, error) {
 	}
 
 	model.weightHH, err = loadFloat32(
-		filepath.Join(
-			weightsDirectory,
-			"sequence_encoder__weight_hh_l0.f32",
-		),
+		"sequence_encoder__weight_hh_l0.f32",
 		4*hiddenSize*hiddenSize,
 	)
 	if err != nil {
@@ -158,10 +138,7 @@ func LoadModel(weightsDirectory string) (Model, error) {
 	}
 
 	model.biasIH, err = loadFloat32(
-		filepath.Join(
-			weightsDirectory,
-			"sequence_encoder__bias_ih_l0.f32",
-		),
+		"sequence_encoder__bias_ih_l0.f32",
 		4*hiddenSize,
 	)
 	if err != nil {
@@ -169,10 +146,7 @@ func LoadModel(weightsDirectory string) (Model, error) {
 	}
 
 	model.biasHH, err = loadFloat32(
-		filepath.Join(
-			weightsDirectory,
-			"sequence_encoder__bias_hh_l0.f32",
-		),
+		"sequence_encoder__bias_hh_l0.f32",
 		4*hiddenSize,
 	)
 	if err != nil {
@@ -261,10 +235,12 @@ func (m *model) lstmStep(input []float32) {
 	}
 }
 
-func loadFloat32(path string, count int) ([]float32, error) {
-	data, err := os.ReadFile(path)
+func loadFloat32(name string, count int) ([]float32, error) {
+	path := "weights/" + name
+
+	data, err := modelWeights.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("read model tensor %q: %w", path, err)
+		return nil, fmt.Errorf("read embedded model tensor %q: %w", path, err)
 	}
 
 	expectedBytes := count * 4
@@ -281,9 +257,7 @@ func loadFloat32(path string, count int) ([]float32, error) {
 
 	for index := range values {
 		offset := index * 4
-		bits := binary.LittleEndian.Uint32(
-			data[offset : offset+4],
-		)
+		bits := binary.LittleEndian.Uint32(data[offset : offset+4])
 		values[index] = math.Float32frombits(bits)
 	}
 

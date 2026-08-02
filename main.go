@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"morsemanual/internal/audio"
 	"morsemanual/internal/decoder"
-	"path/filepath"
 )
 
 func main() {
@@ -24,9 +23,7 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
-	weightsDir := filepath.Join(".", "morse.weights")
-
-	d, err := decoder.NewStreaming(weightsDir)
+	d, err := decoder.NewStreaming()
 	if err != nil {
 		panic(err)
 	}
