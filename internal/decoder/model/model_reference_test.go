@@ -1,17 +1,21 @@
-package decoder
+package model_test
 
 import (
 	"encoding/binary"
 	"encoding/json"
 	"math"
+	"morsemanual/internal/decoder"
+	"morsemanual/internal/decoder/model"
+	"morsemanual/internal/decoder/model/core"
 	"os"
 	"path/filepath"
 	"testing"
 )
 
 const (
-	referenceDirectory = "model/reference"
+	referenceDirectory = "artifacts/generated/reference"
 	logitTolerance     = 5e-5
+	frameSamples       = 160
 )
 
 type tensorMetadata struct {
@@ -95,11 +99,11 @@ func TestInferenceMatchesPython(t *testing.T) {
 	frameCount := logitsMetadata.Shape[0]
 	referenceTokenCount := logitsMetadata.Shape[1]
 
-	if referenceTokenCount != tokenCount {
+	if referenceTokenCount != core.TokenCount {
 		t.Fatalf(
 			"unexpected token count: got %d, want %d",
 			referenceTokenCount,
-			tokenCount,
+			core.TokenCount,
 		)
 	}
 
@@ -155,12 +159,12 @@ func TestInferenceMatchesPython(t *testing.T) {
 		)
 	}
 
-	model, err := LoadModel()
+	loadedModel, err := model.LoadModel()
 	if err != nil {
 		t.Fatalf("load model: %v", err)
 	}
 
-	transform := NewSTFT()
+	transform := decoder.NewSTFT()
 
 	actualLogits := make(
 		[]float32,
@@ -183,7 +187,7 @@ func TestInferenceMatchesPython(t *testing.T) {
 			)
 		}
 
-		logits, err := model.Step(features)
+		logits, err := loadedModel.Step(features)
 		if err != nil {
 			t.Fatalf(
 				"run model for frame %d: %v",
@@ -377,12 +381,12 @@ func assertArgmaxPathEqual(
 		start := frameIndex * tokenCount
 		end := start + tokenCount
 
-		expectedToken := AudioToken(
-			argmax(expected[start:end]),
+		expectedToken := decoder.AudioToken(
+			core.Argmax(expected[start:end]),
 		)
 
-		actualToken := AudioToken(
-			argmax(actual[start:end]),
+		actualToken := decoder.AudioToken(
+			core.Argmax(actual[start:end]),
 		)
 
 		if expectedToken != actualToken {

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"morsemanual/internal/audio"
+	"morsemanual/internal/decoder/model"
+	"morsemanual/internal/decoder/model/core"
 )
 
 type AudioToken uint8
@@ -38,7 +40,7 @@ const frameSamples = 160
 type streaming struct {
 	stft          STFT
 	pending       []float32
-	model         Model
+	model         core.Model
 	previousToken AudioToken
 	morseTokens   []AudioToken
 }
@@ -52,7 +54,7 @@ type Streaming interface {
 }
 
 func NewStreaming() (Streaming, error) {
-	model, err := LoadModel()
+	model, err := model.LoadModel()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +93,7 @@ func (s *streaming) Process(
 			return fmt.Errorf("run model: %w", err)
 		}
 
-		token := AudioToken(argmax(logits))
+		token := AudioToken(core.Argmax(logits))
 
 		// Online CTC collapse.
 		emit := token != s.previousToken && token != CTCBlank
@@ -134,18 +136,4 @@ func (s *streaming) finishCharacter() string {
 	s.morseTokens = s.morseTokens[:0]
 
 	return text
-}
-
-func argmax(values []float32) int {
-	bestIndex := 0
-	bestValue := values[0]
-
-	for index := 1; index < len(values); index++ {
-		if values[index] > bestValue {
-			bestValue = values[index]
-			bestIndex = index
-		}
-	}
-
-	return bestIndex
 }

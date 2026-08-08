@@ -23,6 +23,11 @@ Run tests with
 go test ./...
 ```
 
+or
+```
+GOEXPERIMENT=simd go test ./... -v
+```
+
 ## Run
 
 ```bash
