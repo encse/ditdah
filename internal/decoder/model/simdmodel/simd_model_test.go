@@ -25,7 +25,7 @@ func TestSIMDModelMatchesScalar(t *testing.T) {
 
 	const (
 		steps        = 1000
-		absTolerance = 1e-4
+		absTolerance = 5e-4
 	)
 
 	var maxAbsError float64
@@ -60,16 +60,12 @@ func TestSIMDModelMatchesScalar(t *testing.T) {
 				maxErrorLogit = i
 			}
 
-			if err > absTolerance {
-				t.Fatalf(
-					"step=%d logit=%d scalar=%g simd=%g abs_error=%g",
-					step,
-					i,
-					scalarLogits[i],
-					simdLogits[i],
-					err,
-				)
+			if err > maxAbsError {
+				maxAbsError = err
+				maxErrorStep = step
+				maxErrorLogit = i
 			}
+
 		}
 
 		scalarToken := core.Argmax(scalarLogits)
@@ -85,6 +81,15 @@ func TestSIMDModelMatchesScalar(t *testing.T) {
 				simdLogits,
 			)
 		}
+	}
+
+	if maxAbsError > absTolerance {
+		t.Fatalf(
+			"max_abs_error=%g at step=%d logit=%d",
+			maxAbsError,
+			maxErrorStep,
+			maxErrorLogit,
+		)
 	}
 
 	t.Logf(

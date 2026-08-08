@@ -28,7 +28,7 @@
     "max_noise_only_seconds": 4.0,
     "max_rise_fall_ms": 10.0,
     "max_wpm": 40.0,
-    "min_amplitude_percent": 30.0,
+    "min_amplitude_percent": 12.0,
     "min_characters": 2,
     "min_extended_space_multiplier": 2,
     "min_fade_frequency_hz": 0.1,

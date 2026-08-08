@@ -28,9 +28,11 @@ func main() {
 		panic(err)
 	}
 
+	device := devices[0]
+	fmt.Println(device.Name)
 	s.Run(
 		ctx,
-		devices[1],
+		device,
 		func(ctx context.Context, chunk audio.Chunk) error {
 			return d.Process(
 				ctx,
