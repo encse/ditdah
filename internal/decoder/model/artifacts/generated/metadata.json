@@ -8,7 +8,7 @@
       "sample_rate": 8000
     },
     "extended_space_probability": 0.5,
-    "fade_depth_percent": 60.0,
+    "fade_depth_percent": 40.0,
     "gap_timing": {
       "character_extreme_probability": 0.6,
       "character_extreme_width_units": 0.3,
@@ -27,8 +27,8 @@
     "max_frequency_hz": 2000.0,
     "max_noise_only_seconds": 4.0,
     "max_rise_fall_ms": 10.0,
-    "max_wpm": 40.0,
-    "min_amplitude_percent": 12.0,
+    "max_wpm": 37.0,
+    "min_amplitude_percent": 10.0,
     "min_characters": 2,
     "min_extended_space_multiplier": 2,
     "min_fade_frequency_hz": 0.1,
@@ -36,7 +36,7 @@
     "min_noise_only_power": 1.0,
     "min_noise_only_seconds": 2.0,
     "min_rise_fall_ms": 0.0,
-    "min_wpm": 10.0,
+    "min_wpm": 13.0,
     "noise_only_probability": 0.2,
     "noise_percent": 0.0,
     "noise_power": 40.0,

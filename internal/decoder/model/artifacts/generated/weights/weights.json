@@ -77,21 +77,6 @@
         256
       ]
     },
-    "frequency_head.bias": {
-      "element_count": 1,
-      "file": "frequency_head__bias.f32",
-      "shape": [
-        1
-      ]
-    },
-    "frequency_head.weight": {
-      "element_count": 256,
-      "file": "frequency_head__weight.f32",
-      "shape": [
-        1,
-        256
-      ]
-    },
     "sequence_encoder.bias_hh_l0": {
       "element_count": 1024,
       "file": "sequence_encoder__bias_hh_l0.f32",
@@ -132,6 +117,21 @@
     "tone_activity_head.weight": {
       "element_count": 256,
       "file": "tone_activity_head__weight.f32",
+      "shape": [
+        1,
+        256
+      ]
+    },
+    "tone_length_head.bias": {
+      "element_count": 1,
+      "file": "tone_length_head__bias.f32",
+      "shape": [
+        1
+      ]
+    },
+    "tone_length_head.weight": {
+      "element_count": 256,
+      "file": "tone_length_head__weight.f32",
       "shape": [
         1,
         256
