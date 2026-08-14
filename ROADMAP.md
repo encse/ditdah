@@ -6,6 +6,7 @@ This document records implementation decisions and future technical work.
 
 - [x] Keep concrete stateful implementations unexported and expose them through small interfaces.
 - [x] Pass and return public domain models by value; generated persistence pointers stay inside persistence implementations.
+- [x] Represent nullable domain values with value-based `optional.Value[T]`; do not reserve zero values as missing-value sentinels.
 - [x] Keep UI, domain models, and persistence separate.
 - [x] Keep SQLite connection setup, migrations, and the shared generated database model in `internal/database`.
 - [x] Keep domain queries and persistence mapping in their domain package, such as `internal/logbook`.

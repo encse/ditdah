@@ -5,18 +5,20 @@ import (
 	"errors"
 	"strings"
 	"time"
+
+	"morsemanual/internal/optional"
 )
 
 var ErrNotFound = errors.New("qso not found")
 
-// QSO is one amateur-radio contact. Empty optional strings and a zero
-// FrequencyHz mean that the corresponding value was not recorded.
+// QSO is one amateur-radio contact. Empty optional strings mean that the
+// corresponding value was not recorded.
 type QSO struct {
 	ID               string
 	StationCallsign  string
 	Callsign         string
 	StartedAt        time.Time
-	FrequencyHz      int64
+	FrequencyHz      optional.Value[int64]
 	Mode             string
 	Submode          string
 	RSTSent          string
@@ -26,7 +28,7 @@ type QSO struct {
 	Name             string
 	QTH              string
 	Notes            string
-	QRZSyncedAt      time.Time
+	QRZSyncedAt      optional.Value[time.Time]
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -67,8 +69,8 @@ func normalizeQSO(qso QSO) QSO {
 	if !qso.StartedAt.IsZero() {
 		qso.StartedAt = persistedTime(qso.StartedAt)
 	}
-	if !qso.QRZSyncedAt.IsZero() {
-		qso.QRZSyncedAt = persistedTime(qso.QRZSyncedAt)
+	if syncedAt, present := qso.QRZSyncedAt.Get(); present {
+		qso.QRZSyncedAt = optional.Some(persistedTime(syncedAt))
 	}
 
 	return qso
@@ -84,8 +86,8 @@ func validateQSO(qso QSO) error {
 	if qso.StartedAt.IsZero() {
 		return errors.New("QSO start time is required")
 	}
-	if qso.FrequencyHz < 0 {
-		return errors.New("frequency cannot be negative")
+	if frequency, present := qso.FrequencyHz.Get(); present && frequency <= 0 {
+		return errors.New("frequency must be positive")
 	}
 	if qso.Mode == "" {
 		return errors.New("mode is required")

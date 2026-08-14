@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"morsemanual/internal/database"
+	"morsemanual/internal/optional"
 )
 
 func TestSQLiteStoreLifecycle(t *testing.T) {
@@ -18,7 +19,7 @@ func TestSQLiteStoreLifecycle(t *testing.T) {
 		StationCallsign:  " ha7ncs ",
 		Callsign:         " dl8eca/p ",
 		StartedAt:        startedAt,
-		FrequencyHz:      7_023_500,
+		FrequencyHz:      optional.Some[int64](7_023_500),
 		Mode:             " cw ",
 		RSTSent:          "559",
 		RSTReceived:      "539",
@@ -47,7 +48,7 @@ func TestSQLiteStoreLifecycle(t *testing.T) {
 	loaded.Mode = "SSB"
 	loaded.Submode = "USB"
 	loaded.Notes = "portable contact"
-	loaded.QRZSyncedAt = time.Now()
+	loaded.QRZSyncedAt = optional.Some(time.Now())
 	updated, err := store.Update(ctx, loaded)
 	if err != nil {
 		t.Fatalf("Update() error = %v", err)
@@ -55,8 +56,8 @@ func TestSQLiteStoreLifecycle(t *testing.T) {
 	if updated.Mode != "SSB" || updated.Submode != "USB" {
 		t.Fatalf("Update() mode = %q/%q", updated.Mode, updated.Submode)
 	}
-	if !updated.QRZSyncedAt.IsZero() {
-		t.Fatalf("Update() QRZSyncedAt = %v, want zero", updated.QRZSyncedAt)
+	if updated.QRZSyncedAt.IsSome() {
+		t.Fatalf("Update() QRZSyncedAt = %v, want none", updated.QRZSyncedAt)
 	}
 
 	syncedAt := time.Date(2026, 8, 14, 12, 30, 0, 0, time.UTC)
@@ -64,8 +65,9 @@ func TestSQLiteStoreLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("MarkQRZSynced() error = %v", err)
 	}
-	if !synced.QRZSyncedAt.Equal(syncedAt) {
-		t.Fatalf("MarkQRZSynced() time = %v, want %v", synced.QRZSyncedAt, syncedAt)
+	storedSyncedAt, present := synced.QRZSyncedAt.Get()
+	if !present || !storedSyncedAt.Equal(syncedAt) {
+		t.Fatalf("MarkQRZSynced() time = %v, %v; want %v, true", storedSyncedAt, present, syncedAt)
 	}
 
 	if err := store.Delete(ctx, created.ID); err != nil {
@@ -85,7 +87,7 @@ func TestSQLiteStoreListAndSearch(t *testing.T) {
 			StationCallsign: "HA7NCS",
 			Callsign:        "SA6AUT",
 			StartedAt:       time.Date(2026, 8, 11, 18, 30, 0, 0, time.UTC),
-			FrequencyHz:     14_041_990,
+			FrequencyHz:     optional.Some[int64](14_041_990),
 			Mode:            "CW",
 			Name:            "Marcin",
 			QTH:             "Stromstad",
@@ -94,7 +96,7 @@ func TestSQLiteStoreListAndSearch(t *testing.T) {
 			StationCallsign: "HA7NCS",
 			Callsign:        "YP0C",
 			StartedAt:       time.Date(2026, 8, 1, 19, 21, 0, 0, time.UTC),
-			FrequencyHz:     14_184_000,
+			FrequencyHz:     optional.Some[int64](14_184_000),
 			Mode:            "SSB",
 			Notes:           "contest",
 		},
@@ -133,6 +135,29 @@ func TestSQLiteStoreRejectsInvalidQSO(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("Add() error = nil, want validation error")
+	}
+}
+
+func TestSQLiteStorePreservesMissingFrequency(t *testing.T) {
+	store := openTestStore(t)
+	ctx := context.Background()
+
+	created, err := store.Add(ctx, QSO{
+		StationCallsign: "HA7NCS",
+		Callsign:        "DL8ECA/P",
+		StartedAt:       time.Date(2026, 8, 13, 16, 17, 0, 0, time.UTC),
+		Mode:            "CW",
+	})
+	if err != nil {
+		t.Fatalf("Add() error = %v", err)
+	}
+
+	loaded, err := store.Get(ctx, created.ID)
+	if err != nil {
+		t.Fatalf("Get() error = %v", err)
+	}
+	if loaded.FrequencyHz.IsSome() {
+		t.Fatalf("Get() FrequencyHz = %v, want none", loaded.FrequencyHz)
 	}
 }
 

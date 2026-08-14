@@ -14,6 +14,7 @@ import (
 	. "github.com/go-jet/jet/v2/sqlite"
 	dbmodel "morsemanual/internal/database/dbgen/model"
 	. "morsemanual/internal/database/dbgen/table"
+	"morsemanual/internal/optional"
 )
 
 const (
@@ -48,43 +49,8 @@ func (s *sqliteStore) Add(ctx context.Context, qso QSO) (QSO, error) {
 	qso.CreatedAt = now
 	qso.UpdatedAt = now
 
-	statement := Qso.INSERT(
-		Qso.ID,
-		Qso.StationCallsign,
-		Qso.Callsign,
-		Qso.StartedAtUnixMs,
-		Qso.FrequencyHz,
-		Qso.Mode,
-		Qso.Submode,
-		Qso.RstSent,
-		Qso.RstReceived,
-		Qso.ExchangeSent,
-		Qso.ExchangeReceived,
-		Qso.Name,
-		Qso.Qth,
-		Qso.Notes,
-		Qso.QrzSyncedAtUnixMs,
-		Qso.CreatedAtUnixMs,
-		Qso.UpdatedAtUnixMs,
-	).VALUES(
-		qso.ID,
-		qso.StationCallsign,
-		qso.Callsign,
-		qso.StartedAt.UnixMilli(),
-		nullableFrequency(qso.FrequencyHz),
-		qso.Mode,
-		qso.Submode,
-		qso.RSTSent,
-		qso.RSTReceived,
-		qso.ExchangeSent,
-		qso.ExchangeReceived,
-		qso.Name,
-		qso.QTH,
-		qso.Notes,
-		nullableTime(qso.QRZSyncedAt),
-		qso.CreatedAt.UnixMilli(),
-		qso.UpdatedAt.UnixMilli(),
-	)
+	statement := Qso.INSERT(Qso.AllColumns).
+		MODEL(qsoToModel(qso))
 
 	_, err := statement.ExecContext(ctx, s.db)
 	if err != nil {
@@ -171,41 +137,12 @@ func (s *sqliteStore) Update(ctx context.Context, qso QSO) (QSO, error) {
 
 	qso.CreatedAt = existing.CreatedAt
 	qso.UpdatedAt = currentTime()
-	qso.QRZSyncedAt = time.Time{}
+	qso.QRZSyncedAt = optional.None[time.Time]()
 
-	statement := Qso.UPDATE(
-		Qso.StationCallsign,
-		Qso.Callsign,
-		Qso.StartedAtUnixMs,
-		Qso.FrequencyHz,
-		Qso.Mode,
-		Qso.Submode,
-		Qso.RstSent,
-		Qso.RstReceived,
-		Qso.ExchangeSent,
-		Qso.ExchangeReceived,
-		Qso.Name,
-		Qso.Qth,
-		Qso.Notes,
-		Qso.QrzSyncedAtUnixMs,
-		Qso.UpdatedAtUnixMs,
-	).SET(
-		qso.StationCallsign,
-		qso.Callsign,
-		qso.StartedAt.UnixMilli(),
-		nullableFrequency(qso.FrequencyHz),
-		qso.Mode,
-		qso.Submode,
-		qso.RSTSent,
-		qso.RSTReceived,
-		qso.ExchangeSent,
-		qso.ExchangeReceived,
-		qso.Name,
-		qso.QTH,
-		qso.Notes,
-		nil,
-		qso.UpdatedAt.UnixMilli(),
-	).WHERE(Qso.ID.EQ(String(qso.ID)))
+	statement := Qso.
+		UPDATE(Qso.MutableColumns.Except(Qso.CreatedAtUnixMs)).
+		MODEL(qsoToModel(qso)).
+		WHERE(Qso.ID.EQ(String(qso.ID)))
 
 	result, err := statement.ExecContext(ctx, s.db)
 	if err != nil {
@@ -260,10 +197,10 @@ func (s *sqliteStore) MarkQRZSynced(
 	statement := Qso.UPDATE(
 		Qso.QrzSyncedAtUnixMs,
 		Qso.UpdatedAtUnixMs,
-	).SET(
-		syncedAt.UnixMilli(),
-		updatedAt.UnixMilli(),
-	).WHERE(Qso.ID.EQ(String(id)))
+	).MODEL(dbmodel.Qso{
+		QrzSyncedAtUnixMs: optionalTime(optional.Some(syncedAt)),
+		UpdatedAtUnixMs:   updatedAt.UnixMilli(),
+	}).WHERE(Qso.ID.EQ(String(id)))
 
 	result, err := statement.ExecContext(ctx, s.db)
 	if err != nil {
@@ -301,29 +238,56 @@ func qsoFromModel(stored dbmodel.Qso) QSO {
 	}
 
 	if stored.FrequencyHz != nil {
-		qso.FrequencyHz = *stored.FrequencyHz
+		qso.FrequencyHz = optional.Some(*stored.FrequencyHz)
 	}
 	if stored.QrzSyncedAtUnixMs != nil {
-		qso.QRZSyncedAt = time.UnixMilli(*stored.QrzSyncedAtUnixMs).UTC()
+		qso.QRZSyncedAt = optional.Some(
+			time.UnixMilli(*stored.QrzSyncedAtUnixMs).UTC(),
+		)
 	}
 
 	return qso
 }
 
-func nullableFrequency(frequency int64) any {
-	if frequency == 0 {
-		return nil
+func qsoToModel(qso QSO) dbmodel.Qso {
+	return dbmodel.Qso{
+		ID:                qso.ID,
+		StationCallsign:   qso.StationCallsign,
+		Callsign:          qso.Callsign,
+		StartedAtUnixMs:   qso.StartedAt.UnixMilli(),
+		FrequencyHz:       optionalPointer(qso.FrequencyHz),
+		Mode:              qso.Mode,
+		Submode:           qso.Submode,
+		RstSent:           qso.RSTSent,
+		RstReceived:       qso.RSTReceived,
+		ExchangeSent:      qso.ExchangeSent,
+		ExchangeReceived:  qso.ExchangeReceived,
+		Name:              qso.Name,
+		Qth:               qso.QTH,
+		Notes:             qso.Notes,
+		QrzSyncedAtUnixMs: optionalTime(qso.QRZSyncedAt),
+		CreatedAtUnixMs:   qso.CreatedAt.UnixMilli(),
+		UpdatedAtUnixMs:   qso.UpdatedAt.UnixMilli(),
 	}
-
-	return frequency
 }
 
-func nullableTime(value time.Time) any {
-	if value.IsZero() {
+func optionalPointer[T any](value optional.Value[T]) *T {
+	stored, present := value.Get()
+	if !present {
 		return nil
 	}
 
-	return persistedTime(value).UnixMilli()
+	return &stored
+}
+
+func optionalTime(value optional.Value[time.Time]) *int64 {
+	stored, present := value.Get()
+	if !present {
+		return nil
+	}
+
+	unixMilliseconds := persistedTime(stored).UnixMilli()
+	return &unixMilliseconds
 }
 
 func newID() (string, error) {
