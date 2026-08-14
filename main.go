@@ -28,7 +28,7 @@ func main() {
 		panic(err)
 	}
 
-	device := devices[0]
+	device := devices[1]
 	fmt.Println(device.Name)
 	s.Run(
 		ctx,
