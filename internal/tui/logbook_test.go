@@ -1,0 +1,45 @@
+package tui
+
+import (
+	"strings"
+	"testing"
+	"time"
+
+	"morsemanual/internal/logbook"
+	"morsemanual/internal/optional"
+)
+
+func TestSearchableTextIncludesLogbookFields(t *testing.T) {
+	qso := logbook.QSO{
+		StationCallsign:  "HA7NCS",
+		Callsign:         "DL8ECA/P",
+		StartedAt:        time.Date(2026, 8, 13, 16, 17, 0, 0, time.Local),
+		FrequencyHz:      optional.Some[int64](7_023_500),
+		Mode:             "CW",
+		ExchangeReceived: "123",
+		Name:             "Flo",
+		QTH:              "Remscheid",
+		Notes:            "portable",
+	}
+
+	text := searchableText(qso)
+	for _, expected := range []string{
+		"ha7ncs", "dl8eca/p", "7.0235", "cw", "123", "flo",
+		"remscheid", "portable",
+	} {
+		if !strings.Contains(text, expected) {
+			t.Errorf("searchableText() = %q, want substring %q", text, expected)
+		}
+	}
+}
+
+func TestFormatFrequency(t *testing.T) {
+	qso := logbook.QSO{FrequencyHz: optional.Some[int64](7_023_500)}
+	if got := formatFrequency(qso); got != "7.0235" {
+		t.Fatalf("formatFrequency() = %q, want %q", got, "7.0235")
+	}
+
+	if got := formatFrequency(logbook.QSO{}); got != "" {
+		t.Fatalf("formatFrequency(missing) = %q, want empty", got)
+	}
+}

@@ -1,2 +1,5 @@
 morse.onnx.testdata
 morse.weights
+logbook.db
+logbook.db-shm
+logbook.db-wal

@@ -1,6 +1,24 @@
-# Pure Go Morse LSTM
+# Morse Manual
 
-This project runs an exported PyTorch model without PyTorch, ONNX Runtime, Gorgonia, CGO, or native libraries.
+Morse Manual is a terminal application for amateur-radio operation. The
+current interface provides a searchable SQLite logbook with a QSO table and a
+detail view. A live Morse decoder is also under development.
+
+## Run
+
+```bash
+go run .
+```
+
+The logbook is stored in `logbook.db` in the current directory.
+
+Inside the logbook, use the arrow keys or `j`/`k` to move, `/` to search, and
+`q` to quit.
+
+## Decoder development
+
+The decoder runs an exported PyTorch model without PyTorch, ONNX Runtime,
+Gorgonia, CGO, or native inference libraries.
 
 It implements:
 
@@ -42,10 +60,4 @@ together, and run the tests before committing:
 
 ```bash
 go test ./...
-```
-
-## Run
-
-```bash
-go run .
 ```

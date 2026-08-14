@@ -1,0 +1,395 @@
+// Package tui implements the terminal user interface.
+package tui
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
+	"morsemanual/internal/logbook"
+)
+
+const qsoPageSize = 500
+
+type logbookView struct {
+	ctx   context.Context
+	app   *tview.Application
+	store logbook.Store
+	theme colorTheme
+
+	header  *tview.TextView
+	search  *tview.InputField
+	table   *tview.Table
+	details *tview.TextView
+	footer  *tview.TextView
+
+	qsos      []logbook.QSO
+	visible   []logbook.QSO
+	searching bool
+}
+
+// Run opens the logbook screen and blocks until the user quits or ctx is
+// cancelled.
+func Run(ctx context.Context, store logbook.Store) error {
+	tview.Styles = nordTheme.styles
+
+	view := newLogbookView(ctx, store, nordTheme)
+	if err := view.load(); err != nil {
+		return err
+	}
+
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		select {
+		case <-ctx.Done():
+			view.app.Stop()
+		case <-done:
+		}
+	}()
+
+	if err := view.app.SetRoot(view.layout(), true).EnableMouse(true).Run(); err != nil {
+		if ctx.Err() != nil {
+			return nil
+		}
+		return err
+	}
+
+	return nil
+}
+
+func newLogbookView(
+	ctx context.Context,
+	store logbook.Store,
+	theme colorTheme,
+) *logbookView {
+	view := &logbookView{
+		ctx:   ctx,
+		app:   tview.NewApplication(),
+		store: store,
+		theme: theme,
+	}
+
+	view.header = tview.NewTextView().
+		SetDynamicColors(true)
+	view.header.SetTextColor(theme.accent)
+
+	view.search = tview.NewInputField().
+		SetLabel(" Search  ").
+		SetPlaceholder("callsign, date, frequency, mode, name, QTH...").
+		SetLabelColor(theme.accent).
+		SetFieldTextColor(theme.styles.PrimaryTextColor).
+		SetFieldBackgroundColor(theme.styles.ContrastBackgroundColor).
+		SetPlaceholderTextColor(theme.muted)
+	view.search.SetChangedFunc(func(string) {
+		view.applyFilter()
+	})
+	view.search.SetDoneFunc(func(key tcell.Key) {
+		switch key {
+		case tcell.KeyEnter:
+			view.leaveSearch(false)
+		case tcell.KeyEscape:
+			view.leaveSearch(true)
+		}
+	})
+
+	view.table = tview.NewTable().
+		SetBorders(false).
+		SetSelectable(true, false).
+		SetFixed(1, 0).
+		SetSeparator(' ')
+	view.table.SetBorder(true).
+		SetBorderColor(theme.styles.BorderColor).
+		SetTitle(" QSOs ").
+		SetTitleColor(theme.accent)
+	view.table.SetSelectedStyle(
+		tcell.StyleDefault.
+			Foreground(theme.selectionText).
+			Background(theme.selectionBackground).
+			Bold(true),
+	)
+	view.table.SetSelectionChangedFunc(func(row, _ int) {
+		view.renderDetails(row - 1)
+	})
+
+	view.details = tview.NewTextView().
+		SetDynamicColors(true).
+		SetWordWrap(true)
+	view.details.SetBorder(true).
+		SetBorderColor(theme.styles.BorderColor).
+		SetTitle(" QSO info ").
+		SetTitleColor(theme.accent)
+
+	view.footer = tview.NewTextView().
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter)
+	view.footer.SetTextColor(theme.muted)
+
+	view.app.SetInputCapture(view.captureKey)
+	return view
+}
+
+func (v *logbookView) layout() tview.Primitive {
+	return tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(v.header, 1, 0, false).
+		AddItem(v.search, 1, 0, false).
+		AddItem(v.table, 0, 2, true).
+		AddItem(v.details, 9, 0, false).
+		AddItem(v.footer, 1, 0, false)
+}
+
+func (v *logbookView) captureKey(event *tcell.EventKey) *tcell.EventKey {
+	if v.searching {
+		return event
+	}
+
+	switch {
+	case event.Key() == tcell.KeyCtrlC:
+		v.app.Stop()
+		return nil
+	case event.Key() == tcell.KeyRune && event.Rune() == 'q':
+		v.app.Stop()
+		return nil
+	case event.Key() == tcell.KeyRune && event.Rune() == '/':
+		v.searching = true
+		v.app.SetFocus(v.search)
+		v.renderFooter()
+		return nil
+	case event.Key() == tcell.KeyRune && event.Rune() == 'j':
+		return tcell.NewEventKey(tcell.KeyDown, 0, event.Modifiers())
+	case event.Key() == tcell.KeyRune && event.Rune() == 'k':
+		return tcell.NewEventKey(tcell.KeyUp, 0, event.Modifiers())
+	}
+
+	return event
+}
+
+func (v *logbookView) leaveSearch(clear bool) {
+	v.searching = false
+	if clear {
+		v.search.SetText("")
+	}
+	v.app.SetFocus(v.table)
+	v.renderFooter()
+}
+
+func (v *logbookView) load() error {
+	var qsos []logbook.QSO
+	for offset := 0; ; offset += qsoPageSize {
+		page, err := v.store.List(v.ctx, logbook.Filter{
+			Limit:  qsoPageSize,
+			Offset: offset,
+		})
+		if err != nil {
+			return fmt.Errorf("load logbook: %w", err)
+		}
+		qsos = append(qsos, page...)
+		if len(page) < qsoPageSize {
+			break
+		}
+	}
+
+	v.qsos = qsos
+	v.applyFilter()
+	return nil
+}
+
+func (v *logbookView) applyFilter() {
+	selectedID := v.selectedID()
+	query := strings.ToLower(strings.TrimSpace(v.search.GetText()))
+
+	v.visible = v.visible[:0]
+	for _, qso := range v.qsos {
+		if query == "" || strings.Contains(searchableText(qso), query) {
+			v.visible = append(v.visible, qso)
+		}
+	}
+
+	v.renderTable(selectedID)
+	v.renderHeader()
+	v.renderFooter()
+}
+
+func (v *logbookView) renderTable(selectedID string) {
+	v.table.Clear()
+	headings := []string{
+		"Date", "Time", "Callsign", "Frequency", "Mode", "Sent",
+		"Received", "TX exch", "RX exch", "Name", "QTH",
+	}
+	widths := []int{10, 5, 12, 10, 8, 5, 8, 10, 10, 14, 0}
+	for column, heading := range headings {
+		cell := tview.NewTableCell(heading).
+			SetTextColor(v.theme.styles.PrimaryTextColor).
+			SetAttributes(tcell.AttrBold).
+			SetSelectable(false).
+			SetMaxWidth(widths[column])
+		if column == len(headings)-1 {
+			cell.SetExpansion(1)
+		}
+		v.table.SetCell(0, column, cell)
+	}
+
+	selectedRow := 1
+	for index, qso := range v.visible {
+		localTime := qso.StartedAt.Local()
+		values := []string{
+			localTime.Format("2006-01-02"),
+			localTime.Format("15:04"),
+			qso.Callsign,
+			formatFrequency(qso),
+			modeName(qso),
+			qso.RSTSent,
+			qso.RSTReceived,
+			qso.ExchangeSent,
+			qso.ExchangeReceived,
+			qso.Name,
+			qso.QTH,
+		}
+		for column, value := range values {
+			cell := tview.NewTableCell(value).
+				SetTextColor(v.theme.styles.SecondaryTextColor).
+				SetMaxWidth(widths[column])
+			if column == len(values)-1 {
+				cell.SetExpansion(1)
+			}
+			v.table.SetCell(index+1, column, cell)
+		}
+		if qso.ID == selectedID {
+			selectedRow = index + 1
+		}
+	}
+
+	if len(v.visible) == 0 {
+		v.table.SetCell(1, 0, tview.NewTableCell("No matching QSOs.").
+			SetTextColor(v.theme.muted).
+			SetSelectable(false))
+		v.renderDetails(-1)
+		return
+	}
+
+	v.table.Select(selectedRow, 0)
+	v.renderDetails(selectedRow - 1)
+}
+
+func (v *logbookView) renderHeader() {
+	text := fmt.Sprintf(
+		"[::b] Logbook[-:-:-]  %s(%d/%d)[-]",
+		colorTag(v.theme.muted),
+		len(v.visible),
+		len(v.qsos),
+	)
+	v.header.SetText(text)
+}
+
+func (v *logbookView) renderFooter() {
+	if v.searching {
+		v.footer.SetText("[::b]Enter[-:-:-] apply   [::b]Esc[-:-:-] clear search")
+		return
+	}
+	v.footer.SetText(
+		"[::b]↑/k ↓/j ←/→[-:-:-] move   [::b]PgUp/PgDn[-:-:-] page   " +
+			"[::b]/[-:-:-] search   [::b]q[-:-:-] quit",
+	)
+}
+
+func (v *logbookView) renderDetails(index int) {
+	v.details.Clear()
+	if index < 0 || index >= len(v.visible) {
+		fmt.Fprint(v.details, colorTag(v.theme.muted)+"No QSO is selected.[-]")
+		return
+	}
+
+	qso := v.visible[index]
+	localTime := qso.StartedAt.Local()
+	synced := "No"
+	if syncedAt, present := qso.QRZSyncedAt.Get(); present {
+		synced = syncedAt.Local().Format("2006-01-02 15:04")
+	}
+
+	rows := [][4]string{
+		{"Callsign", qso.Callsign, "Date and time", localTime.Format("2006-01-02 15:04:05")},
+		{"Frequency", detailedFrequency(qso), "Mode", modeName(qso)},
+		{"RST sent", qso.RSTSent, "RST received", qso.RSTReceived},
+		{"TX exchange", qso.ExchangeSent, "RX exchange", qso.ExchangeReceived},
+		{"Name", qso.Name, "QTH", qso.QTH},
+		{"My callsign", qso.StationCallsign, "QRZ synced", synced},
+		{"Notes", qso.Notes, "", ""},
+	}
+	for _, row := range rows {
+		if row[1] == "" && row[3] == "" {
+			continue
+		}
+		fmt.Fprintln(v.details, detailPair(row[0], row[1], row[2], row[3]))
+	}
+}
+
+func (v *logbookView) selectedID() string {
+	row, _ := v.table.GetSelection()
+	index := row - 1
+	if index < 0 || index >= len(v.visible) {
+		return ""
+	}
+	return v.visible[index].ID
+}
+
+func searchableText(qso logbook.QSO) string {
+	values := []string{
+		qso.Callsign,
+		qso.StationCallsign,
+		qso.StartedAt.Local().Format("2006-01-02 15:04"),
+		formatFrequency(qso),
+		qso.Mode,
+		qso.Submode,
+		qso.RSTSent,
+		qso.RSTReceived,
+		qso.ExchangeSent,
+		qso.ExchangeReceived,
+		qso.Name,
+		qso.QTH,
+		qso.Notes,
+	}
+	return strings.ToLower(strings.Join(values, " "))
+}
+
+func formatFrequency(qso logbook.QSO) string {
+	frequency, present := qso.FrequencyHz.Get()
+	if !present {
+		return ""
+	}
+	formatted := fmt.Sprintf("%.6f", float64(frequency)/1_000_000)
+	return strings.TrimRight(strings.TrimRight(formatted, "0"), ".")
+}
+
+func detailedFrequency(qso logbook.QSO) string {
+	frequency, present := qso.FrequencyHz.Get()
+	if !present {
+		return ""
+	}
+	return fmt.Sprintf("%s MHz (%d Hz)", formatFrequency(qso), frequency)
+}
+
+func modeName(qso logbook.QSO) string {
+	if qso.Submode == "" {
+		return qso.Mode
+	}
+	return qso.Mode + "/" + qso.Submode
+}
+
+func detailPair(leftLabel, leftValue, rightLabel, rightValue string) string {
+	left := fmt.Sprintf(
+		"[::b]%-14s[-:-:-] %-24s",
+		tview.Escape(leftLabel),
+		tview.Escape(leftValue),
+	)
+	if rightLabel == "" {
+		return left
+	}
+	return left + fmt.Sprintf(
+		"  [::b]%-14s[-:-:-] %s",
+		tview.Escape(rightLabel),
+		tview.Escape(rightValue),
+	)
+}

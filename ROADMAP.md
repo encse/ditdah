@@ -11,6 +11,8 @@ This document records implementation decisions and future technical work.
 - [x] Keep SQLite connection setup, migrations, and the shared generated database model in `internal/database`.
 - [x] Keep domain queries and persistence mapping in their domain package, such as `internal/logbook`.
 - [x] Use the standard `*sql.DB` directly; the application owns and closes it, while domain stores use the shared connection without an extra database wrapper interface.
+- [x] Use `tview` for the classic pane-, table-, and menu-oriented terminal interface.
+- [x] Use the Nord color scheme to match the original Python application.
 
 ## Database
 
@@ -26,5 +28,7 @@ This document records implementation decisions and future technical work.
 ## Future work
 
 - [ ] Implement QRZ synchronization on top of the stored synchronization state.
-- [ ] Add the logbook and Morse user-interface views.
+- [x] Add the initial read-only logbook TUI with table, details, and search.
+- [ ] Add QSO creation, editing, and deletion to the logbook TUI.
+- [ ] Add the Morse user-interface view.
 - [ ] Add further domain stores and migrations as their features are implemented.
