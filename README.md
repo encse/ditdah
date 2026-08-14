@@ -15,6 +15,17 @@ The logbook is stored in `logbook.db` in the current directory.
 Inside the logbook, use the arrow keys or `j`/`k` to move, `/` to search, and
 `q` to quit.
 
+## Component playground
+
+Run the standalone select-field playground while developing terminal controls:
+
+```bash
+go run ./internal/tui/components/demo
+```
+
+It demonstrates short and long lists, scrolling, an initially selected middle
+item, upward-opening placement, keyboard navigation, and mouse handling.
+
 ## Decoder development
 
 The decoder runs an exported PyTorch model without PyTorch, ONNX Runtime,

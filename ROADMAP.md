@@ -13,6 +13,9 @@ This document records implementation decisions and future technical work.
 - [x] Use the standard `*sql.DB` directly; the application owns and closes it, while domain stores use the shared connection without an extra database wrapper interface.
 - [x] Use `tview` for the classic pane-, table-, and menu-oriented terminal interface.
 - [x] Use the Nord color scheme to match the original Python application.
+- [x] Keep reusable terminal controls in their own `internal/tui/components` package, with unexported implementations behind small interfaces and a shared themed factory.
+- [x] Display modal dialogs and control popups through one stackable overlay host, allowing controls inside overlays to open further overlays.
+- [ ] Introduce a consistent wrapper component layer over tview/tcell instead of styling raw widgets ad hoc.
 
 ## Database
 

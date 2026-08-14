@@ -9,6 +9,7 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"morsemanual/internal/logbook"
+	"morsemanual/internal/tui/overlay"
 )
 
 const qsoPageSize = 500
@@ -19,11 +20,12 @@ type logbookView struct {
 	store logbook.Store
 	theme colorTheme
 
-	header  *tview.TextView
-	search  *tview.InputField
-	table   *tview.Table
-	details *tview.TextView
-	footer  *tview.TextView
+	header   *tview.TextView
+	search   *tview.InputField
+	table    *tview.Table
+	details  *tview.TextView
+	footer   *tview.TextView
+	overlays overlay.Host
 
 	qsos      []logbook.QSO
 	visible   []logbook.QSO
@@ -50,7 +52,8 @@ func Run(ctx context.Context, store logbook.Store) error {
 		}
 	}()
 
-	if err := view.app.SetRoot(view.layout(), true).EnableMouse(true).Run(); err != nil {
+	view.overlays = overlay.New(view.app, view.layout())
+	if err := view.app.SetRoot(view.overlays.Root(), true).EnableMouse(true).Run(); err != nil {
 		if ctx.Err() != nil {
 			return nil
 		}
@@ -142,6 +145,9 @@ func (v *logbookView) layout() tview.Primitive {
 }
 
 func (v *logbookView) captureKey(event *tcell.EventKey) *tcell.EventKey {
+	if v.overlays != nil && v.overlays.Active() {
+		return event
+	}
 	if v.searching {
 		return event
 	}

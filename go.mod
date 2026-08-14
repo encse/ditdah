@@ -6,6 +6,7 @@ require (
 	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/gen2brain/malgo v0.11.25
 	github.com/go-jet/jet/v2 v2.15.0
+	github.com/mattn/go-runewidth v0.0.16
 	github.com/pressly/goose/v3 v3.27.3
 	github.com/rivo/tview v0.42.0
 	gonum.org/v1/gonum v0.17.0
@@ -21,7 +22,6 @@ require (
 	github.com/lib/pq v1.12.3 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.24 // indirect
-	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/ncruces/go-strftime v1.0.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
