@@ -19,6 +19,12 @@ type OverlayHost interface {
 
 // Theme contains only the colors needed by the component package.
 type Theme struct {
+	Background            tcell.Color
+	PrimaryText           tcell.Color
+	SecondaryText         tcell.Color
+	MutedText             tcell.Color
+	Accent                tcell.Color
+	Border                tcell.Color
 	LabelColor            tcell.Color
 	FieldTextColor        tcell.Color
 	FieldBackground       tcell.Color
@@ -31,6 +37,8 @@ type Theme struct {
 // Factory creates controls which share one theme.
 type Factory interface {
 	InputField(label, value string) InputField
+	TextView() TextView
+	Table(title string) Table
 	SelectField(
 		label string,
 		options []string,
@@ -61,6 +69,14 @@ func New(dependencies Dependencies) Factory {
 
 func (f factory) InputField(label, value string) InputField {
 	return newInputField(label, value, f.theme)
+}
+
+func (f factory) TextView() TextView {
+	return newTextView(f.theme)
+}
+
+func (f factory) Table(title string) Table {
+	return newTable(title, f.theme)
 }
 
 func (f factory) SelectField(

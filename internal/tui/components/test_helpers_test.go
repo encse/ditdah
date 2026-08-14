@@ -60,6 +60,12 @@ func newTestScreen(t *testing.T) tcell.SimulationScreen {
 
 func testTheme() Theme {
 	return Theme{
+		Background:            tcell.ColorBlack,
+		PrimaryText:           tcell.ColorWhite,
+		SecondaryText:         tcell.ColorSilver,
+		MutedText:             tcell.ColorGray,
+		Accent:                tcell.ColorAqua,
+		Border:                tcell.ColorWhite,
 		LabelColor:            tcell.ColorWhite,
 		FieldTextColor:        tcell.ColorWhite,
 		FieldBackground:       tcell.ColorBlue,
@@ -82,6 +88,21 @@ func assertBackground(
 	_, got, _ := style.Decompose()
 	if got != want {
 		t.Fatalf("background at (%d, %d) = %v, want %v", x, y, got, want)
+	}
+}
+
+func assertForeground(
+	t *testing.T,
+	screen tcell.Screen,
+	x int,
+	y int,
+	want tcell.Color,
+) {
+	t.Helper()
+	_, _, style, _ := screen.GetContent(x, y)
+	got, _, _ := style.Decompose()
+	if got != want {
+		t.Fatalf("foreground at (%d, %d) = %v, want %v", x, y, got, want)
 	}
 }
 

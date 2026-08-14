@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -8,6 +9,26 @@ import (
 	"morsemanual/internal/logbook"
 	"morsemanual/internal/optional"
 )
+
+func TestLogbookColumnWidths(t *testing.T) {
+	var header strings.Builder
+	for index, column := range logbookColumns {
+		if index > 0 {
+			header.WriteByte(' ')
+		}
+		if column.width > 0 {
+			fmt.Fprintf(&header, "%-*s", column.width, column.heading)
+		} else {
+			header.WriteString(column.heading)
+		}
+	}
+
+	want := "Date        Time   Callsign      Frequency   Mode    Sent   " +
+		"Received  TX exch     RX exch     Name            QTH"
+	if got := header.String(); got != want {
+		t.Fatalf("header = %q, want %q", got, want)
+	}
+}
 
 func TestSearchableTextIncludesLogbookFields(t *testing.T) {
 	qso := logbook.QSO{

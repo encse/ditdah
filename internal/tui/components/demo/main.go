@@ -78,18 +78,20 @@ func run() error {
 	}
 	wireFocus(app, fields)
 
-	title := tview.NewTextView().
-		SetTextAlign(tview.AlignCenter).
-		SetTextColor(tcell.GetColor("#88c0d0")).
-		SetText("SelectField playground")
-	instructions := tview.NewTextView().
-		SetTextAlign(tview.AlignCenter).
-		SetTextColor(tcell.GetColor("#d8dee9")).
-		SetText("Enter/Space: open/select   Esc: close   Tab: next   Mouse and wheel enabled")
-	footer := tview.NewTextView().
-		SetTextAlign(tview.AlignCenter).
-		SetTextColor(tcell.GetColor("#81a1c1")).
-		SetText("Press q or Ctrl-C to quit")
+	title := controls.TextView()
+	title.SetTextAlign(tview.AlignCenter)
+	title.SetTextColor(tcell.GetColor("#88c0d0"))
+	title.SetText("SelectField playground")
+	instructions := controls.TextView()
+	instructions.SetTextAlign(tview.AlignCenter)
+	instructions.SetTextColor(tcell.GetColor("#d8dee9"))
+	instructions.SetText(
+		"Enter/Space: open/select   Esc: close   Tab: next   Mouse and wheel enabled",
+	)
+	footer := controls.TextView()
+	footer.SetTextAlign(tview.AlignCenter)
+	footer.SetTextColor(tcell.GetColor("#81a1c1"))
+	footer.SetText("Press q or Ctrl-C to quit")
 
 	content.SetBackgroundColor(tcell.GetColor("#2e3440"))
 	content.
@@ -150,6 +152,12 @@ func longOptions() []string {
 
 func demoTheme() components.Theme {
 	return components.Theme{
+		Background:            tcell.GetColor("#2e3440"),
+		PrimaryText:           tcell.GetColor("#eceff4"),
+		SecondaryText:         tcell.GetColor("#d8dee9"),
+		MutedText:             tcell.GetColor("#81a1c1"),
+		Accent:                tcell.GetColor("#88c0d0"),
+		Border:                tcell.GetColor("#4c566a"),
 		LabelColor:            tcell.GetColor("#d8dee9"),
 		FieldTextColor:        tcell.GetColor("#eceff4"),
 		FieldBackground:       tcell.GetColor("#3b4252"),

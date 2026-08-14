@@ -9,10 +9,31 @@ import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 	"morsemanual/internal/logbook"
+	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/overlay"
 )
 
 const qsoPageSize = 500
+
+type logbookColumn struct {
+	heading  string
+	width    int
+	expanded bool
+}
+
+var logbookColumns = []logbookColumn{
+	{heading: "Date", width: 11},
+	{heading: "Time", width: 6},
+	{heading: "Callsign", width: 13},
+	{heading: "Frequency", width: 11},
+	{heading: "Mode", width: 7},
+	{heading: "Sent", width: 6},
+	{heading: "Received", width: 9},
+	{heading: "TX exch", width: 11},
+	{heading: "RX exch", width: 11},
+	{heading: "Name", width: 15},
+	{heading: "QTH", expanded: true},
+}
 
 type logbookView struct {
 	ctx   context.Context
@@ -20,11 +41,11 @@ type logbookView struct {
 	store logbook.Store
 	theme colorTheme
 
-	header   *tview.TextView
+	header   components.TextView
 	search   *tview.InputField
-	table    *tview.Table
-	details  *tview.TextView
-	footer   *tview.TextView
+	table    components.Table
+	details  components.TextView
+	footer   components.TextView
 	overlays overlay.Host
 
 	qsos      []logbook.QSO
@@ -52,7 +73,6 @@ func Run(ctx context.Context, store logbook.Store) error {
 		}
 	}()
 
-	view.overlays = overlay.New(view.app, view.layout())
 	if err := view.app.SetRoot(view.overlays.Root(), true).EnableMouse(true).Run(); err != nil {
 		if ctx.Err() != nil {
 			return nil
@@ -74,9 +94,15 @@ func newLogbookView(
 		store: store,
 		theme: theme,
 	}
+	layout := tview.NewFlex().SetDirection(tview.FlexRow)
+	view.overlays = overlay.New(view.app, layout)
+	controls := components.New(components.Dependencies{
+		Theme:    theme.components(),
+		Overlays: view.overlays,
+	})
 
-	view.header = tview.NewTextView().
-		SetDynamicColors(true)
+	view.header = controls.TextView()
+	view.header.SetDynamicColors(true)
 	view.header.SetTextColor(theme.accent)
 
 	view.search = tview.NewInputField().
@@ -98,50 +124,30 @@ func newLogbookView(
 		}
 	})
 
-	view.table = tview.NewTable().
-		SetBorders(false).
-		SetSelectable(true, false).
-		SetFixed(1, 0).
-		SetSeparator(' ')
-	view.table.SetBorder(true).
-		SetBorderColor(theme.styles.BorderColor).
-		SetTitle(" QSOs ").
-		SetTitleColor(theme.accent)
-	view.table.SetSelectedStyle(
-		tcell.StyleDefault.
-			Foreground(theme.selectionText).
-			Background(theme.selectionBackground).
-			Bold(true),
-	)
+	view.table = controls.Table(" QSOs ")
 	view.table.SetSelectionChangedFunc(func(row, _ int) {
 		view.renderDetails(row - 1)
 	})
 
-	view.details = tview.NewTextView().
-		SetDynamicColors(true).
-		SetWordWrap(true)
-	view.details.SetBorder(true).
-		SetBorderColor(theme.styles.BorderColor).
-		SetTitle(" QSO info ").
-		SetTitleColor(theme.accent)
+	view.details = controls.TextView()
+	view.details.SetDynamicColors(true)
+	view.details.SetWordWrap(true)
+	view.details.SetBorder(" QSO info ")
 
-	view.footer = tview.NewTextView().
-		SetDynamicColors(true).
-		SetTextAlign(tview.AlignCenter)
+	view.footer = controls.TextView()
+	view.footer.SetDynamicColors(true)
+	view.footer.SetTextAlign(tview.AlignCenter)
 	view.footer.SetTextColor(theme.muted)
+
+	layout.
+		AddItem(view.header, 1, 0, false).
+		AddItem(view.search, 1, 0, false).
+		AddItem(view.table, 0, 2, true).
+		AddItem(view.details, 9, 0, false).
+		AddItem(view.footer, 1, 0, false)
 
 	view.app.SetInputCapture(view.captureKey)
 	return view
-}
-
-func (v *logbookView) layout() tview.Primitive {
-	return tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(v.header, 1, 0, false).
-		AddItem(v.search, 1, 0, false).
-		AddItem(v.table, 0, 2, true).
-		AddItem(v.details, 9, 0, false).
-		AddItem(v.footer, 1, 0, false)
 }
 
 func (v *logbookView) captureKey(event *tcell.EventKey) *tcell.EventKey {
@@ -221,19 +227,19 @@ func (v *logbookView) applyFilter() {
 
 func (v *logbookView) renderTable(selectedID string) {
 	v.table.Clear()
-	headings := []string{
-		"Date", "Time", "Callsign", "Frequency", "Mode", "Sent",
-		"Received", "TX exch", "RX exch", "Name", "QTH",
-	}
-	widths := []int{10, 5, 12, 10, 8, 5, 8, 10, 10, 14, 0}
-	for column, heading := range headings {
-		cell := tview.NewTableCell(heading).
-			SetTextColor(v.theme.styles.PrimaryTextColor).
-			SetAttributes(tcell.AttrBold).
-			SetSelectable(false).
-			SetMaxWidth(widths[column])
-		if column == len(headings)-1 {
-			cell.SetExpansion(1)
+	for column, definition := range logbookColumns {
+		heading := definition.heading
+		if definition.width > 0 {
+			heading = fmt.Sprintf("%-*s", definition.width, heading)
+		}
+		cell := components.TableCell{
+			Text:     heading,
+			Style:    components.TableCellHeader,
+			Disabled: true,
+			MaxWidth: definition.width,
+		}
+		if definition.expanded {
+			cell.Expansion = 1
 		}
 		v.table.SetCell(0, column, cell)
 	}
@@ -255,11 +261,13 @@ func (v *logbookView) renderTable(selectedID string) {
 			qso.QTH,
 		}
 		for column, value := range values {
-			cell := tview.NewTableCell(value).
-				SetTextColor(v.theme.styles.SecondaryTextColor).
-				SetMaxWidth(widths[column])
-			if column == len(values)-1 {
-				cell.SetExpansion(1)
+			definition := logbookColumns[column]
+			cell := components.TableCell{
+				Text:     value,
+				MaxWidth: definition.width,
+			}
+			if definition.expanded {
+				cell.Expansion = 1
 			}
 			v.table.SetCell(index+1, column, cell)
 		}
@@ -269,9 +277,11 @@ func (v *logbookView) renderTable(selectedID string) {
 	}
 
 	if len(v.visible) == 0 {
-		v.table.SetCell(1, 0, tview.NewTableCell("No matching QSOs.").
-			SetTextColor(v.theme.muted).
-			SetSelectable(false))
+		v.table.SetCell(1, 0, components.TableCell{
+			Text:     "No matching QSOs.",
+			Style:    components.TableCellMuted,
+			Disabled: true,
+		})
 		v.renderDetails(-1)
 		return
 	}
@@ -333,7 +343,7 @@ func (v *logbookView) renderDetails(index int) {
 }
 
 func (v *logbookView) selectedID() string {
-	row, _ := v.table.GetSelection()
+	row, _ := v.table.Selection()
 	index := row - 1
 	if index < 0 || index >= len(v.visible) {
 		return ""

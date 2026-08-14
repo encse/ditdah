@@ -3,6 +3,7 @@ package tui
 import (
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
+	"morsemanual/internal/tui/components"
 )
 
 type colorTheme struct {
@@ -42,4 +43,22 @@ var nordTheme = func() colorTheme {
 
 func colorTag(color tcell.Color) string {
 	return "[" + color.Name(true) + "]"
+}
+
+func (t colorTheme) components() components.Theme {
+	return components.Theme{
+		Background:            t.styles.PrimitiveBackgroundColor,
+		PrimaryText:           t.styles.PrimaryTextColor,
+		SecondaryText:         t.styles.SecondaryTextColor,
+		MutedText:             t.muted,
+		Accent:                t.accent,
+		Border:                t.styles.BorderColor,
+		LabelColor:            t.styles.SecondaryTextColor,
+		FieldTextColor:        t.styles.PrimaryTextColor,
+		FieldBackground:       t.styles.ContrastBackgroundColor,
+		ActiveFieldBackground: t.styles.MoreContrastBackgroundColor,
+		SelectionText:         t.selectionText,
+		SelectionBackground:   t.selectionBackground,
+		PopupBorder:           t.styles.BorderColor,
+	}
 }
