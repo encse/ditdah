@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"database/sql"
-	_ "embed"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -13,9 +12,8 @@ import (
 
 	"github.com/go-jet/jet/v2/qrm"
 	. "github.com/go-jet/jet/v2/sqlite"
-	_ "modernc.org/sqlite"
-	dbmodel "morsemanual/internal/logbook/dbgen/model"
-	. "morsemanual/internal/logbook/dbgen/table"
+	dbmodel "morsemanual/internal/database/dbgen/model"
+	. "morsemanual/internal/database/dbgen/table"
 )
 
 const (
@@ -27,46 +25,9 @@ type sqliteStore struct {
 	db *sql.DB
 }
 
-//go:generate go run -tags tools ./generate
-
-//go:embed schema.sql
-var schema string
-
-// OpenSQLite opens or creates a logbook database at path.
-func OpenSQLite(path string) (Store, error) {
-	return openSQLite(path)
-}
-
-// OpenMemory opens an isolated in-memory logbook. Its contents are discarded
-// when the returned Store is closed.
-func OpenMemory() (Store, error) {
-	return openSQLite(":memory:")
-}
-
-func openSQLite(dataSourceName string) (Store, error) {
-	db, err := sql.Open("sqlite", dataSourceName)
-	if err != nil {
-		return nil, fmt.Errorf("open logbook database: %w", err)
-	}
-
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
-	store := &sqliteStore{db: db}
-	if err := store.initialize(context.Background()); err != nil {
-		db.Close()
-		return nil, err
-	}
-
-	return store, nil
-}
-
-func (s *sqliteStore) initialize(ctx context.Context) error {
-	if _, err := s.db.ExecContext(ctx, schema); err != nil {
-		return fmt.Errorf("initialize logbook database: %w", err)
-	}
-
-	return nil
+// NewSQLiteStore exposes QSO persistence over the application-owned database.
+func NewSQLiteStore(db *sql.DB) Store {
+	return &sqliteStore{db: db}
 }
 
 func (s *sqliteStore) Add(ctx context.Context, qso QSO) (QSO, error) {
@@ -318,14 +279,6 @@ func (s *sqliteStore) MarkQRZSynced(
 	}
 
 	return s.Get(ctx, id)
-}
-
-func (s *sqliteStore) Close() error {
-	if err := s.db.Close(); err != nil {
-		return fmt.Errorf("close logbook database: %w", err)
-	}
-
-	return nil
 }
 
 func qsoFromModel(stored dbmodel.Qso) QSO {

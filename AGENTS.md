@@ -5,6 +5,7 @@
 - Prefer passing and returning domain structs by value in public APIs. Do not expose implementation pointers unless an external API makes that unavoidable.
 - Keep UI concerns separate from domain models and persistence.
 - The logbook must support multiple operating modes. Do not encode the currently common modes as a closed database constraint or Go enum.
-- Keep the logbook schema in `internal/logbook/schema.sql` and use the generated Jet table and persistence-model types instead of handwritten SQL or row structs.
-- After changing the logbook schema, run `go generate ./internal/logbook` and commit the refreshed `dbgen` files.
-- Dot imports are allowed in the SQLite store only for the Jet SQL DSL and its generated table package.
+- Keep the README focused on what the program is, setup, and user and developer workflows needed to build, run, test, or modify it.
+- Record technical decisions and implementation details in `ROADMAP.md`, not in the README.
+- Track completed and future technical work in `ROADMAP.md` with Markdown checkboxes: `[x]` for completed work and `[ ]` for pending work.
+- Update `ROADMAP.md` when a technical decision is made, implemented, superseded, or added as future work.

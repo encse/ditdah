@@ -48,7 +48,6 @@ type Store interface {
 	Update(ctx context.Context, qso QSO) (QSO, error)
 	Delete(ctx context.Context, id string) error
 	MarkQRZSynced(ctx context.Context, id string, syncedAt time.Time) (QSO, error)
-	Close() error
 }
 
 func normalizeQSO(qso QSO) QSO {

@@ -28,31 +28,21 @@ or
 GOEXPERIMENT=simd go test ./... -v
 ```
 
-## Logbook database
+## Schema changes
 
-The logbook uses SQLite through the pure-Go `modernc.org/sqlite` driver. Its
-schema is defined in `internal/logbook/schema.sql`, while application queries
-use Jet's generated, type-safe SQL builder instead of raw SQL strings.
-
-After changing the schema, regenerate the Jet table definitions:
+Add database changes as a new, versioned Goose migration in
+`internal/database/migrations`. Then regenerate the Jet database model:
 
 ```bash
-go generate ./internal/logbook
+go generate ./internal/database
 ```
 
-The generator:
+Commit the migration and the regenerated `internal/database/dbgen` files
+together, and run the tests before committing:
 
-1. creates an in-memory SQLite database;
-2. applies `internal/logbook/schema.sql`;
-3. inspects the resulting database schema with Jet;
-4. regenerates `internal/logbook/dbgen/table` and `dbgen/model`.
-
-The generated Jet model is used only as an internal persistence DTO. The rest
-of the application uses its own value-based `QSO` model through the `Store`
-interface, so Jet's nullable pointers do not escape the SQLite implementation.
-Commit the generated `dbgen` files together with every schema change. The
-generator has the `tools` build tag and is not included in the application
-binary.
+```bash
+go test ./...
+```
 
 ## Run
 

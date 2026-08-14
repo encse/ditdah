@@ -1,6 +1,4 @@
-PRAGMA foreign_keys = ON;
-PRAGMA journal_mode = WAL;
-PRAGMA busy_timeout = 5000;
+-- +goose Up
 
 CREATE TABLE IF NOT EXISTS qso (
 	id                    TEXT PRIMARY KEY NOT NULL,
@@ -30,4 +28,6 @@ CREATE INDEX IF NOT EXISTS qso_callsign_idx
 CREATE INDEX IF NOT EXISTS qso_station_callsign_idx
 	ON qso(station_callsign);
 
-PRAGMA user_version = 1;
+-- +goose Down
+
+DROP TABLE IF EXISTS qso;

@@ -3,9 +3,10 @@ package logbook
 import (
 	"context"
 	"errors"
-	"path/filepath"
 	"testing"
 	"time"
+
+	"morsemanual/internal/database"
 )
 
 func TestSQLiteStoreLifecycle(t *testing.T) {
@@ -135,67 +136,18 @@ func TestSQLiteStoreRejectsInvalidQSO(t *testing.T) {
 	}
 }
 
-func TestSQLiteStorePersistsQSO(t *testing.T) {
-	ctx := context.Background()
-	path := filepath.Join(t.TempDir(), "logbook.db")
-	store, err := OpenSQLite(path)
-	if err != nil {
-		t.Fatalf("OpenSQLite() error = %v", err)
-	}
-
-	created, err := store.Add(ctx, QSO{
-		StationCallsign: "HA7NCS",
-		Callsign:        "DL8ECA/P",
-		StartedAt:       time.Date(2026, 8, 13, 16, 17, 0, 0, time.UTC),
-		FrequencyHz:     7_023_500,
-		Mode:            "CW",
-	})
-	if err != nil {
-		t.Fatalf("Add() error = %v", err)
-	}
-
-	syncedAt := time.Date(2026, 8, 14, 12, 30, 0, 0, time.UTC)
-	if _, err := store.MarkQRZSynced(ctx, created.ID, syncedAt); err != nil {
-		t.Fatalf("MarkQRZSynced() error = %v", err)
-	}
-	if err := store.Close(); err != nil {
-		t.Fatalf("Close() error = %v", err)
-	}
-
-	reopened, err := OpenSQLite(path)
-	if err != nil {
-		t.Fatalf("OpenSQLite() after close error = %v", err)
-	}
-	t.Cleanup(func() {
-		if err := reopened.Close(); err != nil {
-			t.Errorf("Close() reopened store error = %v", err)
-		}
-	})
-
-	loaded, err := reopened.Get(ctx, created.ID)
-	if err != nil {
-		t.Fatalf("Get() after reopen error = %v", err)
-	}
-	if loaded.Callsign != created.Callsign {
-		t.Fatalf("Get() callsign = %q, want %q", loaded.Callsign, created.Callsign)
-	}
-	if !loaded.QRZSyncedAt.Equal(syncedAt) {
-		t.Fatalf("Get() QRZSyncedAt = %v, want %v", loaded.QRZSyncedAt, syncedAt)
-	}
-}
-
 func openTestStore(t *testing.T) Store {
 	t.Helper()
 
-	store, err := OpenMemory()
+	db, err := database.OpenMemory()
 	if err != nil {
-		t.Fatalf("OpenMemory() error = %v", err)
+		t.Fatalf("database.OpenMemory() error = %v", err)
 	}
 	t.Cleanup(func() {
-		if err := store.Close(); err != nil {
-			t.Errorf("Close() error = %v", err)
+		if err := db.Close(); err != nil {
+			t.Errorf("database Close() error = %v", err)
 		}
 	})
 
-	return store
+	return NewSQLiteStore(db)
 }
