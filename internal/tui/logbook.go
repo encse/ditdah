@@ -166,10 +166,6 @@ func (v *logbookView) captureKey(event *tcell.EventKey) *tcell.EventKey {
 		v.app.SetFocus(v.search)
 		v.renderFooter()
 		return nil
-	case event.Key() == tcell.KeyRune && event.Rune() == 'j':
-		return tcell.NewEventKey(tcell.KeyDown, 0, event.Modifiers())
-	case event.Key() == tcell.KeyRune && event.Rune() == 'k':
-		return tcell.NewEventKey(tcell.KeyUp, 0, event.Modifiers())
 	}
 
 	return event

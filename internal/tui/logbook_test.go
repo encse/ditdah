@@ -8,7 +8,19 @@ import (
 
 	"morsemanual/internal/logbook"
 	"morsemanual/internal/optional"
+
+	"github.com/gdamore/tcell/v2"
 )
+
+func TestLogbookLeavesTableNavigationKeysToFocusedControl(t *testing.T) {
+	view := logbookView{}
+	for _, key := range []rune{'j', 'k', 'h', 'l', 'g', 'G'} {
+		event := tcell.NewEventKey(tcell.KeyRune, key, 0)
+		if got := view.captureKey(event); got != event {
+			t.Errorf("captureKey(%q) = %v, want original event", key, got)
+		}
+	}
+}
 
 func TestLogbookColumnWidths(t *testing.T) {
 	var header strings.Builder
