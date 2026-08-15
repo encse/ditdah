@@ -2,6 +2,8 @@ package components
 
 import (
 	"testing"
+
+	"github.com/gdamore/tcell/v2"
 )
 
 func TestTextAreaUsesValueAndFocusBackground(t *testing.T) {
@@ -23,5 +25,18 @@ func TestTextAreaUsesValueAndFocusBackground(t *testing.T) {
 	area.SetValue("updated")
 	if got := area.Value(); got != "updated" {
 		t.Fatalf("Value() after SetValue() = %q, want updated", got)
+	}
+}
+
+func TestTextAreaDoneCallback(t *testing.T) {
+	area := newTestFactory().TextArea("Notes", "")
+	var done tcell.Key
+	area.SetDoneFunc(func(key tcell.Key) {
+		done = key
+	})
+	area.InputHandler()(tcell.NewEventKey(tcell.KeyEscape, 0, 0), nil)
+
+	if done != tcell.KeyEscape {
+		t.Fatalf("done key = %v, want Escape", done)
 	}
 }

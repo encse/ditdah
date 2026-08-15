@@ -163,6 +163,7 @@ func demoTheme() components.Theme {
 		FieldTextColor:         tcell.GetColor("#eceff4"),
 		FieldBackground:        tcell.GetColor("#3b4252"),
 		ActiveFieldBackground:  tcell.GetColor("#434c5e"),
+		CursorColor:            tcell.GetColor("#88c0d0"),
 		SelectionText:          tcell.GetColor("#2e3440"),
 		SelectionBackground:    tcell.GetColor("#88c0d0"),
 		PopupBorder:            tcell.GetColor("#81a1c1"),

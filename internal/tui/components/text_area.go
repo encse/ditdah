@@ -15,11 +15,19 @@ type TextArea interface {
 	Value() string
 	SetValue(value string)
 	SetLabelWidth(width int)
+	SetDoneFunc(handler func(key tcell.Key))
 }
 
 type textArea struct {
 	*tview.TextArea
 	theme Theme
+}
+
+func (a *textArea) Draw(screen tcell.Screen) {
+	a.TextArea.Draw(screen)
+	if a.HasFocus() {
+		screen.SetCursorStyle(tcell.CursorStyleDefault, a.theme.CursorColor)
+	}
 }
 
 func newTextArea(
@@ -58,6 +66,7 @@ func (a *textArea) KeyHints() []keybinding.Hint {
 	return []keybinding.Hint{
 		{Keys: "Enter", Description: "new line"},
 		{Keys: "Ctrl-Z/Ctrl-Y", Description: "undo/redo"},
+		{Keys: "Esc", Description: "cancel"},
 	}
 }
 
@@ -75,6 +84,10 @@ func (a *textArea) SetValue(value string) {
 
 func (a *textArea) SetLabelWidth(width int) {
 	a.TextArea.SetLabelWidth(width)
+}
+
+func (a *textArea) SetDoneFunc(handler func(key tcell.Key)) {
+	a.TextArea.SetFinishedFunc(handler)
 }
 
 func (a *textArea) showFocused() {

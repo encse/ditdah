@@ -36,10 +36,11 @@ type application struct {
 }
 
 type openedModal struct {
-	dialog  modal.Dialog
-	layer   *modalLayer
-	overlay components.Overlay
-	closed  bool
+	dialog   modal.Dialog
+	layer    *modalLayer
+	overlay  components.Overlay
+	bindings []keybinding.Binding
+	closed   bool
 }
 
 type modalHandle struct {
@@ -126,6 +127,14 @@ func (a *application) OpenModal(dialog modal.Dialog) modal.Handle {
 		a.theme.styles.PrimitiveBackgroundColor,
 	)
 	opened := &openedModal{dialog: dialog, layer: layer}
+	opened.bindings = append(
+		[]keybinding.Binding{keybinding.OnKey(
+			tcell.KeyEscape,
+			keybinding.Hint{Keys: "Esc", Description: "close"},
+			func() { a.closeModal(opened) },
+		)},
+		dialog.KeyBindings()...,
+	)
 	a.modals = append(a.modals, opened)
 	opened.overlay = a.overlays.Push(layer)
 	focus := dialog.Content()
@@ -149,12 +158,12 @@ func (a *application) Refresh() {
 
 	hints := a.focusedHints()
 	if opened, ok := a.topModal(); ok {
-		if !a.parentBindingsBlocked() {
-			hints = append(hints, keybinding.Hints(opened.dialog.KeyBindings())...)
+		blocked := a.parentBindingsBlocked()
+		if !blocked {
+			hints = mergeHints(hints, keybinding.Hints(opened.bindings)...)
 		}
-		hints = append(hints, keybinding.Hint{Keys: "Esc", Description: "close"})
 		if len(opened.dialog.Focusables()) > 1 {
-			hints = append(hints, focusNavigationHint())
+			hints = mergeHints(hints, focusNavigationHint())
 		}
 		a.layout.Footer().SetKeyHints(hints)
 		return
@@ -164,11 +173,11 @@ func (a *application) Refresh() {
 		return
 	}
 	if !a.parentBindingsBlocked() {
-		hints = append(hints, keybinding.Hints(a.activePage.KeyBindings())...)
-		hints = append(hints, keybinding.Hints(a.globalBindings)...)
+		hints = mergeHints(hints, keybinding.Hints(a.activePage.KeyBindings())...)
+		hints = mergeHints(hints, keybinding.Hints(a.globalBindings)...)
 	}
 	if len(a.activePage.Focusables()) > 1 {
-		hints = append(hints, focusNavigationHint())
+		hints = mergeHints(hints, focusNavigationHint())
 	}
 	a.layout.Footer().SetKeyHints(hints)
 }
@@ -259,18 +268,14 @@ func (a *application) captureModal(
 	opened *openedModal,
 	event *tcell.EventKey,
 ) *tcell.EventKey {
-	if event.Key() == tcell.KeyEscape {
-		a.closeModal(opened)
-		return nil
-	}
 	if a.moveFocus(event, opened.dialog.Focusables()) {
 		return nil
 	}
 	if a.parentBindingsBlocked() {
 		return event
 	}
-	for _, binding := range opened.dialog.KeyBindings() {
-		if binding.Handle(event) {
+	for index := len(opened.bindings) - 1; index >= 0; index-- {
+		if opened.bindings[index].Handle(event) {
 			a.Refresh()
 			return nil
 		}
@@ -347,6 +352,27 @@ func focusNavigationHint() keybinding.Hint {
 		Keys:        "Tab/Shift+Tab",
 		Description: "next/previous",
 	}
+}
+
+func mergeHints(
+	hints []keybinding.Hint,
+	additional ...keybinding.Hint,
+) []keybinding.Hint {
+	merged := append([]keybinding.Hint(nil), hints...)
+	for _, hint := range additional {
+		replaced := false
+		for index := range merged {
+			if merged[index].Keys == hint.Keys {
+				merged[index] = hint
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			merged = append(merged, hint)
+		}
+	}
+	return merged
 }
 
 func (a *application) focusedHints() []keybinding.Hint {

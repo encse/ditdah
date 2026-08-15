@@ -28,6 +28,20 @@ type Binding struct {
 	Handler func(event *tcell.EventKey) bool
 }
 
+// OnKey creates a binding handled by one non-rune key.
+func OnKey(key tcell.Key, hint Hint, handler func()) Binding {
+	return Binding{
+		Hint: hint,
+		Handler: func(event *tcell.EventKey) bool {
+			if event.Key() != key {
+				return false
+			}
+			handler()
+			return true
+		},
+	}
+}
+
 // Handle invokes the binding. It reports whether the event was handled.
 func (b Binding) Handle(event *tcell.EventKey) bool {
 	if b.Handler == nil {

@@ -29,6 +29,7 @@ type Theme struct {
 	FieldTextColor         tcell.Color
 	FieldBackground        tcell.Color
 	ActiveFieldBackground  tcell.Color
+	CursorColor            tcell.Color
 	SelectionText          tcell.Color
 	SelectionBackground    tcell.Color
 	PopupBorder            tcell.Color

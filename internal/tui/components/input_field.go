@@ -43,6 +43,13 @@ type inputField struct {
 	theme           Theme
 }
 
+func (i *inputField) Draw(screen tcell.Screen) {
+	i.InputField.Draw(screen)
+	if i.HasFocus() {
+		screen.SetCursorStyle(tcell.CursorStyleDefault, i.theme.CursorColor)
+	}
+}
+
 func newInputField(
 	label string,
 	value string,

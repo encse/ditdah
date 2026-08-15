@@ -284,6 +284,101 @@ func TestApplicationFocusesModalContentWithoutFocusableControls(t *testing.T) {
 	}
 }
 
+func TestApplicationForwardsTypedRunesToFocusedModalInput(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	page := applicationTestPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatalf("register page: %v", err)
+	}
+	if err := app.Show(page.ID()); err != nil {
+		t.Fatalf("show page: %v", err)
+	}
+
+	input := app.controls.Modal().InputField("Callsign", "")
+	var handle modal.Handle
+	input.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEscape {
+			handle.Close()
+		}
+	})
+	handle = app.OpenModal(applicationTestModal{
+		content:    input,
+		focusables: []tview.Primitive{input},
+	})
+	event := tcell.NewEventKey(tcell.KeyRune, 'x', 0)
+	forwarded := app.captureKey(event)
+	if forwarded == nil {
+		t.Fatal("typed rune was consumed by application input capture")
+	}
+	app.overlays.Root().InputHandler()(forwarded, app.SetFocus)
+
+	if got := input.Value(); got != "x" {
+		t.Fatalf("modal input value = %q, want x", got)
+	}
+	footer := drawApplicationFooter(t, app)
+	if strings.Count(footer, "Esc") != 1 || !strings.Contains(footer, "Esc cancel") {
+		t.Fatalf("modal input footer = %q, want one Esc cancel hint", footer)
+	}
+	escape := tcell.NewEventKey(tcell.KeyEscape, 0, 0)
+	forwarded = app.captureKey(escape)
+	if forwarded != escape {
+		t.Fatal("modal input Escape was consumed by application")
+	}
+	app.overlays.Root().InputHandler()(forwarded, app.SetFocus)
+	if app.overlays.Active() {
+		t.Fatal("modal input Escape callback did not close modal")
+	}
+}
+
+func TestApplicationLetsModalBindingOverrideDefaultEscape(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	page := applicationTestPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatalf("register page: %v", err)
+	}
+	if err := app.Show(page.ID()); err != nil {
+		t.Fatalf("show page: %v", err)
+	}
+
+	handled := 0
+	dialog := applicationTestModal{
+		content: tview.NewBox(),
+		bindings: []keybinding.Binding{{
+			Hint: keybinding.Hint{Keys: "Esc", Description: "custom"},
+			Handler: func(event *tcell.EventKey) bool {
+				if event.Key() != tcell.KeyEscape {
+					return false
+				}
+				handled++
+				return true
+			},
+		}},
+	}
+	app.OpenModal(dialog)
+
+	if got := app.captureKey(tcell.NewEventKey(tcell.KeyEscape, 0, 0)); got != nil {
+		t.Fatal("modal Escape binding was forwarded")
+	}
+	if handled != 1 {
+		t.Fatalf("modal Escape binding handled %d events, want 1", handled)
+	}
+	if !app.overlays.Active() {
+		t.Fatal("default Escape closed modal before its own binding")
+	}
+	footer := drawApplicationFooter(t, app)
+	if strings.Count(footer, "Esc") != 1 || !strings.Contains(footer, "Esc custom") {
+		t.Fatalf("modal footer = %q, want one Esc custom hint", footer)
+	}
+}
+
 func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	page := applicationTestPage{

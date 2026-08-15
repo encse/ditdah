@@ -51,6 +51,48 @@ func (l *modalLayer) Draw(screen tcell.Screen) {
 	l.content.Draw(screen)
 }
 
+func (l *modalLayer) Focus(delegate func(tview.Primitive)) {
+	if delegate == nil {
+		l.content.Focus(nil)
+		return
+	}
+	delegate(l.content)
+}
+
+func (l *modalLayer) HasFocus() bool {
+	return l.content.HasFocus() || l.Box.HasFocus()
+}
+
+func (l *modalLayer) Blur() {
+	l.content.Blur()
+	l.Box.Blur()
+}
+
+func (l *modalLayer) InputHandler() func(
+	*tcell.EventKey,
+	func(tview.Primitive),
+) {
+	return l.WrapInputHandler(func(
+		event *tcell.EventKey,
+		setFocus func(tview.Primitive),
+	) {
+		if handler := l.content.InputHandler(); handler != nil {
+			handler(event, setFocus)
+		}
+	})
+}
+
+func (l *modalLayer) PasteHandler() func(string, func(tview.Primitive)) {
+	return l.WrapPasteHandler(func(
+		text string,
+		setFocus func(tview.Primitive),
+	) {
+		if handler := l.content.PasteHandler(); handler != nil {
+			handler(text, setFocus)
+		}
+	})
+}
+
 func (l *modalLayer) MouseHandler() func(
 	tview.MouseAction,
 	*tcell.EventMouse,

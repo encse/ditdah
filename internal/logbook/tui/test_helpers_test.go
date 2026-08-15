@@ -65,6 +65,7 @@ func testTheme() components.Theme {
 		FieldTextColor:         tcell.ColorWhite,
 		FieldBackground:        tcell.ColorBlue,
 		ActiveFieldBackground:  tcell.ColorGreen,
+		CursorColor:            tcell.ColorBlack,
 		SelectionText:          tcell.ColorBlack,
 		SelectionBackground:    tcell.ColorYellow,
 		PopupBorder:            tcell.ColorWhite,

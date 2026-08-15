@@ -1,9 +1,15 @@
 package tui
 
 import (
+	"fmt"
+	"math"
 	"slices"
+	"strconv"
+	"strings"
+	"time"
 
 	domain "morsemanual/internal/logbook"
+	"morsemanual/internal/optional"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
 	"morsemanual/internal/tui/modal"
@@ -14,6 +20,10 @@ import (
 
 const qsoEditorLabelWidth = 14
 
+const qsoEditorTimeLayout = "2006-01-02 15:04"
+
+type saveQSOFunc func(domain.QSO) (domain.QSO, error)
+
 var qsoEditorModes = []string{
 	"CW", "SSB", "AM", "FM", "RTTY", "FT8", "FT4", "PSK", "MFSK", "DATA",
 }
@@ -21,6 +31,7 @@ var qsoEditorModes = []string{
 type qsoEditor struct {
 	content tview.Primitive
 	qso     domain.QSO
+	save    saveQSOFunc
 
 	stationCallsign  components.InputField
 	callsign         components.InputField
@@ -34,15 +45,20 @@ type qsoEditor struct {
 	name             components.InputField
 	qth              components.InputField
 	notes            components.TextArea
+	message          components.TextView
 	ok               components.Button
 	cancel           components.Button
 	focusables       []tview.Primitive
 	handle           modal.Handle
 }
 
-func newQSOEditor(controls components.Factory, qso domain.QSO) *qsoEditor {
+func newQSOEditor(
+	controls components.Factory,
+	qso domain.QSO,
+	save saveQSOFunc,
+) *qsoEditor {
 	controls = controls.Modal()
-	editor := &qsoEditor{qso: qso}
+	editor := &qsoEditor{qso: qso, save: save}
 	editor.stationCallsign = editor.input(
 		controls,
 		"My callsign",
@@ -52,7 +68,7 @@ func newQSOEditor(controls components.Factory, qso domain.QSO) *qsoEditor {
 	editor.startedAt = editor.input(
 		controls,
 		"Date and time",
-		qso.StartedAt.Local().Format("2006-01-02 15:04"),
+		qso.StartedAt.Local().Format(qsoEditorTimeLayout),
 	)
 	editor.frequency = editor.input(controls, "Frequency", formatFrequency(qso))
 	modes, selectedMode := editorModes(qso.Mode)
@@ -74,9 +90,11 @@ func newQSOEditor(controls components.Factory, qso domain.QSO) *qsoEditor {
 	editor.name = editor.input(controls, "Name", qso.Name)
 	editor.qth = editor.input(controls, "QTH", qso.QTH)
 	editor.notes = controls.TextArea("", qso.Notes)
+	editor.notes.SetDoneFunc(editor.inputDone)
+	editor.message = controls.TextView()
 	editor.ok = controls.Button("OK")
 	editor.cancel = controls.Button("Cancel")
-	editor.ok.SetSelectedFunc(editor.close)
+	editor.ok.SetSelectedFunc(editor.submit)
 	editor.cancel.SetSelectedFunc(editor.close)
 
 	editor.focusables = []tview.Primitive{
@@ -125,6 +143,84 @@ func (e *qsoEditor) close() {
 	}
 }
 
+func (e *qsoEditor) submit() {
+	qso, err := e.value()
+	if err != nil {
+		e.showError(err)
+		return
+	}
+	if e.save != nil {
+		qso, err = e.save(qso)
+		if err != nil {
+			e.showError(err)
+			return
+		}
+	}
+	e.qso = qso
+	e.close()
+}
+
+func (e *qsoEditor) value() (domain.QSO, error) {
+	qso := e.qso
+	qso.StationCallsign = e.stationCallsign.Value()
+	qso.Callsign = e.callsign.Value()
+	qso.RSTSent = e.rstSent.Value()
+	qso.RSTReceived = e.rstReceived.Value()
+	qso.ExchangeSent = e.exchangeSent.Value()
+	qso.ExchangeReceived = e.exchangeReceived.Value()
+	qso.Name = e.name.Value()
+	qso.QTH = e.qth.Value()
+	qso.Notes = e.notes.Value()
+	_, qso.Mode = e.mode.CurrentOption()
+
+	startedAt, err := e.parseStartedAt()
+	if err != nil {
+		return domain.QSO{}, err
+	}
+	qso.StartedAt = startedAt
+
+	frequency, err := parseFrequency(e.frequency.Value())
+	if err != nil {
+		return domain.QSO{}, err
+	}
+	qso.FrequencyHz = frequency
+	return qso, nil
+}
+
+func (e *qsoEditor) parseStartedAt() (time.Time, error) {
+	value := strings.TrimSpace(e.startedAt.Value())
+	if value == e.qso.StartedAt.Local().Format(qsoEditorTimeLayout) {
+		return e.qso.StartedAt, nil
+	}
+	startedAt, err := time.ParseInLocation(qsoEditorTimeLayout, value, time.Local)
+	if err != nil {
+		return time.Time{}, fmt.Errorf(
+			"date and time must use YYYY-MM-DD HH:MM",
+		)
+	}
+	return startedAt, nil
+}
+
+func parseFrequency(value string) (optional.Value[int64], error) {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return optional.None[int64](), nil
+	}
+	megahertz, err := strconv.ParseFloat(value, 64)
+	hertz := megahertz * 1_000_000
+	if err != nil || math.IsNaN(hertz) || math.IsInf(hertz, 0) ||
+		hertz <= 0 || hertz > float64(math.MaxInt64) {
+		return optional.None[int64](), fmt.Errorf(
+			"frequency must be a positive number in MHz",
+		)
+	}
+	return optional.Some(int64(math.Round(hertz))), nil
+}
+
+func (e *qsoEditor) showError(err error) {
+	e.message.SetText("Error: " + err.Error())
+}
+
 func (e *qsoEditor) input(
 	controls components.Factory,
 	label string,
@@ -132,7 +228,14 @@ func (e *qsoEditor) input(
 ) components.InputField {
 	input := controls.InputField(label, value)
 	input.SetLabelWidth(qsoEditorLabelWidth)
+	input.SetDoneFunc(e.inputDone)
 	return input
+}
+
+func (e *qsoEditor) inputDone(key tcell.Key) {
+	if key == tcell.KeyEscape {
+		e.close()
+	}
 }
 
 func (e *qsoEditor) layout(controls components.Factory) tview.Primitive {
@@ -170,7 +273,7 @@ func (e *qsoEditor) layout(controls components.Factory) tview.Primitive {
 		AddItem(nil, 1, 0, false).
 		AddItem(notesLabel, 1, 0, false).
 		AddItem(e.notes, 0, 1, false).
-		AddItem(nil, 1, 0, false).
+		AddItem(e.message, 1, 0, false).
 		AddItem(buttons, 1, 0, false)
 	padded := tview.NewFlex().
 		SetDirection(tview.FlexRow).
@@ -216,11 +319,27 @@ func (p *page) editBinding() keybinding.Binding {
 			if !ok {
 				return false
 			}
-			editor := newQSOEditor(p.host.Components(), qso)
+			editor := newQSOEditor(p.host.Components(), qso, p.updateQSO)
 			editor.setHandle(p.host.OpenModal(editor))
 			return true
 		},
 	}
+}
+
+func (p *page) updateQSO(qso domain.QSO) (domain.QSO, error) {
+	updated, err := p.store.Update(p.ctx, qso)
+	if err != nil {
+		return domain.QSO{}, fmt.Errorf("update QSO: %w", err)
+	}
+	for index := range p.qsos {
+		if p.qsos[index].ID == updated.ID {
+			p.qsos[index] = updated
+			break
+		}
+	}
+	p.selectedID = updated.ID
+	p.applyFilter()
+	return updated, nil
 }
 
 func (p *page) selectedQSO() (domain.QSO, bool) {

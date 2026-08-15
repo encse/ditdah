@@ -29,6 +29,25 @@ func TestBindingWithoutHandlerDoesNotHandleEvent(t *testing.T) {
 	}
 }
 
+func TestOnKeyHandlesOnlyConfiguredKey(t *testing.T) {
+	handled := 0
+	binding := OnKey(
+		tcell.KeyEscape,
+		Hint{Keys: "Esc", Description: "close"},
+		func() { handled++ },
+	)
+
+	if binding.Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
+		t.Fatal("Enter was handled")
+	}
+	if !binding.Handle(tcell.NewEventKey(tcell.KeyEscape, 0, 0)) {
+		t.Fatal("Escape was not handled")
+	}
+	if handled != 1 {
+		t.Fatalf("handler calls = %d, want 1", handled)
+	}
+}
+
 func TestHintsPreservesBindingOrder(t *testing.T) {
 	bindings := []Binding{
 		{Hint: Hint{Keys: "/", Description: "search"}},
