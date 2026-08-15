@@ -1,7 +1,10 @@
 package components
 
 import (
+	"reflect"
 	"testing"
+
+	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -29,6 +32,19 @@ func TestInputFieldChangesBackgroundWithFocus(t *testing.T) {
 	field.Blur()
 	field.Draw(screen)
 	assertBackground(t, screen, 12, 2, tcell.ColorBlue)
+}
+
+func TestInputFieldPublishesNativeKeyHints(t *testing.T) {
+	field := newTestFactory().InputField("Search", "")
+	want := []keybinding.Hint{
+		{Keys: "Enter", Description: "done"},
+		{Keys: "Esc", Description: "cancel"},
+		{Keys: "Tab/Shift+Tab", Description: "next/previous"},
+	}
+
+	if got := field.KeyHints(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("KeyHints() = %#v, want %#v", got, want)
+	}
 }
 
 func TestInputFieldValue(t *testing.T) {

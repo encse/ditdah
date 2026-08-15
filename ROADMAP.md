@@ -17,6 +17,20 @@ This document records implementation decisions and future technical work.
 - [x] Display modal dialogs and control popups through one stackable overlay host, allowing controls inside overlays to open further overlays.
 - [ ] Introduce a consistent wrapper component layer over tview/tcell instead of styling raw widgets ad hoc.
 
+## TUI layout and navigation
+
+- [x] Introduce separate keybinding metadata for application-handled bindings and hints for behavior handled natively by tview controls.
+- [x] Let reusable controls expose their context-sensitive key hints, including table navigation and input/select actions, without reimplementing tview's event handling.
+- [ ] Add a structured header component that can contain the current page title, application menu, and status information.
+- [ ] Add a structured footer component that renders contextual information and the currently available keybindings.
+- [ ] Add a shared `Layout` that arranges the header, active page content, and footer.
+- [ ] Define a `Page` abstraction that exposes its identity, title, content, and page-level keybindings without owning the shared header or footer.
+- [ ] Refactor the logbook view into a page and remove its duplicated outer layout, header, and footer management.
+- [ ] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
+- [ ] Refresh footer hints when the active page, focused control, or overlay changes.
+- [ ] Test hint composition, focus-sensitive footer content, modal isolation, and the refactored logbook page.
+- [ ] Extract an application layer that owns the shared layout and overlays, registers pages, handles navigation, and provides global keybindings.
+
 ## Database
 
 - [x] Use the pure-Go `modernc.org/sqlite` driver.

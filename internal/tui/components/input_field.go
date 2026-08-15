@@ -1,6 +1,8 @@
 package components
 
 import (
+	"morsemanual/internal/tui/keybinding"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -8,11 +10,20 @@ import (
 // InputField is an application-styled text input.
 type InputField interface {
 	tview.FormItem
+	keybinding.HintProvider
 	Value() string
 	SetValue(value string)
 	SetPlaceholder(placeholder string)
 	SetChangedFunc(handler func(value string))
 	SetDoneFunc(handler func(key tcell.Key))
+}
+
+func (i *inputField) KeyHints() []keybinding.Hint {
+	return []keybinding.Hint{
+		{Keys: "Enter", Description: "done"},
+		{Keys: "Esc", Description: "cancel"},
+		{Keys: "Tab/Shift+Tab", Description: "next/previous"},
+	}
 }
 
 type inputField struct {

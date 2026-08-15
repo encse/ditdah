@@ -1,6 +1,11 @@
 package components
 
-import "testing"
+import (
+	"reflect"
+	"testing"
+
+	"morsemanual/internal/tui/keybinding"
+)
 
 func TestTableUsesValueCellsAndTheme(t *testing.T) {
 	screen := newTestScreen(t)
@@ -22,4 +27,18 @@ func TestTableUsesValueCellsAndTheme(t *testing.T) {
 	}
 	assertForeground(t, screen, 2, 2, testTheme().PrimaryText)
 	assertBackground(t, screen, 2, 3, testTheme().SelectionBackground)
+}
+
+func TestTablePublishesNativeKeyHints(t *testing.T) {
+	table := newTestFactory().Table(" Test ")
+	want := []keybinding.Hint{
+		{Keys: "↑/k ↓/j", Description: "move"},
+		{Keys: "←/h →/l", Description: "scroll"},
+		{Keys: "PgUp/PgDn", Description: "page"},
+		{Keys: "Home/End g/G", Description: "first/last"},
+	}
+
+	if got := table.KeyHints(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("KeyHints() = %#v, want %#v", got, want)
+	}
 }

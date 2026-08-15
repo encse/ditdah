@@ -1,11 +1,49 @@
 package components
 
 import (
+	"reflect"
 	"testing"
+
+	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
+
+func TestSelectFieldPublishesClosedAndPopupKeyHints(t *testing.T) {
+	overlays := &testOverlayHost{}
+	field := newTestFactoryWithOverlays(overlays).SelectField(
+		"Mode",
+		[]string{"CW", "SSB"},
+		0,
+		6,
+		24,
+	)
+	wantClosed := []keybinding.Hint{
+		{Keys: "Enter/Space", Description: "open"},
+		{Keys: "Tab/Shift+Tab", Description: "next/previous"},
+	}
+	if got := field.KeyHints(); !reflect.DeepEqual(got, wantClosed) {
+		t.Fatalf("closed KeyHints() = %#v, want %#v", got, wantClosed)
+	}
+
+	field.Focus(nil)
+	field.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	popup := overlays.current(t)
+	provider, ok := popup.(keybinding.HintProvider)
+	if !ok {
+		t.Fatalf("popup type %T does not provide key hints", popup)
+	}
+	wantOpen := []keybinding.Hint{
+		{Keys: "↑/k ↓/j", Description: "move"},
+		{Keys: "PgUp/PgDn", Description: "page"},
+		{Keys: "Enter/Space", Description: "select"},
+		{Keys: "Esc", Description: "close"},
+	}
+	if got := provider.KeyHints(); !reflect.DeepEqual(got, wantOpen) {
+		t.Fatalf("popup KeyHints() = %#v, want %#v", got, wantOpen)
+	}
+}
 
 func TestSelectFieldDrawsFullWidthAndBorderedPopup(t *testing.T) {
 	screen := newTestScreen(t)

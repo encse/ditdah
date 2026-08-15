@@ -1,6 +1,8 @@
 package components
 
 import (
+	"morsemanual/internal/tui/keybinding"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -26,11 +28,21 @@ type TableCell struct {
 // Table is an application-styled, row-selectable table.
 type Table interface {
 	tview.Primitive
+	keybinding.HintProvider
 	Clear()
 	SetCell(row int, column int, cell TableCell)
 	Select(row int, column int)
 	Selection() (row int, column int)
 	SetSelectionChangedFunc(handler func(row int, column int))
+}
+
+func (t *table) KeyHints() []keybinding.Hint {
+	return []keybinding.Hint{
+		{Keys: "↑/k ↓/j", Description: "move"},
+		{Keys: "←/h →/l", Description: "scroll"},
+		{Keys: "PgUp/PgDn", Description: "page"},
+		{Keys: "Home/End g/G", Description: "first/last"},
+	}
 }
 
 type table struct {

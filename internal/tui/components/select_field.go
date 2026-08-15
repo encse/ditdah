@@ -2,6 +2,7 @@ package components
 
 import (
 	"fmt"
+	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/mattn/go-runewidth"
@@ -11,6 +12,7 @@ import (
 // SelectField is a selection control with a full-width bordered popup.
 type SelectField interface {
 	tview.FormItem
+	keybinding.HintProvider
 	CurrentOption() (index int, value string)
 }
 
@@ -109,6 +111,13 @@ func (s *selectField) CurrentOption() (int, string) {
 		return -1, ""
 	}
 	return s.selected, s.options[s.selected]
+}
+
+func (s *selectField) KeyHints() []keybinding.Hint {
+	return []keybinding.Hint{
+		{Keys: "Enter/Space", Description: "open"},
+		{Keys: "Tab/Shift+Tab", Description: "next/previous"},
+	}
 }
 
 func (s *selectField) Draw(screen tcell.Screen) {
@@ -271,6 +280,15 @@ type selectPopup struct {
 	y           int
 	width       int
 	height      int
+}
+
+func (p *selectPopup) KeyHints() []keybinding.Hint {
+	return []keybinding.Hint{
+		{Keys: "↑/k ↓/j", Description: "move"},
+		{Keys: "PgUp/PgDn", Description: "page"},
+		{Keys: "Enter/Space", Description: "select"},
+		{Keys: "Esc", Description: "close"},
+	}
 }
 
 func newSelectPopup(selectField *selectField) tview.Primitive {
