@@ -6,36 +6,18 @@ import (
 	"fmt"
 
 	domain "morsemanual/internal/logbook"
+	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
-	"morsemanual/internal/tui/modal"
 
 	"github.com/rivo/tview"
 )
 
 const qsoPageSize = 500
 
-// Host is the part of the terminal application used by the logbook page.
-type Host interface {
-	SetFocus(primitive tview.Primitive)
-	Refresh()
-	Components() components.Factory
-	OpenModal(dialog modal.Dialog) modal.Handle
-}
-
-// Page is the logbook page exposed to the terminal application.
-type Page interface {
-	ID() string
-	Title() string
-	Content() tview.Primitive
-	Focusables() []tview.Primitive
-	KeyBindings() []keybinding.Binding
-	Status() string
-}
-
 type page struct {
 	ctx   context.Context
-	host  Host
+	host  ui.PageHost
 	store domain.Store
 
 	content tview.Primitive
@@ -49,7 +31,11 @@ type page struct {
 }
 
 // New creates and loads a logbook page.
-func New(ctx context.Context, host Host, store domain.Store) (Page, error) {
+func New(
+	ctx context.Context,
+	host ui.PageHost,
+	store domain.Store,
+) (ui.Page, error) {
 	page := newPage(ctx, host, store)
 	if err := page.load(); err != nil {
 		return nil, err
@@ -57,7 +43,7 @@ func New(ctx context.Context, host Host, store domain.Store) (Page, error) {
 	return page, nil
 }
 
-func newPage(ctx context.Context, host Host, store domain.Store) *page {
+func newPage(ctx context.Context, host ui.PageHost, store domain.Store) *page {
 	controls := host.Components()
 	page := &page{
 		ctx:   ctx,

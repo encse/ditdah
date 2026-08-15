@@ -10,6 +10,7 @@ import (
 	"morsemanual/internal/database"
 	"morsemanual/internal/logbook"
 	"morsemanual/internal/tui"
+	logbookpage "morsemanual/internal/tui/logbook"
 )
 
 // Run opens the application database and runs the terminal UI until the user
@@ -24,9 +25,31 @@ func Run(ctx context.Context, databasePath string) (err error) {
 	}()
 
 	store := logbook.NewSQLiteStore(db)
-	if err := tui.Run(ctx, store); err != nil {
+	terminal, err := newTerminalApplication(ctx, store)
+	if err != nil {
+		return err
+	}
+	if err := terminal.Run(ctx); err != nil {
 		return fmt.Errorf("run terminal UI: %w", err)
 	}
 
 	return nil
+}
+
+func newTerminalApplication(
+	ctx context.Context,
+	store logbook.Store,
+) (tui.Application, error) {
+	terminal := tui.NewApplication()
+	page, err := logbookpage.New(ctx, terminal, store)
+	if err != nil {
+		return nil, err
+	}
+	if err := terminal.Register(page); err != nil {
+		return nil, err
+	}
+	if err := terminal.Show(page.ID()); err != nil {
+		return nil, err
+	}
+	return terminal, nil
 }

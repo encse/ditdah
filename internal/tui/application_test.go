@@ -14,7 +14,7 @@ import (
 )
 
 func TestApplicationRegistersAndShowsPage(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	content := &hintPrimitive{
 		Box: tview.NewBox(),
 		hints: []keybinding.Hint{
@@ -44,7 +44,7 @@ func TestApplicationRegistersAndShowsPage(t *testing.T) {
 }
 
 func TestApplicationRejectsDuplicateAndUnknownPages(t *testing.T) {
-	app := NewApplication(nordTheme)
+	app := newApplication(nordTheme)
 	page := applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
@@ -62,7 +62,7 @@ func TestApplicationRejectsDuplicateAndUnknownPages(t *testing.T) {
 }
 
 func TestApplicationOwnsQuitBinding(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	if len(app.globalBindings) != 1 {
 		t.Fatalf("global binding count = %d, want 1", len(app.globalBindings))
 	}
@@ -79,7 +79,7 @@ func TestApplicationOwnsQuitBinding(t *testing.T) {
 }
 
 func TestApplicationDispatchesBindingsByContext(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	pageHandled := 0
 	globalHandled := 0
 	page := applicationTestPage{
@@ -146,7 +146,7 @@ func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 }
 
 func TestApplicationMovesFocusWithTabAndBacktab(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	first := tview.NewBox()
 	second := tview.NewBox()
 	third := tview.NewBox()
@@ -191,7 +191,7 @@ func TestApplicationMovesFocusWithTabAndBacktab(t *testing.T) {
 }
 
 func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	pageContent := tview.NewBox()
 	pageHandled := 0
 	page := applicationTestPage{
@@ -264,7 +264,7 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 }
 
 func TestApplicationFocusesModalContentWithoutFocusableControls(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	page := applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
@@ -285,7 +285,7 @@ func TestApplicationFocusesModalContentWithoutFocusableControls(t *testing.T) {
 }
 
 func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	page := applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
@@ -327,7 +327,7 @@ func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
 }
 
 func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	content := &hintPrimitive{
 		Box: tview.NewBox(),
 		hints: []keybinding.Hint{
@@ -392,7 +392,7 @@ func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 }
 
 func TestApplicationKeepsControlHintsAfterMouseFocus(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	table := app.controls.Table("QSOs")
 	table.SetRect(0, 0, 40, 5)
 	page := applicationTestPage{
@@ -422,14 +422,14 @@ func TestApplicationKeepsControlHintsAfterMouseFocus(t *testing.T) {
 }
 
 func TestApplicationRequiresActivePageBeforeRun(t *testing.T) {
-	app := NewApplication(nordTheme)
+	app := newApplication(nordTheme)
 	if err := app.Run(context.Background()); err == nil {
 		t.Fatal("application ran without an active page")
 	}
 }
 
 func TestApplicationRunWaitsForContextShutdown(t *testing.T) {
-	app := NewApplication(nordTheme).(*application)
+	app := newApplication(nordTheme).(*application)
 	page := applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",

@@ -14,15 +14,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// PageHost is the part of the TUI application available to pages.
-type PageHost interface {
-	SetFocus(primitive tview.Primitive)
-	Refresh()
-	Components() components.Factory
-	Theme() colorTheme
-	OpenModal(dialog modal.Dialog) modal.Handle
-}
-
 // Application owns the shared TUI infrastructure and registered pages.
 type Application interface {
 	PageHost
@@ -57,7 +48,11 @@ type modalHandle struct {
 }
 
 // NewApplication creates the terminal application infrastructure.
-func NewApplication(theme colorTheme) Application {
+func NewApplication() Application {
+	return newApplication(nordTheme)
+}
+
+func newApplication(theme colorTheme) Application {
 	tview.Styles = theme.styles
 	engine := tview.NewApplication()
 	overlays := overlay.New(engine)
@@ -91,10 +86,6 @@ func NewApplication(theme colorTheme) Application {
 
 func (a *application) Components() components.Factory {
 	return a.controls
-}
-
-func (a *application) Theme() colorTheme {
-	return a.theme
 }
 
 func (a *application) Register(page Page) error {
