@@ -1,4 +1,4 @@
-package logbook
+package tui
 
 import (
 	domain "morsemanual/internal/logbook"

@@ -1,5 +1,5 @@
-// Package logbook implements the logbook terminal page.
-package logbook
+// Package tui implements the logbook terminal user interface.
+package tui
 
 import (
 	"context"

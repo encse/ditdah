@@ -9,8 +9,8 @@ import (
 
 	"morsemanual/internal/database"
 	"morsemanual/internal/logbook"
+	logbookpage "morsemanual/internal/logbook/tui"
 	"morsemanual/internal/tui"
-	logbookpage "morsemanual/internal/tui/logbook"
 )
 
 // Run opens the application database and runs the terminal UI until the user
