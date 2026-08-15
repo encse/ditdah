@@ -23,7 +23,7 @@ This document records implementation decisions and future technical work.
 - [x] Let reusable controls expose their context-sensitive key hints, including table navigation and input/select actions, without reimplementing tview's event handling.
 - [x] Add a structured header component that can contain the current page title, application menu, and status information.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.
-- [ ] Add a shared `Layout` that arranges the header, active page content, and footer.
+- [x] Add a shared `Layout` that arranges the header, active page content, and footer.
 - [ ] Define a `Page` abstraction that exposes its identity, title, content, and page-level keybindings without owning the shared header or footer.
 - [ ] Refactor the logbook view into a page and remove its duplicated outer layout, header, and footer management.
 - [ ] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
