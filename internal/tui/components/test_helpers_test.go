@@ -55,6 +55,10 @@ func (o *testOverlay) Close() {
 	}
 }
 
+func (o *testOverlay) Remove() {
+	o.host.primitive = nil
+}
+
 func newTestScreen(t *testing.T) tcell.SimulationScreen {
 	t.Helper()
 	screen := tcell.NewSimulationScreen("UTF-8")

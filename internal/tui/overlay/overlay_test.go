@@ -37,6 +37,9 @@ func TestHostStacksAndRestoresFocus(t *testing.T) {
 	if got := app.GetFocus(); got != popup {
 		t.Fatalf("focus after popup push = %T, want popup", got)
 	}
+	if got := host.FocusBeforeTop(); got != modal {
+		t.Fatalf("focus before popup = %T, want modal", got)
+	}
 
 	popupHandle.Close()
 	if changes != 3 {
@@ -58,5 +61,8 @@ func TestHostStacksAndRestoresFocus(t *testing.T) {
 	}
 	if host.Active() {
 		t.Fatal("host is active after closing all overlays")
+	}
+	if got := host.FocusBeforeTop(); got != nil {
+		t.Fatalf("focus before top without overlay = %T, want nil", got)
 	}
 }

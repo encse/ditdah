@@ -7,13 +7,9 @@ import (
 	"github.com/gdamore/tcell/v2"
 )
 
-func TestBindingHandlesEvent(t *testing.T) {
-	binding := Binding{
-		Hint: Hint{Keys: "q", Description: "quit"},
-		Handler: func(event *tcell.EventKey) bool {
-			return event.Key() == tcell.KeyRune && event.Rune() == 'q'
-		},
-	}
+func TestOnRuneHandlesOnlyConfiguredRune(t *testing.T) {
+	handled := 0
+	binding := OnRune('q', "quit", func() { handled++ })
 
 	if !binding.Handle(tcell.NewEventKey(tcell.KeyRune, 'q', 0)) {
 		t.Fatal("q was not handled")
@@ -21,21 +17,17 @@ func TestBindingHandlesEvent(t *testing.T) {
 	if binding.Handle(tcell.NewEventKey(tcell.KeyRune, 'x', 0)) {
 		t.Fatal("x was handled")
 	}
-}
-
-func TestBindingWithoutHandlerDoesNotHandleEvent(t *testing.T) {
-	if (Binding{}).Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
-		t.Fatal("binding without a handler handled an event")
+	if handled != 1 {
+		t.Fatalf("handler calls = %d, want 1", handled)
+	}
+	if got := binding.Hint(); got != (Hint{Keys: "q", Description: "quit"}) {
+		t.Fatalf("Hint() = %#v", got)
 	}
 }
 
 func TestOnKeyHandlesOnlyConfiguredKey(t *testing.T) {
 	handled := 0
-	binding := OnKey(
-		tcell.KeyEscape,
-		Hint{Keys: "Esc", Description: "close"},
-		func() { handled++ },
-	)
+	binding := OnKey(tcell.KeyEscape, "close", func() { handled++ })
 
 	if binding.Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
 		t.Fatal("Enter was handled")
@@ -46,12 +38,32 @@ func TestOnKeyHandlesOnlyConfiguredKey(t *testing.T) {
 	if handled != 1 {
 		t.Fatalf("handler calls = %d, want 1", handled)
 	}
+	if got := binding.Hint(); got != (Hint{Keys: "Esc", Description: "close"}) {
+		t.Fatalf("Hint() = %#v", got)
+	}
 }
 
-func TestHintsPreservesBindingOrder(t *testing.T) {
+func TestOnDerivesHintFromEveryAcceptedStroke(t *testing.T) {
+	binding := On(
+		"open",
+		func() {},
+		Key(tcell.KeyEnter),
+		Rune(' '),
+	)
+
+	if got := binding.Hint(); got != (Hint{Keys: "Enter/Space", Description: "open"}) {
+		t.Fatalf("Hint() = %#v", got)
+	}
+}
+
+func TestHintsKeepsApplicationKeysAndHidesConventionalKeys(t *testing.T) {
 	bindings := []Binding{
-		{Hint: Hint{Keys: "/", Description: "search"}},
-		{Hint: Hint{Keys: "q", Description: "quit"}},
+		OnRune('/', "search", func() {}),
+		OnKey(tcell.KeyEscape, "close", func() {}),
+		OnKey(tcell.KeyEnter, "open", func() {}),
+		OnKey(tcell.KeyTab, "next", func() {}),
+		OnRune('q', "quit", func() {}),
+		OnRune('x', "missing handler", nil),
 	}
 	want := []Hint{
 		{Keys: "/", Description: "search"},

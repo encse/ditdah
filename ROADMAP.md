@@ -19,8 +19,12 @@ This document records implementation decisions and future technical work.
 
 ## TUI layout and navigation
 
-- [x] Introduce separate keybinding metadata for application-handled bindings and hints for behavior handled natively by tview controls.
-- [x] Let reusable controls expose their context-sensitive key hints, including table navigation and input/select actions, without reimplementing tview's event handling.
+- [x] Keep each advertised key description on the same `Binding` as its handler, and derive footer hints exclusively from active handled bindings.
+- [x] Derive each binding's key label and event matching from one configured keyboard trigger instead of duplicating key checks in handlers and hints.
+- [x] Do not advertise implicit native tview behavior unless the application wraps it in its own binding.
+- [x] Keep conventional Enter, Escape, Space, and Tab bindings active but hide them from the footer.
+- [x] Handle modal Escape centrally in the application, never in individual modal controls or dialogs.
+- [x] Keep Tab focus navigation application-owned; control popups close themselves when that focus move dismisses them.
 - [x] Add a structured header component that can contain the current page title, application menu, and status information.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.
 - [x] Add a shared `Layout` that arranges the header, active page content, and footer.

@@ -36,11 +36,12 @@ type application struct {
 }
 
 type openedModal struct {
-	dialog   modal.Dialog
-	layer    *modalLayer
-	overlay  components.Overlay
-	bindings []keybinding.Binding
-	closed   bool
+	dialog       modal.Dialog
+	layer        *modalLayer
+	overlay      components.Overlay
+	closeBinding keybinding.Binding
+	bindings     []keybinding.Binding
+	closed       bool
 }
 
 type modalHandle struct {
@@ -126,14 +127,15 @@ func (a *application) OpenModal(dialog modal.Dialog) modal.Handle {
 		a.theme.styles.BorderColor,
 		a.theme.styles.PrimitiveBackgroundColor,
 	)
-	opened := &openedModal{dialog: dialog, layer: layer}
-	opened.bindings = append(
-		[]keybinding.Binding{keybinding.OnKey(
-			tcell.KeyEscape,
-			keybinding.Hint{Keys: "Esc", Description: "close"},
-			func() { a.closeModal(opened) },
-		)},
-		dialog.KeyBindings()...,
+	opened := &openedModal{
+		dialog:   dialog,
+		layer:    layer,
+		bindings: dialog.KeyBindings(),
+	}
+	opened.closeBinding = keybinding.OnKey(
+		tcell.KeyEscape,
+		"close",
+		func() { a.closeModal(opened) },
 	)
 	a.modals = append(a.modals, opened)
 	opened.overlay = a.overlays.Push(layer)
@@ -156,14 +158,18 @@ func (a *application) Refresh() {
 		a.layout.Header().SetStatus("")
 	}
 
-	hints := a.focusedHints()
+	hints := keybinding.Hints(a.focusedBindings())
 	if opened, ok := a.topModal(); ok {
 		blocked := a.parentBindingsBlocked()
+		hints = keybinding.MergeBindingHints(hints, opened.closeBinding)
 		if !blocked {
-			hints = keybinding.MergeHints(hints, keybinding.Hints(opened.bindings)...)
+			hints = keybinding.MergeBindingHints(hints, opened.bindings...)
 		}
 		if len(opened.dialog.Focusables()) > 1 {
-			hints = keybinding.MergeHints(hints, focusNavigationHint())
+			hints = keybinding.MergeBindingHints(
+				hints,
+				a.focusNavigationBindings(opened.dialog.Focusables())...,
+			)
 		}
 		a.layout.Footer().SetKeyHints(hints)
 		return
@@ -173,11 +179,14 @@ func (a *application) Refresh() {
 		return
 	}
 	if !a.parentBindingsBlocked() {
-		hints = keybinding.MergeHints(hints, keybinding.Hints(a.activePage.KeyBindings())...)
-		hints = keybinding.MergeHints(hints, keybinding.Hints(a.globalBindings)...)
+		hints = keybinding.MergeBindingHints(hints, a.activePage.KeyBindings()...)
+		hints = keybinding.MergeBindingHints(hints, a.globalBindings...)
 	}
 	if len(a.activePage.Focusables()) > 1 {
-		hints = keybinding.MergeHints(hints, focusNavigationHint())
+		hints = keybinding.MergeBindingHints(
+			hints,
+			a.focusNavigationBindings(a.activePage.Focusables())...,
+		)
 	}
 	a.layout.Footer().SetKeyHints(hints)
 }
@@ -215,16 +224,7 @@ func (a *application) Stop() {
 }
 
 func (a *application) quitBinding() keybinding.Binding {
-	return keybinding.Binding{
-		Hint: keybinding.Hint{Keys: "q", Description: "quit"},
-		Handler: func(event *tcell.EventKey) bool {
-			if event.Key() != tcell.KeyRune || event.Rune() != 'q' {
-				return false
-			}
-			a.Stop()
-			return true
-		},
-	}
+	return keybinding.OnRune('q', "quit", a.Stop)
 }
 
 func (a *application) captureKey(event *tcell.EventKey) *tcell.EventKey {
@@ -235,15 +235,17 @@ func (a *application) captureKey(event *tcell.EventKey) *tcell.EventKey {
 	if a.activePage == nil {
 		return event
 	}
+	for _, binding := range a.focusNavigationBindings(a.activeFocusables()) {
+		if binding.Handle(event) {
+			return nil
+		}
+	}
 	if a.overlays.Active() {
 		opened, ok := a.topModal()
 		if !ok {
 			return event
 		}
 		return a.captureModal(opened, event)
-	}
-	if a.moveFocus(event, a.activePage.Focusables()) {
-		return nil
 	}
 	if a.parentBindingsBlocked() {
 		return event
@@ -268,7 +270,8 @@ func (a *application) captureModal(
 	opened *openedModal,
 	event *tcell.EventKey,
 ) *tcell.EventKey {
-	if a.moveFocus(event, opened.dialog.Focusables()) {
+	if opened.closeBinding.Handle(event) {
+		a.Refresh()
 		return nil
 	}
 	if a.parentBindingsBlocked() {
@@ -283,20 +286,21 @@ func (a *application) captureModal(
 	return event
 }
 
-func (a *application) moveFocus(
-	event *tcell.EventKey,
+func (a *application) focusNavigationBindings(
 	focusables []tview.Primitive,
-) bool {
-	direction := 0
-	switch event.Key() {
-	case tcell.KeyTab:
-		direction = 1
-	case tcell.KeyBacktab:
-		direction = -1
-	default:
-		return false
+) []keybinding.Binding {
+	return []keybinding.Binding{
+		keybinding.OnKey(
+			tcell.KeyTab,
+			"next",
+			func() { a.focusRelative(focusables, 1) },
+		),
+		keybinding.OnKey(
+			tcell.KeyBacktab,
+			"previous",
+			func() { a.focusRelative(focusables, -1) },
+		),
 	}
-	return a.focusRelative(focusables, direction)
 }
 
 func (a *application) focusRelative(
@@ -307,6 +311,9 @@ func (a *application) focusRelative(
 		return false
 	}
 	current := a.engine.GetFocus()
+	if current == a.overlays.Top() {
+		current = a.overlays.FocusBeforeTop()
+	}
 	currentIndex := -1
 	for index, primitive := range focusables {
 		if primitive == current {
@@ -321,6 +328,13 @@ func (a *application) focusRelative(
 	nextIndex = (nextIndex + len(focusables)) % len(focusables)
 	a.SetFocus(focusables[nextIndex])
 	return true
+}
+
+func (a *application) activeFocusables() []tview.Primitive {
+	if len(a.modals) > 0 {
+		return a.modals[len(a.modals)-1].dialog.Focusables()
+	}
+	return a.activePage.Focusables()
 }
 
 func (a *application) topModal() (*openedModal, bool) {
@@ -353,27 +367,12 @@ func (h *modalHandle) Close() {
 	h.app.closeModal(h.modal)
 }
 
-func (h *modalHandle) FocusNext() {
-	opened, ok := h.app.topModal()
-	if !ok || opened != h.modal || h.modal.closed {
-		return
-	}
-	h.app.focusRelative(h.modal.dialog.Focusables(), 1)
-}
-
-func focusNavigationHint() keybinding.Hint {
-	return keybinding.Hint{
-		Keys:        "Tab/Shift+Tab",
-		Description: "next/previous",
-	}
-}
-
-func (a *application) focusedHints() []keybinding.Hint {
-	provider, ok := a.engine.GetFocus().(keybinding.HintProvider)
+func (a *application) focusedBindings() []keybinding.Binding {
+	provider, ok := a.engine.GetFocus().(keybinding.BindingProvider)
 	if !ok {
 		return nil
 	}
-	return provider.KeyHints()
+	return provider.KeyBindings()
 }
 
 func (a *application) parentBindingsBlocked() bool {

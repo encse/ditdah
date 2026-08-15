@@ -5,10 +5,8 @@ import (
 	"testing"
 	"time"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/tui/keybinding"
-
 	"github.com/gdamore/tcell/v2"
+	domain "morsemanual/internal/logbook"
 )
 
 func TestEditBindingOpensSelectedQSOEditor(t *testing.T) {
@@ -175,7 +173,7 @@ func TestQSOEditorKeepsOpenAndShowsInvalidInput(t *testing.T) {
 	}
 }
 
-func TestQSOEditorInputEscapeClosesModal(t *testing.T) {
+func TestQSOEditorInputDoesNotOwnModalEscape(t *testing.T) {
 	_, host := newTestPage(t)
 	editor := newQSOEditor(host.Components(), domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
@@ -183,18 +181,21 @@ func TestQSOEditorInputEscapeClosesModal(t *testing.T) {
 	}, nil)
 	handle := &testModalHandle{}
 	editor.setHandle(handle)
+	if bindings := editor.callsign.KeyBindings(); len(bindings) != 0 {
+		t.Fatalf("input bindings = %#v, want none", bindings)
+	}
 
 	editor.callsign.InputHandler()(
 		tcell.NewEventKey(tcell.KeyEscape, 0, 0),
 		nil,
 	)
 
-	if !handle.closed {
-		t.Fatal("focused editor input Escape did not close modal")
+	if handle.closed {
+		t.Fatal("focused editor input handled application-owned modal Escape")
 	}
 }
 
-func TestQSOEditorInputEnterFocusesNextControl(t *testing.T) {
+func TestQSOEditorInputEnterDoesNotMoveFocus(t *testing.T) {
 	_, host := newTestPage(t)
 	editor := newQSOEditor(host.Components(), domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
@@ -208,35 +209,21 @@ func TestQSOEditorInputEnterFocusesNextControl(t *testing.T) {
 		nil,
 	)
 
-	if handle.focusNext != 1 {
-		t.Fatalf("FocusNext calls = %d, want 1", handle.focusNext)
-	}
 	if handle.closed {
 		t.Fatal("input Enter closed modal")
 	}
 }
 
-func TestQSOEditorPublishesCancelBinding(t *testing.T) {
+func TestQSOEditorLeavesModalBindingsToApplication(t *testing.T) {
 	_, host := newTestPage(t)
 	editor := newQSOEditor(host.Components(), domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
 		Mode:      "CW",
 	}, nil)
-	handle := &testModalHandle{}
-	editor.setHandle(handle)
 	bindings := editor.KeyBindings()
 
-	if len(bindings) != 1 || bindings[0].Hint != (keybinding.Hint{
-		Keys:        "Esc",
-		Description: "cancel",
-	}) {
-		t.Fatalf("editor bindings = %#v, want Esc cancel", bindings)
-	}
-	if !bindings[0].Handle(tcell.NewEventKey(tcell.KeyEscape, 0, 0)) {
-		t.Fatal("editor cancel binding did not handle Escape")
-	}
-	if !handle.closed {
-		t.Fatal("editor cancel binding did not close modal")
+	if len(bindings) != 0 {
+		t.Fatalf("editor bindings = %#v, want none", bindings)
 	}
 }
 

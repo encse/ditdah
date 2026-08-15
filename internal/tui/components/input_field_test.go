@@ -34,17 +34,17 @@ func TestInputFieldChangesBackgroundWithFocus(t *testing.T) {
 	assertBackground(t, screen, 12, 2, tcell.ColorBlue)
 }
 
-func TestInputFieldPublishesConfiguredBindingHints(t *testing.T) {
+func TestInputFieldPublishesConfiguredBindings(t *testing.T) {
 	field := newTestFactory().InputField("Search", "")
 	field.SetBindings(
 		keybinding.OnKey(
 			tcell.KeyEnter,
-			keybinding.Hint{Keys: "Enter", Description: "apply"},
+			"apply",
 			func() {},
 		),
 		keybinding.OnKey(
 			tcell.KeyEscape,
-			keybinding.Hint{Keys: "Esc", Description: "clear"},
+			"clear",
 			func() {},
 		),
 	)
@@ -53,8 +53,16 @@ func TestInputFieldPublishesConfiguredBindingHints(t *testing.T) {
 		{Keys: "Esc", Description: "clear"},
 	}
 
-	if got := field.KeyHints(); !reflect.DeepEqual(got, want) {
-		t.Fatalf("KeyHints() = %#v, want %#v", got, want)
+	bindings := field.KeyBindings()
+	got := make([]keybinding.Hint, len(bindings))
+	for index, binding := range bindings {
+		got[index] = binding.Hint()
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("KeyBindings() hints = %#v, want %#v", got, want)
+	}
+	if visible := keybinding.Hints(bindings); len(visible) != 0 {
+		t.Fatalf("footer hints = %#v, want none", visible)
 	}
 }
 
@@ -81,7 +89,7 @@ func TestInputFieldCallbacks(t *testing.T) {
 	})
 	field.SetBindings(keybinding.OnKey(
 		tcell.KeyEnter,
-		keybinding.Hint{Keys: "Enter", Description: "done"},
+		"done",
 		func() { done++ },
 	))
 

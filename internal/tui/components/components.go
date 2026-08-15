@@ -8,7 +8,10 @@ import (
 
 // Overlay is a displayed overlay which can remove itself from its host.
 type Overlay interface {
+	// Close removes the overlay and restores the focus it replaced.
 	Close()
+	// Remove removes the overlay without changing an in-progress focus move.
+	Remove()
 }
 
 // OverlayHost displays primitives above the current user interface. Hosts may

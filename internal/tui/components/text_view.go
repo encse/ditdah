@@ -3,8 +3,6 @@ package components
 import (
 	"io"
 
-	"morsemanual/internal/tui/keybinding"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -25,7 +23,6 @@ type TextView interface {
 	io.Writer
 	Clear()
 	InnerRect() (x int, y int, width int, height int)
-	KeyHints() []keybinding.Hint
 	ScrollOffset() (row int, column int)
 	ScrollToStart()
 	Text() string
@@ -42,8 +39,7 @@ type TextView interface {
 
 type textView struct {
 	*tview.TextView
-	theme      Theme
-	scrollable bool
+	theme Theme
 }
 
 func (v *textView) MouseHandler() mouseHandler {
@@ -62,17 +58,6 @@ func newTextView(theme Theme, focusChanged func()) TextView {
 
 func (v *textView) Clear() {
 	v.TextView.Clear()
-}
-
-func (v *textView) KeyHints() []keybinding.Hint {
-	if !v.scrollable {
-		return nil
-	}
-	return []keybinding.Hint{
-		{Keys: "↑/k ↓/j", Description: "scroll"},
-		{Keys: "PgUp/PgDn", Description: "page"},
-		{Keys: "Home/End g/G", Description: "first/last"},
-	}
 }
 
 func (v *textView) InnerRect() (int, int, int, int) {
@@ -123,7 +108,6 @@ func (v *textView) SetDynamicColors(enabled bool) {
 }
 
 func (v *textView) SetScrollable(enabled bool) {
-	v.scrollable = enabled
 	v.TextView.SetScrollable(enabled)
 }
 

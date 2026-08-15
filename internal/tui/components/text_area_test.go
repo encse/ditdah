@@ -36,7 +36,7 @@ func TestTextAreaDoneCallback(t *testing.T) {
 	done := 0
 	area.SetBindings(keybinding.OnKey(
 		tcell.KeyEscape,
-		keybinding.Hint{Keys: "Esc", Description: "cancel"},
+		"cancel",
 		func() { done++ },
 	))
 	area.InputHandler()(tcell.NewEventKey(tcell.KeyEscape, 0, 0), nil)
@@ -45,11 +45,17 @@ func TestTextAreaDoneCallback(t *testing.T) {
 		t.Fatalf("done calls = %d, want 1", done)
 	}
 	wantHints := []keybinding.Hint{
-		{Keys: "Enter", Description: "new line"},
-		{Keys: "Ctrl-Z/Ctrl-Y", Description: "undo/redo"},
 		{Keys: "Esc", Description: "cancel"},
 	}
-	if got := area.KeyHints(); !reflect.DeepEqual(got, wantHints) {
-		t.Fatalf("KeyHints() = %#v, want %#v", got, wantHints)
+	bindings := area.KeyBindings()
+	gotHints := make([]keybinding.Hint, len(bindings))
+	for index, binding := range bindings {
+		gotHints[index] = binding.Hint()
+	}
+	if !reflect.DeepEqual(gotHints, wantHints) {
+		t.Fatalf("KeyBindings() hints = %#v, want %#v", gotHints, wantHints)
+	}
+	if visible := keybinding.Hints(bindings); len(visible) != 0 {
+		t.Fatalf("footer hints = %#v, want none", visible)
 	}
 }

@@ -15,12 +15,7 @@ import (
 
 func TestApplicationRegistersAndShowsPage(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	content := &hintPrimitive{
-		Box: tview.NewBox(),
-		hints: []keybinding.Hint{
-			{Keys: "x", Description: "control"},
-		},
-	}
+	content := tview.NewBox()
 	page := applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
@@ -67,8 +62,8 @@ func TestApplicationOwnsQuitBinding(t *testing.T) {
 		t.Fatalf("global binding count = %d, want 1", len(app.globalBindings))
 	}
 	binding := app.globalBindings[0]
-	if binding.Hint != (keybinding.Hint{Keys: "q", Description: "quit"}) {
-		t.Fatalf("quit hint = %#v", binding.Hint)
+	if binding.Hint() != (keybinding.Hint{Keys: "q", Description: "quit"}) {
+		t.Fatalf("quit hint = %#v", binding.Hint())
 	}
 	if binding.Handle(tcell.NewEventKey(tcell.KeyRune, 'x', 0)) {
 		t.Fatal("quit binding handled unrelated key")
@@ -87,20 +82,11 @@ func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 		title:   "Logbook",
 		content: tview.NewBox(),
 		bindings: []keybinding.Binding{
-			bindingForRune("p", "page", 'p', &pageHandled),
+			bindingForRune("page", 'p', &pageHandled),
 		},
 	}
 	app.globalBindings = []keybinding.Binding{
-		{
-			Hint: keybinding.Hint{Keys: "q", Description: "global"},
-			Handler: func(event *tcell.EventKey) bool {
-				if event.Key() != tcell.KeyRune || event.Rune() != 'q' {
-					return false
-				}
-				globalHandled++
-				return true
-			},
-		},
+		bindingForRune("global", 'q', &globalHandled),
 	}
 	if err := app.Register(page); err != nil {
 		t.Fatalf("register page: %v", err)
@@ -122,7 +108,7 @@ func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 	input := app.controls.InputField("Search", "")
 	input.SetBindings(keybinding.OnKey(
 		tcell.KeyEnter,
-		keybinding.Hint{Keys: "Enter", Description: "done"},
+		"done",
 		func() {},
 	))
 	app.SetFocus(input)
@@ -141,7 +127,7 @@ func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 		t.Fatalf("input handled counts = page %d, global %d, want 1 and 1", pageHandled, globalHandled)
 	}
 
-	modal := &hintPrimitive{Box: tview.NewBox()}
+	modal := &bindingPrimitive{Box: tview.NewBox()}
 	handle := app.overlays.Push(modal)
 	overlayEvent := tcell.NewEventKey(tcell.KeyRune, 'p', 0)
 	if got := app.captureKey(overlayEvent); got != overlayEvent {
@@ -187,11 +173,50 @@ func TestApplicationMovesFocusWithTabAndBacktab(t *testing.T) {
 		t.Fatalf("wrapped focus after Backtab = %T, want third control", got)
 	}
 
-	if footer := drawApplicationFooter(t, app); !strings.Contains(
+	if footer := drawApplicationFooter(t, app); strings.Contains(
 		footer,
 		"Tab/Shift+Tab next/previous",
 	) {
-		t.Fatalf("footer = %q, want focus navigation hint", footer)
+		t.Fatalf("footer = %q, contains hidden focus navigation hint", footer)
+	}
+}
+
+func TestApplicationMovesFocusPastOpenSelectPopup(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	selectField := app.controls.SelectField(
+		"Mode",
+		[]string{"CW", "SSB"},
+		0,
+		6,
+		24,
+	)
+	next := tview.NewBox()
+	page := applicationTestPage{
+		id:         "logbook",
+		title:      "Logbook",
+		content:    selectField,
+		focusables: []tview.Primitive{selectField, next},
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatalf("register page: %v", err)
+	}
+	if err := app.Show(page.ID()); err != nil {
+		t.Fatalf("show page: %v", err)
+	}
+
+	selectField.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	if !app.overlays.Active() {
+		t.Fatal("select popup did not open")
+	}
+	if got := app.captureKey(tcell.NewEventKey(tcell.KeyTab, 0, 0)); got != nil {
+		t.Fatal("Tab was forwarded from select popup")
+	}
+
+	if app.overlays.Active() {
+		t.Fatal("select popup remained open after focus moved")
+	}
+	if got := app.engine.GetFocus(); got != next {
+		t.Fatalf("focus after popup Tab = %T, want next control", got)
 	}
 }
 
@@ -204,7 +229,7 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 		title:   "Logbook",
 		content: pageContent,
 		bindings: []keybinding.Binding{
-			bindingForRune("p", "page", 'p', &pageHandled),
+			bindingForRune("page", 'p', &pageHandled),
 		},
 	}
 	if err := app.Register(page); err != nil {
@@ -221,21 +246,17 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 		content:    tview.NewFlex().AddItem(first, 0, 1, true),
 		focusables: []tview.Primitive{first, second},
 		bindings: []keybinding.Binding{
-			bindingForRune("m", "modal", 'm', &modalHandled),
+			bindingForRune("modal", 'm', &modalHandled),
 		},
 	}
-	handle := app.OpenModal(dialog)
+	app.OpenModal(dialog)
 
 	if got := app.engine.GetFocus(); got != first {
 		t.Fatalf("modal focus = %T, want first control", got)
 	}
-	handle.FocusNext()
-	if got := app.engine.GetFocus(); got != second {
-		t.Fatalf("focus after handle FocusNext = %T, want second control", got)
-	}
 	app.captureKey(tcell.NewEventKey(tcell.KeyBacktab, 0, 0))
-	if got := app.engine.GetFocus(); got != first {
-		t.Fatalf("focus after modal Backtab = %T, want first control", got)
+	if got := app.engine.GetFocus(); got != second {
+		t.Fatalf("focus after modal Backtab = %T, want second control", got)
 	}
 	pageEvent := tcell.NewEventKey(tcell.KeyRune, 'p', 0)
 	if got := app.captureKey(pageEvent); got != pageEvent {
@@ -252,17 +273,22 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 	}
 
 	app.captureKey(tcell.NewEventKey(tcell.KeyTab, 0, 0))
-	if got := app.engine.GetFocus(); got != second {
-		t.Fatalf("focus after modal Tab = %T, want second control", got)
+	if got := app.engine.GetFocus(); got != first {
+		t.Fatalf("focus after modal Tab = %T, want first control", got)
 	}
 	footer := drawApplicationFooter(t, app)
-	for _, expected := range []string{"m modal", "Esc close", "Tab/Shift+Tab next/previous"} {
+	for _, expected := range []string{"m modal"} {
 		if !strings.Contains(footer, expected) {
 			t.Errorf("modal footer = %q, want %q", footer, expected)
 		}
 	}
 	if strings.Contains(footer, "p page") {
 		t.Errorf("modal footer = %q, unexpectedly contains page binding", footer)
+	}
+	for _, hidden := range []string{"Esc close", "Tab/Shift+Tab next/previous"} {
+		if strings.Contains(footer, hidden) {
+			t.Errorf("modal footer = %q, unexpectedly contains %q", footer, hidden)
+		}
 	}
 
 	if got := app.captureKey(tcell.NewEventKey(tcell.KeyEscape, 0, 0)); got != nil {
@@ -312,13 +338,7 @@ func TestApplicationForwardsTypedRunesToFocusedModalInput(t *testing.T) {
 	}
 
 	input := app.controls.Modal().InputField("Callsign", "")
-	var handle modal.Handle
-	input.SetBindings(keybinding.OnKey(
-		tcell.KeyEscape,
-		keybinding.Hint{Keys: "Esc", Description: "cancel"},
-		func() { handle.Close() },
-	))
-	handle = app.OpenModal(applicationTestModal{
+	app.OpenModal(applicationTestModal{
 		content:    input,
 		focusables: []tview.Primitive{input},
 	})
@@ -333,21 +353,20 @@ func TestApplicationForwardsTypedRunesToFocusedModalInput(t *testing.T) {
 		t.Fatalf("modal input value = %q, want x", got)
 	}
 	footer := drawApplicationFooter(t, app)
-	if strings.Count(footer, "Esc") != 1 || !strings.Contains(footer, "Esc cancel") {
-		t.Fatalf("modal input footer = %q, want one Esc cancel hint", footer)
+	if strings.Contains(footer, "Esc cancel") {
+		t.Fatalf("modal input footer = %q, contains hidden Esc hint", footer)
 	}
 	escape := tcell.NewEventKey(tcell.KeyEscape, 0, 0)
 	forwarded = app.captureKey(escape)
-	if forwarded != escape {
-		t.Fatal("modal input Escape was consumed by application")
+	if forwarded != nil {
+		t.Fatal("modal input Escape was forwarded")
 	}
-	app.overlays.Root().InputHandler()(forwarded, app.SetFocus)
 	if app.overlays.Active() {
-		t.Fatal("modal input Escape callback did not close modal")
+		t.Fatal("application modal Escape binding did not close modal")
 	}
 }
 
-func TestApplicationLetsModalBindingOverrideDefaultEscape(t *testing.T) {
+func TestApplicationModalEscapePrecedesDialogBindings(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	page := applicationTestPage{
 		id:      "logbook",
@@ -364,31 +383,26 @@ func TestApplicationLetsModalBindingOverrideDefaultEscape(t *testing.T) {
 	handled := 0
 	dialog := applicationTestModal{
 		content: tview.NewBox(),
-		bindings: []keybinding.Binding{{
-			Hint: keybinding.Hint{Keys: "Esc", Description: "custom"},
-			Handler: func(event *tcell.EventKey) bool {
-				if event.Key() != tcell.KeyEscape {
-					return false
-				}
-				handled++
-				return true
-			},
-		}},
+		bindings: []keybinding.Binding{keybinding.OnKey(
+			tcell.KeyEscape,
+			"custom",
+			func() { handled++ },
+		)},
 	}
 	app.OpenModal(dialog)
 
 	if got := app.captureKey(tcell.NewEventKey(tcell.KeyEscape, 0, 0)); got != nil {
 		t.Fatal("modal Escape binding was forwarded")
 	}
-	if handled != 1 {
-		t.Fatalf("modal Escape binding handled %d events, want 1", handled)
+	if handled != 0 {
+		t.Fatalf("dialog Escape binding handled %d events, want 0", handled)
 	}
-	if !app.overlays.Active() {
-		t.Fatal("default Escape closed modal before its own binding")
+	if app.overlays.Active() {
+		t.Fatal("application Escape binding did not close modal")
 	}
 	footer := drawApplicationFooter(t, app)
-	if strings.Count(footer, "Esc") != 1 || !strings.Contains(footer, "Esc custom") {
-		t.Fatalf("modal footer = %q, want one Esc custom hint", footer)
+	if strings.Contains(footer, "Esc custom") {
+		t.Fatalf("modal footer = %q, contains hidden Esc hint", footer)
 	}
 }
 
@@ -410,11 +424,11 @@ func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
 	dialog := applicationTestModal{
 		content: tview.NewBox(),
 		bindings: []keybinding.Binding{
-			bindingForRune("m", "modal", 'm', &modalHandled),
+			bindingForRune("modal", 'm', &modalHandled),
 		},
 	}
 	app.OpenModal(dialog)
-	popup := &hintPrimitive{Box: tview.NewBox()}
+	popup := &bindingPrimitive{Box: tview.NewBox()}
 	popupHandle := app.overlays.Push(popup)
 
 	event := tcell.NewEventKey(tcell.KeyRune, 'm', 0)
@@ -436,10 +450,13 @@ func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
 
 func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	content := &hintPrimitive{
+	controlHandled := 0
+	pageHandled := 0
+	globalHandled := 0
+	content := &bindingPrimitive{
 		Box: tview.NewBox(),
-		hints: []keybinding.Hint{
-			{Keys: "x", Description: "control"},
+		bindings: []keybinding.Binding{
+			bindingForRune("control", 'x', &controlHandled),
 		},
 	}
 	page := applicationTestPage{
@@ -448,11 +465,11 @@ func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 		status:  "24 QSOs",
 		content: content,
 		bindings: []keybinding.Binding{
-			{Hint: keybinding.Hint{Keys: "p", Description: "page"}},
+			bindingForRune("page", 'p', &pageHandled),
 		},
 	}
 	app.globalBindings = []keybinding.Binding{
-		{Hint: keybinding.Hint{Keys: "q", Description: "global"}},
+		bindingForRune("global", 'q', &globalHandled),
 	}
 	if err := app.Register(page); err != nil {
 		t.Fatalf("register page: %v", err)
@@ -471,13 +488,13 @@ func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 	input := app.controls.InputField("Search", "")
 	input.SetBindings(keybinding.OnKey(
 		tcell.KeyEnter,
-		keybinding.Hint{Keys: "Enter", Description: "done"},
+		"done",
 		func() {},
 	))
 	app.SetFocus(input)
 	line = drawApplicationFooter(t, app)
-	if !strings.Contains(line, "Enter done") {
-		t.Errorf("input footer = %q, want input hint", line)
+	if strings.Contains(line, "Enter done") {
+		t.Errorf("input footer = %q, contains hidden Enter hint", line)
 	}
 	for _, hidden := range []string{"p page", "q global"} {
 		if strings.Contains(line, hidden) {
@@ -485,16 +502,21 @@ func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 		}
 	}
 
-	modal := &hintPrimitive{
+	modalHandled := 0
+	modal := &bindingPrimitive{
 		Box: tview.NewBox(),
-		hints: []keybinding.Hint{
-			{Keys: "Esc", Description: "close modal"},
+		bindings: []keybinding.Binding{
+			keybinding.OnKey(
+				tcell.KeyEscape,
+				"close modal",
+				func() { modalHandled++ },
+			),
 		},
 	}
 	handle := app.overlays.Push(modal)
 	line = drawApplicationFooter(t, app)
-	if !strings.Contains(line, "Esc close modal") {
-		t.Errorf("modal footer = %q, want modal hint", line)
+	if strings.Contains(line, "Esc close modal") {
+		t.Errorf("modal footer = %q, contains hidden Esc hint", line)
 	}
 	for _, hidden := range []string{"Enter done", "p page", "q global"} {
 		if strings.Contains(line, hidden) {
@@ -504,7 +526,7 @@ func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 	handle.Close()
 }
 
-func TestApplicationKeepsControlHintsAfterMouseFocus(t *testing.T) {
+func TestApplicationDoesNotAdvertiseNativeControlKeys(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	table := app.controls.Table("QSOs")
 	table.SetRect(0, 0, 40, 5)
@@ -529,8 +551,8 @@ func TestApplicationKeepsControlHintsAfterMouseFocus(t *testing.T) {
 	if got := app.engine.GetFocus(); got != table {
 		t.Fatalf("mouse focus = %T, want table wrapper %T", got, table)
 	}
-	if footer := drawApplicationFooter(t, app); !strings.Contains(footer, "↑/k ↓/j move") {
-		t.Fatalf("footer after mouse focus = %q, want table hints", footer)
+	if footer := drawApplicationFooter(t, app); strings.Contains(footer, "↑/k ↓/j move") {
+		t.Fatalf("footer after mouse focus = %q, contains unowned table hint", footer)
 	}
 }
 
@@ -624,9 +646,9 @@ func (p applicationTestPage) KeyBindings() []keybinding.Binding {
 	return p.bindings
 }
 
-type hintPrimitive struct {
+type bindingPrimitive struct {
 	*tview.Box
-	hints []keybinding.Hint
+	bindings []keybinding.Binding
 }
 
 type applicationTestModal struct {
@@ -651,26 +673,16 @@ func (m applicationTestModal) Size() modal.Size {
 	return modal.Size{Width: 30, Height: 10}
 }
 
-func (p *hintPrimitive) KeyHints() []keybinding.Hint {
-	return p.hints
+func (p *bindingPrimitive) KeyBindings() []keybinding.Binding {
+	return p.bindings
 }
 
 func bindingForRune(
-	keys string,
 	description string,
 	key rune,
 	count *int,
 ) keybinding.Binding {
-	return keybinding.Binding{
-		Hint: keybinding.Hint{Keys: keys, Description: description},
-		Handler: func(event *tcell.EventKey) bool {
-			if event.Key() != tcell.KeyRune || event.Rune() != key {
-				return false
-			}
-			*count++
-			return true
-		},
-	}
+	return keybinding.OnRune(key, description, func() { *count++ })
 }
 
 func drawApplicationFooter(t *testing.T, app *application) string {

@@ -1,7 +1,6 @@
 package components
 
 import (
-	"reflect"
 	"testing"
 
 	"morsemanual/internal/tui/keybinding"
@@ -10,7 +9,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-func TestSelectFieldPublishesClosedAndPopupKeyHints(t *testing.T) {
+func TestSelectFieldPublishesHandledBindings(t *testing.T) {
 	overlays := &testOverlayHost{}
 	field := newTestFactoryWithOverlays(overlays).SelectField(
 		"Mode",
@@ -19,29 +18,47 @@ func TestSelectFieldPublishesClosedAndPopupKeyHints(t *testing.T) {
 		6,
 		24,
 	)
-	wantClosed := []keybinding.Hint{
-		{Keys: "Enter/Space", Description: "open"},
-		{Keys: "Tab/Shift+Tab", Description: "next/previous"},
+	closedBindings := field.KeyBindings()
+	if len(closedBindings) != 1 {
+		t.Fatalf("closed binding count = %d, want 1", len(closedBindings))
 	}
-	if got := field.KeyHints(); !reflect.DeepEqual(got, wantClosed) {
-		t.Fatalf("closed KeyHints() = %#v, want %#v", got, wantClosed)
+	if got := keybinding.Hints(closedBindings); len(got) != 0 {
+		t.Fatalf("visible closed hints = %#v, want none", got)
 	}
 
 	field.Focus(nil)
 	field.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
 	popup := overlays.current(t)
-	provider, ok := popup.(keybinding.HintProvider)
+	provider, ok := popup.(keybinding.BindingProvider)
 	if !ok {
-		t.Fatalf("popup type %T does not provide key hints", popup)
+		t.Fatalf("popup type %T does not provide key bindings", popup)
 	}
-	wantOpen := []keybinding.Hint{
-		{Keys: "↑/k ↓/j", Description: "move"},
-		{Keys: "PgUp/PgDn", Description: "page"},
-		{Keys: "Enter/Space", Description: "select"},
-		{Keys: "Esc", Description: "close"},
+	openBindings := provider.KeyBindings()
+	if len(openBindings) != 1 {
+		t.Fatalf("popup binding count = %d, want 1", len(openBindings))
 	}
-	if got := provider.KeyHints(); !reflect.DeepEqual(got, wantOpen) {
-		t.Fatalf("popup KeyHints() = %#v, want %#v", got, wantOpen)
+	if got := keybinding.Hints(openBindings); len(got) != 0 {
+		t.Fatalf("visible popup hints = %#v, want none", got)
+	}
+}
+
+func TestSelectFieldPopupClosesWhenItLosesFocus(t *testing.T) {
+	overlays := &testOverlayHost{}
+	field := newTestFactoryWithOverlays(overlays).SelectField(
+		"Mode",
+		[]string{"CW", "SSB"},
+		0,
+		6,
+		24,
+	)
+	field.Focus(nil)
+	field.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+
+	popup := overlays.current(t)
+	popup.Blur()
+
+	if overlays.primitive != nil {
+		t.Fatal("popup remained open after losing focus")
 	}
 }
 

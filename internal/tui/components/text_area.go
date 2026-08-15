@@ -10,7 +10,7 @@ import (
 // TextArea is an application-styled multiline text input.
 type TextArea interface {
 	tview.FormItem
-	keybinding.HintProvider
+	keybinding.BindingProvider
 	keybinding.ParentBindingBlocker
 	Value() string
 	SetValue(value string)
@@ -78,12 +78,8 @@ func (a *textArea) BlocksParentBindings() bool {
 	return true
 }
 
-func (a *textArea) KeyHints() []keybinding.Hint {
-	native := []keybinding.Hint{
-		{Keys: "Enter", Description: "new line"},
-		{Keys: "Ctrl-Z/Ctrl-Y", Description: "undo/redo"},
-	}
-	return keybinding.MergeHints(native, keybinding.Hints(a.bindings)...)
+func (a *textArea) KeyBindings() []keybinding.Binding {
+	return append([]keybinding.Binding(nil), a.bindings...)
 }
 
 func (a *textArea) MouseHandler() mouseHandler {

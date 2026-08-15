@@ -1,8 +1,6 @@
 package components
 
 import (
-	"morsemanual/internal/tui/keybinding"
-
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -10,7 +8,6 @@ import (
 // Button is an application-styled action button.
 type Button interface {
 	tview.Primitive
-	keybinding.HintProvider
 	SetSelectedFunc(handler func())
 }
 
@@ -31,10 +28,6 @@ func newButton(label string, theme Theme, focusChanged func()) Button {
 		notify(focusChanged)
 	})
 	return &button{Button: view}
-}
-
-func (b *button) KeyHints() []keybinding.Hint {
-	return []keybinding.Hint{{Keys: "Enter", Description: "activate"}}
 }
 
 func (b *button) MouseHandler() mouseHandler {

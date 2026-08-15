@@ -19,12 +19,12 @@ func (p *page) newSearch(controls components.Factory) components.InputField {
 	search.SetBindings(
 		keybinding.OnKey(
 			tcell.KeyEnter,
-			keybinding.Hint{Keys: "Enter", Description: "done"},
+			"done",
 			func() { p.leaveSearch(false) },
 		),
 		keybinding.OnKey(
 			tcell.KeyEscape,
-			keybinding.Hint{Keys: "Esc", Description: "clear"},
+			"clear",
 			func() { p.leaveSearch(true) },
 		),
 	)
@@ -32,16 +32,11 @@ func (p *page) newSearch(controls components.Factory) components.InputField {
 }
 
 func (p *page) searchBindings() []keybinding.Binding {
-	return []keybinding.Binding{{
-		Hint: keybinding.Hint{Keys: "/", Description: "search"},
-		Handler: func(event *tcell.EventKey) bool {
-			if event.Key() != tcell.KeyRune || event.Rune() != '/' {
-				return false
-			}
-			p.host.SetFocus(p.search)
-			return true
-		},
-	}}
+	return []keybinding.Binding{keybinding.OnRune(
+		'/',
+		"search",
+		func() { p.host.SetFocus(p.search) },
+	)}
 }
 
 func (p *page) leaveSearch(clear bool) {

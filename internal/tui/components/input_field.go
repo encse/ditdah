@@ -10,7 +10,7 @@ import (
 // InputField is an application-styled text input.
 type InputField interface {
 	tview.FormItem
-	keybinding.HintProvider
+	keybinding.BindingProvider
 	keybinding.ParentBindingBlocker
 	Value() string
 	SetValue(value string)
@@ -24,8 +24,8 @@ func (i *inputField) BlocksParentBindings() bool {
 	return true
 }
 
-func (i *inputField) KeyHints() []keybinding.Hint {
-	return keybinding.Hints(i.bindings)
+func (i *inputField) KeyBindings() []keybinding.Binding {
+	return append([]keybinding.Binding(nil), i.bindings...)
 }
 
 func (i *inputField) MouseHandler() mouseHandler {

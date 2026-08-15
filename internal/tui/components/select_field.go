@@ -12,7 +12,7 @@ import (
 // SelectField is a selection control with a full-width bordered popup.
 type SelectField interface {
 	tview.FormItem
-	keybinding.HintProvider
+	keybinding.BindingProvider
 	CurrentOption() (index int, value string)
 }
 
@@ -35,7 +35,6 @@ type selectField struct {
 	focusBackground     tcell.Color
 	formLabelWidth      int
 	formFieldWidth      int
-	finished            func(tcell.Key)
 	overlays            OverlayHost
 	overlay             Overlay
 }
@@ -99,8 +98,9 @@ func (s *selectField) SetFormAttributes(
 	return s
 }
 
-func (s *selectField) SetFinishedFunc(handler func(tcell.Key)) tview.FormItem {
-	s.finished = handler
+func (s *selectField) SetFinishedFunc(func(tcell.Key)) tview.FormItem {
+	// The application owns form focus navigation. This method exists only to
+	// satisfy tview.FormItem; the select never translates keys into navigation.
 	return s
 }
 
@@ -119,11 +119,15 @@ func (s *selectField) CurrentOption() (int, string) {
 	return s.selected, s.options[s.selected]
 }
 
-func (s *selectField) KeyHints() []keybinding.Hint {
-	return []keybinding.Hint{
-		{Keys: "Enter/Space", Description: "open"},
-		{Keys: "Tab/Shift+Tab", Description: "next/previous"},
-	}
+func (s *selectField) KeyBindings() []keybinding.Binding {
+	return []keybinding.Binding{keybinding.On(
+		"open",
+		func() {
+			s.openPopup()
+		},
+		keybinding.Key(tcell.KeyEnter),
+		keybinding.Rune(' '),
+	)}
 }
 
 func (s *selectField) Draw(screen tcell.Screen) {
@@ -166,14 +170,13 @@ func (s *selectField) InputHandler() func(
 		if s.disabled {
 			return
 		}
+		for _, binding := range s.KeyBindings() {
+			if binding.Handle(event) {
+				return
+			}
+		}
 
 		switch event.Key() {
-		case tcell.KeyEnter:
-			if s.open {
-				s.selectHighlighted()
-			} else {
-				s.openPopup()
-			}
 		case tcell.KeyDown:
 			if !s.open {
 				s.openPopup()
@@ -193,25 +196,6 @@ func (s *selectField) InputHandler() func(
 		case tcell.KeyEnd:
 			if s.open && len(s.options) > 0 {
 				s.highlighted = len(s.options) - 1
-			}
-		case tcell.KeyEscape:
-			if s.open {
-				s.closePopup()
-			} else if s.finished != nil {
-				s.finished(tcell.KeyEscape)
-			}
-		case tcell.KeyTab, tcell.KeyBacktab:
-			s.closePopup()
-			if s.finished != nil {
-				s.finished(event.Key())
-			}
-		case tcell.KeyRune:
-			if event.Rune() == ' ' {
-				if s.open {
-					s.selectHighlighted()
-				} else {
-					s.openPopup()
-				}
 			}
 		}
 	})
@@ -271,6 +255,16 @@ func (s *selectField) closePopup() {
 	overlay.Close()
 }
 
+func (s *selectField) removePopup() {
+	s.open = false
+	if s.overlay == nil {
+		return
+	}
+	overlay := s.overlay
+	s.overlay = nil
+	overlay.Remove()
+}
+
 func (s *selectField) selectHighlighted() {
 	if s.highlighted >= 0 && s.highlighted < len(s.options) {
 		s.selected = s.highlighted
@@ -288,13 +282,12 @@ type selectPopup struct {
 	height      int
 }
 
-func (p *selectPopup) KeyHints() []keybinding.Hint {
-	return []keybinding.Hint{
-		{Keys: "↑/k ↓/j", Description: "move"},
-		{Keys: "PgUp/PgDn", Description: "page"},
-		{Keys: "Enter/Space", Description: "select"},
-		{Keys: "Esc", Description: "close"},
-	}
+func (p *selectPopup) KeyBindings() []keybinding.Binding {
+	return []keybinding.Binding{keybinding.OnKey(
+		tcell.KeyEscape,
+		"close",
+		p.selectField.closePopup,
+	)}
 }
 
 func newSelectPopup(selectField *selectField) tview.Primitive {
@@ -379,6 +372,7 @@ func (p *selectPopup) Focus(_ func(tview.Primitive)) {
 func (p *selectPopup) Blur() {
 	p.Box.Blur()
 	p.list.Blur()
+	p.selectField.removePopup()
 }
 
 func (p *selectPopup) HasFocus() bool {
@@ -393,12 +387,10 @@ func (p *selectPopup) InputHandler() func(
 		event *tcell.EventKey,
 		setFocus func(tview.Primitive),
 	) {
-		if event.Key() == tcell.KeyTab || event.Key() == tcell.KeyBacktab {
-			p.selectField.closePopup()
-			if p.selectField.finished != nil {
-				p.selectField.finished(event.Key())
+		for _, binding := range p.KeyBindings() {
+			if binding.Handle(event) {
+				return
 			}
-			return
 		}
 		if handler := p.list.InputHandler(); handler != nil {
 			handler(event, setFocus)

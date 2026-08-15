@@ -16,6 +16,7 @@ type Host interface {
 	SetChangedFunc(handler func())
 	Active() bool
 	Top() tview.Primitive
+	FocusBeforeTop() tview.Primitive
 }
 
 type host struct {
@@ -70,6 +71,13 @@ func (h *host) Top() tview.Primitive {
 	return h.entries[len(h.entries)-1].primitive
 }
 
+func (h *host) FocusBeforeTop() tview.Primitive {
+	if len(h.entries) == 0 {
+		return nil
+	}
+	return h.entries[len(h.entries)-1].previousFocus
+}
+
 func (h *host) Push(primitive tview.Primitive) components.Overlay {
 	h.nextID++
 	name := fmt.Sprintf("overlay-%d", h.nextID)
@@ -84,7 +92,7 @@ func (h *host) Push(primitive tview.Primitive) components.Overlay {
 	return &handle{host: h, name: name}
 }
 
-func (h *host) close(name string) {
+func (h *host) close(name string, restoreFocus bool) {
 	index := -1
 	for entryIndex, entry := range h.entries {
 		if entry.name == name {
@@ -101,8 +109,10 @@ func (h *host) close(name string) {
 		h.pages.RemovePage(h.entries[entryIndex].name)
 	}
 	h.entries = h.entries[:index]
-	h.app.SetFocus(previousFocus)
-	h.notifyChanged()
+	if restoreFocus {
+		h.app.SetFocus(previousFocus)
+		h.notifyChanged()
+	}
 }
 
 func (h *host) notifyChanged() {
@@ -116,5 +126,13 @@ func (h *handle) Close() {
 		return
 	}
 	h.closed = true
-	h.host.close(h.name)
+	h.host.close(h.name, true)
+}
+
+func (h *handle) Remove() {
+	if h.closed {
+		return
+	}
+	h.closed = true
+	h.host.close(h.name, false)
 }

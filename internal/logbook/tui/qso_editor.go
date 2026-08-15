@@ -90,11 +90,6 @@ func newQSOEditor(
 	editor.name = editor.input(controls, "Name", qso.Name)
 	editor.qth = editor.input(controls, "QTH", qso.QTH)
 	editor.notes = controls.TextArea("", qso.Notes)
-	editor.notes.SetBindings(keybinding.OnKey(
-		tcell.KeyEscape,
-		keybinding.Hint{Keys: "Esc", Description: "cancel"},
-		editor.close,
-	))
 	editor.message = controls.TextView()
 	editor.ok = controls.Button("OK")
 	editor.cancel = controls.Button("Cancel")
@@ -130,11 +125,7 @@ func (e *qsoEditor) Focusables() []tview.Primitive {
 }
 
 func (e *qsoEditor) KeyBindings() []keybinding.Binding {
-	return []keybinding.Binding{keybinding.OnKey(
-		tcell.KeyEscape,
-		keybinding.Hint{Keys: "Esc", Description: "cancel"},
-		e.close,
-	)}
+	return nil
 }
 
 func (e *qsoEditor) Size() modal.Size {
@@ -236,22 +227,6 @@ func (e *qsoEditor) input(
 ) components.InputField {
 	input := controls.InputField(label, value)
 	input.SetLabelWidth(qsoEditorLabelWidth)
-	input.SetBindings(
-		keybinding.OnKey(
-			tcell.KeyEnter,
-			keybinding.Hint{Keys: "Enter", Description: "next"},
-			func() {
-				if e.handle != nil {
-					e.handle.FocusNext()
-				}
-			},
-		),
-		keybinding.OnKey(
-			tcell.KeyEscape,
-			keybinding.Hint{Keys: "Esc", Description: "cancel"},
-			e.close,
-		),
-	)
 	return input
 }
 
@@ -326,21 +301,18 @@ func editorModes(current string) ([]string, int) {
 }
 
 func (p *page) editBinding() keybinding.Binding {
-	return keybinding.Binding{
-		Hint: keybinding.Hint{Keys: "Enter", Description: "edit QSO"},
-		Handler: func(event *tcell.EventKey) bool {
-			if event.Key() != tcell.KeyEnter {
-				return false
-			}
+	return keybinding.OnKey(
+		tcell.KeyEnter,
+		"edit QSO",
+		func() {
 			qso, ok := p.selectedQSO()
 			if !ok {
-				return false
+				return
 			}
 			editor := newQSOEditor(p.host.Components(), qso, p.updateQSO)
 			editor.setHandle(p.host.OpenModal(editor))
-			return true
 		},
-	}
+	)
 }
 
 func (p *page) updateQSO(qso domain.QSO) (domain.QSO, error) {

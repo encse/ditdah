@@ -1,8 +1,12 @@
-// Package keybinding describes keyboard actions and user-visible keyboard
-// hints independently from the controls which handle them.
+// Package keybinding keeps keyboard triggers, handlers, and their
+// user-visible descriptions together.
 package keybinding
 
-import "github.com/gdamore/tcell/v2"
+import (
+	"strings"
+
+	"github.com/gdamore/tcell/v2"
+)
 
 // Hint describes a keyboard action for display in the user interface.
 type Hint struct {
@@ -10,10 +14,9 @@ type Hint struct {
 	Description string
 }
 
-// HintProvider exposes the keyboard actions currently available on a control.
-// The control may still delegate the actual event handling to tview.
-type HintProvider interface {
-	KeyHints() []Hint
+// BindingProvider exposes the keyboard actions currently handled by a control.
+type BindingProvider interface {
+	KeyBindings() []Binding
 }
 
 // ParentBindingBlocker marks a focused control which must receive input before
@@ -22,41 +25,122 @@ type ParentBindingBlocker interface {
 	BlocksParentBindings() bool
 }
 
-// Binding is an application-handled keyboard action and its user-visible hint.
+// Stroke identifies one keyboard event accepted by a binding.
+type Stroke struct {
+	key  tcell.Key
+	rune rune
+}
+
+// Key creates a stroke for a non-rune key.
+func Key(key tcell.Key) Stroke {
+	return Stroke{key: key}
+}
+
+// Rune creates a stroke for a typed character.
+func Rune(character rune) Stroke {
+	return Stroke{key: tcell.KeyRune, rune: character}
+}
+
+// Binding invokes one callback for its configured keyboard strokes.
 type Binding struct {
-	Hint    Hint
-	Handler func(event *tcell.EventKey) bool
+	strokes     []Stroke
+	description string
+	handler     func()
+}
+
+// On creates a binding accepting any of the supplied strokes.
+func On(
+	description string,
+	handler func(),
+	stroke Stroke,
+	additional ...Stroke,
+) Binding {
+	strokes := append([]Stroke{stroke}, additional...)
+	return Binding{
+		strokes:     strokes,
+		description: description,
+		handler:     handler,
+	}
 }
 
 // OnKey creates a binding handled by one non-rune key.
-func OnKey(key tcell.Key, hint Hint, handler func()) Binding {
-	return Binding{
-		Hint: hint,
-		Handler: func(event *tcell.EventKey) bool {
-			if event.Key() != key {
-				return false
-			}
-			handler()
-			return true
-		},
-	}
+func OnKey(key tcell.Key, description string, handler func()) Binding {
+	return On(description, handler, Key(key))
 }
 
-// Handle invokes the binding. It reports whether the event was handled.
+// OnRune creates a binding handled by one typed character.
+func OnRune(character rune, description string, handler func()) Binding {
+	return On(description, handler, Rune(character))
+}
+
+// Handle invokes the callback only when the event matches a configured stroke.
 func (b Binding) Handle(event *tcell.EventKey) bool {
-	if b.Handler == nil {
+	if b.handler == nil {
 		return false
 	}
-	return b.Handler(event)
+	for _, stroke := range b.strokes {
+		if stroke.matches(event) {
+			b.handler()
+			return true
+		}
+	}
+	return false
 }
 
-// Hints returns the user-visible hints belonging to application bindings.
+// Hint returns the description derived from the binding's keyboard strokes.
+func (b Binding) Hint() Hint {
+	keys := make([]string, 0, len(b.strokes))
+	for _, stroke := range b.strokes {
+		keys = append(keys, stroke.name())
+	}
+	return Hint{Keys: strings.Join(keys, "/"), Description: b.description}
+}
+
+func (s Stroke) matches(event *tcell.EventKey) bool {
+	return event.Key() == s.key && (s.key != tcell.KeyRune || event.Rune() == s.rune)
+}
+
+func (s Stroke) name() string {
+	if s.key == tcell.KeyRune {
+		if s.rune == ' ' {
+			return "Space"
+		}
+		return string(s.rune)
+	}
+	if s.key == tcell.KeyBacktab {
+		return "Shift+Tab"
+	}
+	if name, ok := tcell.KeyNames[s.key]; ok {
+		return name
+	}
+	return "Unknown"
+}
+
+// Hints returns the footer-visible hints belonging to handled bindings.
 func Hints(bindings []Binding) []Hint {
 	hints := make([]Hint, 0, len(bindings))
 	for _, binding := range bindings {
-		hints = append(hints, binding.Hint)
+		hint := binding.Hint()
+		if binding.handler == nil || !visibleInFooter(hint) {
+			continue
+		}
+		hints = append(hints, hint)
 	}
 	return hints
+}
+
+func visibleInFooter(hint Hint) bool {
+	switch hint.Keys {
+	case "", "Enter", "Esc", "Space", "Enter/Space", "Tab", "Shift+Tab":
+		return false
+	default:
+		return true
+	}
+}
+
+// MergeBindingHints adds the visible hints from bindings. Later hints win.
+func MergeBindingHints(hints []Hint, bindings ...Binding) []Hint {
+	return MergeHints(hints, Hints(bindings)...)
 }
 
 // MergeHints adds or replaces hints by their key label. Later hints win.
