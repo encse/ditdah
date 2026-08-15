@@ -43,3 +43,29 @@ func TestInputFieldValue(t *testing.T) {
 		t.Fatalf("Value() = %q, want %q", got, "HA5XYZ")
 	}
 }
+
+func TestInputFieldCallbacks(t *testing.T) {
+	field := newTestFactory().InputField("Search", "")
+	var changed string
+	var done tcell.Key
+	field.SetPlaceholder("callsign...")
+	field.SetChangedFunc(func(value string) {
+		changed = value
+	})
+	field.SetDoneFunc(func(key tcell.Key) {
+		done = key
+	})
+
+	field.SetValue("HA7NCS")
+	field.InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		nil,
+	)
+
+	if changed != "HA7NCS" {
+		t.Fatalf("changed value = %q, want %q", changed, "HA7NCS")
+	}
+	if done != tcell.KeyEnter {
+		t.Fatalf("done key = %v, want %v", done, tcell.KeyEnter)
+	}
+}

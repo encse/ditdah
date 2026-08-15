@@ -6,11 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 	"morsemanual/internal/logbook"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/overlay"
+
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 const qsoPageSize = 500
@@ -42,15 +43,15 @@ type logbookView struct {
 	theme colorTheme
 
 	header   components.TextView
-	search   *tview.InputField
+	search   components.InputField
 	table    components.Table
 	details  components.TextView
 	footer   components.TextView
 	overlays overlay.Host
 
-	qsos      []logbook.QSO
-	visible   []logbook.QSO
-	searching bool
+	qsos         []logbook.QSO
+	filteredQsos []logbook.QSO
+	searching    bool
 }
 
 // Run opens the logbook screen and blocks until the user quits or ctx is
@@ -105,13 +106,8 @@ func newLogbookView(
 	view.header.SetDynamicColors(true)
 	view.header.SetTextColor(theme.accent)
 
-	view.search = tview.NewInputField().
-		SetLabel(" Search  ").
-		SetPlaceholder("callsign, date, frequency, mode, name, QTH...").
-		SetLabelColor(theme.accent).
-		SetFieldTextColor(theme.styles.PrimaryTextColor).
-		SetFieldBackgroundColor(theme.styles.ContrastBackgroundColor).
-		SetPlaceholderTextColor(theme.muted)
+	view.search = controls.InputField(" Search  ", "")
+	view.search.SetPlaceholder("callsign, date, frequency, mode, name, QTH...")
 	view.search.SetChangedFunc(func(string) {
 		view.applyFilter()
 	})
@@ -182,7 +178,7 @@ func (v *logbookView) captureKey(event *tcell.EventKey) *tcell.EventKey {
 func (v *logbookView) leaveSearch(clear bool) {
 	v.searching = false
 	if clear {
-		v.search.SetText("")
+		v.search.SetValue("")
 	}
 	v.app.SetFocus(v.table)
 	v.renderFooter()
@@ -211,12 +207,12 @@ func (v *logbookView) load() error {
 
 func (v *logbookView) applyFilter() {
 	selectedID := v.selectedID()
-	query := strings.ToLower(strings.TrimSpace(v.search.GetText()))
+	query := strings.ToLower(strings.TrimSpace(v.search.Value()))
 
-	v.visible = v.visible[:0]
+	v.filteredQsos = v.filteredQsos[:0]
 	for _, qso := range v.qsos {
 		if query == "" || strings.Contains(searchableText(qso), query) {
-			v.visible = append(v.visible, qso)
+			v.filteredQsos = append(v.filteredQsos, qso)
 		}
 	}
 
@@ -245,7 +241,7 @@ func (v *logbookView) renderTable(selectedID string) {
 	}
 
 	selectedRow := 1
-	for index, qso := range v.visible {
+	for index, qso := range v.filteredQsos {
 		localTime := qso.StartedAt.Local()
 		values := []string{
 			localTime.Format("2006-01-02"),
@@ -276,7 +272,7 @@ func (v *logbookView) renderTable(selectedID string) {
 		}
 	}
 
-	if len(v.visible) == 0 {
+	if len(v.filteredQsos) == 0 {
 		v.table.SetCell(1, 0, components.TableCell{
 			Text:     "No matching QSOs.",
 			Style:    components.TableCellMuted,
@@ -294,7 +290,7 @@ func (v *logbookView) renderHeader() {
 	text := fmt.Sprintf(
 		"[::b] Logbook[-:-:-]  %s(%d/%d)[-]",
 		colorTag(v.theme.muted),
-		len(v.visible),
+		len(v.filteredQsos),
 		len(v.qsos),
 	)
 	v.header.SetText(text)
@@ -313,12 +309,12 @@ func (v *logbookView) renderFooter() {
 
 func (v *logbookView) renderDetails(index int) {
 	v.details.Clear()
-	if index < 0 || index >= len(v.visible) {
+	if index < 0 || index >= len(v.filteredQsos) {
 		fmt.Fprint(v.details, colorTag(v.theme.muted)+"No QSO is selected.[-]")
 		return
 	}
 
-	qso := v.visible[index]
+	qso := v.filteredQsos[index]
 	localTime := qso.StartedAt.Local()
 	synced := "No"
 	if syncedAt, present := qso.QRZSyncedAt.Get(); present {
@@ -345,10 +341,10 @@ func (v *logbookView) renderDetails(index int) {
 func (v *logbookView) selectedID() string {
 	row, _ := v.table.Selection()
 	index := row - 1
-	if index < 0 || index >= len(v.visible) {
+	if index < 0 || index >= len(v.filteredQsos) {
 		return ""
 	}
-	return v.visible[index].ID
+	return v.filteredQsos[index].ID
 }
 
 func searchableText(qso logbook.QSO) string {

@@ -10,6 +10,9 @@ type InputField interface {
 	tview.FormItem
 	Value() string
 	SetValue(value string)
+	SetPlaceholder(placeholder string)
+	SetChangedFunc(handler func(value string))
+	SetDoneFunc(handler func(key tcell.Key))
 }
 
 type inputField struct {
@@ -27,6 +30,7 @@ func newInputField(label, value string, theme Theme) InputField {
 			SetLabelColor(theme.LabelColor).
 			SetFieldTextColor(theme.FieldTextColor).
 			SetFieldBackgroundColor(theme.FieldBackground).
+			SetPlaceholderTextColor(theme.MutedText).
 			SetFieldWidth(0),
 		idleBackground:  theme.FieldBackground,
 		focusBackground: theme.ActiveFieldBackground,
@@ -43,6 +47,18 @@ func (i *inputField) Value() string {
 
 func (i *inputField) SetValue(value string) {
 	i.SetText(value)
+}
+
+func (i *inputField) SetPlaceholder(placeholder string) {
+	i.InputField.SetPlaceholder(placeholder)
+}
+
+func (i *inputField) SetChangedFunc(handler func(value string)) {
+	i.InputField.SetChangedFunc(handler)
+}
+
+func (i *inputField) SetDoneFunc(handler func(key tcell.Key)) {
+	i.InputField.SetDoneFunc(handler)
 }
 
 func (i *inputField) SetFormAttributes(
