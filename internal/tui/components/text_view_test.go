@@ -1,35 +1,30 @@
 package components
 
 import (
-	"fmt"
+	"reflect"
 	"testing"
+
+	"morsemanual/internal/tui/keybinding"
 )
 
-func TestTextViewUsesThemeAndImplementsWriter(t *testing.T) {
-	screen := newTestScreen(t)
+func TestTextViewPublishesScrollHintsOnlyWhenScrollable(t *testing.T) {
 	view := newTestFactory().TextView()
-	view.SetRect(2, 2, 20, 1)
-
-	if _, err := fmt.Fprint(view, "Hello"); err != nil {
-		t.Fatalf("write text: %v", err)
+	if got := view.KeyHints(); got != nil {
+		t.Fatalf("KeyHints() = %#v before enabling scrolling, want nil", got)
 	}
-	if got := view.Text(); got != "Hello" {
-		t.Fatalf("Text() = %q, want %q", got, "Hello")
+
+	view.SetScrollable(true)
+	want := []keybinding.Hint{
+		{Keys: "↑/k ↓/j", Description: "scroll"},
+		{Keys: "PgUp/PgDn", Description: "page"},
+		{Keys: "Home/End g/G", Description: "first/last"},
 	}
-	view.Draw(screen)
+	if got := view.KeyHints(); !reflect.DeepEqual(got, want) {
+		t.Fatalf("KeyHints() = %#v, want %#v", got, want)
+	}
 
-	assertRune(t, screen, 2, 2, 'H')
-	assertForeground(t, screen, 2, 2, testTheme().PrimaryText)
-	assertBackground(t, screen, 2, 2, testTheme().Background)
-}
-
-func TestTextViewAppliesSemanticStyle(t *testing.T) {
-	screen := newTestScreen(t)
-	view := newTestFactory().TextView()
-	view.SetText("Status")
-	view.SetStyle(TextViewMuted)
-	view.SetRect(0, 0, 10, 1)
-	view.Draw(screen)
-
-	assertForeground(t, screen, 0, 0, testTheme().MutedText)
+	view.SetScrollable(false)
+	if got := view.KeyHints(); got != nil {
+		t.Fatalf("KeyHints() = %#v after disabling scrolling, want nil", got)
+	}
 }

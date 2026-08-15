@@ -41,10 +41,6 @@ var nordTheme = func() colorTheme {
 	}
 }()
 
-func colorTag(color tcell.Color) string {
-	return "[" + color.Name(true) + "]"
-}
-
 func (t colorTheme) components() components.Theme {
 	return components.Theme{
 		Background:            t.styles.PrimitiveBackgroundColor,

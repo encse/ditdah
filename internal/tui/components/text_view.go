@@ -3,6 +3,8 @@ package components
 import (
 	"io"
 
+	"morsemanual/internal/tui/keybinding"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -22,19 +24,26 @@ type TextView interface {
 	tview.Primitive
 	io.Writer
 	Clear()
+	InnerRect() (x int, y int, width int, height int)
+	KeyHints() []keybinding.Hint
+	ScrollOffset() (row int, column int)
+	ScrollToStart()
 	Text() string
 	SetText(text string)
 	SetStyle(style TextViewStyle)
 	SetTextColor(color tcell.Color)
 	SetTextAlign(alignment int)
 	SetDynamicColors(enabled bool)
+	SetScrollable(enabled bool)
+	SetWrap(enabled bool)
 	SetWordWrap(enabled bool)
 	SetBorder(title string)
 }
 
 type textView struct {
 	*tview.TextView
-	theme Theme
+	theme      Theme
+	scrollable bool
 }
 
 func (v *textView) MouseHandler() mouseHandler {
@@ -53,6 +62,29 @@ func newTextView(theme Theme, focusChanged func()) TextView {
 
 func (v *textView) Clear() {
 	v.TextView.Clear()
+}
+
+func (v *textView) KeyHints() []keybinding.Hint {
+	if !v.scrollable {
+		return nil
+	}
+	return []keybinding.Hint{
+		{Keys: "↑/k ↓/j", Description: "scroll"},
+		{Keys: "PgUp/PgDn", Description: "page"},
+		{Keys: "Home/End g/G", Description: "first/last"},
+	}
+}
+
+func (v *textView) InnerRect() (int, int, int, int) {
+	return v.GetInnerRect()
+}
+
+func (v *textView) ScrollOffset() (int, int) {
+	return v.GetScrollOffset()
+}
+
+func (v *textView) ScrollToStart() {
+	v.ScrollToBeginning()
 }
 
 func (v *textView) Text() string {
@@ -88,6 +120,15 @@ func (v *textView) SetTextAlign(alignment int) {
 
 func (v *textView) SetDynamicColors(enabled bool) {
 	v.TextView.SetDynamicColors(enabled)
+}
+
+func (v *textView) SetScrollable(enabled bool) {
+	v.scrollable = enabled
+	v.TextView.SetScrollable(enabled)
+}
+
+func (v *textView) SetWrap(enabled bool) {
+	v.TextView.SetWrap(enabled)
 }
 
 func (v *textView) SetWordWrap(enabled bool) {
