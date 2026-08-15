@@ -125,6 +125,12 @@ func (a *application) Refresh() {
 		hints = append(hints, keybinding.Hints(a.activePage.KeyBindings())...)
 		hints = append(hints, keybinding.Hints(a.globalBindings)...)
 	}
+	if !a.overlays.Active() && len(a.activePage.Focusables()) > 1 {
+		hints = append(hints, keybinding.Hint{
+			Keys:        "Tab/Shift+Tab",
+			Description: "next/previous",
+		})
+	}
 	a.layout.Footer().SetKeyHints(hints)
 }
 
@@ -181,6 +187,9 @@ func (a *application) captureKey(event *tcell.EventKey) *tcell.EventKey {
 	if a.overlays.Active() || a.activePage == nil {
 		return event
 	}
+	if a.moveFocus(event) {
+		return nil
+	}
 	if a.parentBindingsBlocked() {
 		return event
 	}
@@ -198,6 +207,38 @@ func (a *application) captureKey(event *tcell.EventKey) *tcell.EventKey {
 		}
 	}
 	return event
+}
+
+func (a *application) moveFocus(event *tcell.EventKey) bool {
+	direction := 0
+	switch event.Key() {
+	case tcell.KeyTab:
+		direction = 1
+	case tcell.KeyBacktab:
+		direction = -1
+	default:
+		return false
+	}
+
+	focusables := a.activePage.Focusables()
+	if len(focusables) == 0 {
+		return false
+	}
+	current := a.engine.GetFocus()
+	currentIndex := -1
+	for index, primitive := range focusables {
+		if primitive == current {
+			currentIndex = index
+			break
+		}
+	}
+	nextIndex := currentIndex + direction
+	if currentIndex < 0 && direction < 0 {
+		nextIndex = len(focusables) - 1
+	}
+	nextIndex = (nextIndex + len(focusables)) % len(focusables)
+	a.SetFocus(focusables[nextIndex])
+	return true
 }
 
 func (a *application) focusedHints() []keybinding.Hint {

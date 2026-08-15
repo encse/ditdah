@@ -27,7 +27,6 @@ func (i *inputField) KeyHints() []keybinding.Hint {
 	return []keybinding.Hint{
 		{Keys: "Enter", Description: "done"},
 		{Keys: "Esc", Description: "cancel"},
-		{Keys: "Tab/Shift+Tab", Description: "next/previous"},
 	}
 }
 

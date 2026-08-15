@@ -12,5 +12,6 @@ type Page interface {
 	ID() string
 	Title() string
 	Content() tview.Primitive
+	Focusables() []tview.Primitive
 	KeyBindings() []keybinding.Binding
 }

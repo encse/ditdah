@@ -37,14 +37,19 @@ func newFooter(controls Factory) Footer {
 		context: context,
 		hints:   hints,
 	}
-	footer.
-		AddItem(context, 0, 1, false).
-		AddItem(hints, 0, 3, false)
+	footer.SetContext("")
 	return footer
 }
 
 func (f *footer) SetContext(context string) {
 	f.context.SetText(context)
+	f.Clear()
+	if context != "" {
+		f.AddItem(f.context, 0, 1, false)
+		f.AddItem(f.hints, 0, 3, false)
+		return
+	}
+	f.AddItem(f.hints, 0, 1, false)
 }
 
 func (f *footer) SetKeyHints(hints []keybinding.Hint) {

@@ -17,6 +17,9 @@ func TestPageMetadata(t *testing.T) {
 	if page.Content() == nil {
 		t.Fatal("Content() is nil")
 	}
+	if got := len(page.Focusables()); got != 3 {
+		t.Fatalf("Focusables() has %d items, want 3", got)
+	}
 }
 
 func TestPageRefreshesWholeViewForSelectionChanges(t *testing.T) {

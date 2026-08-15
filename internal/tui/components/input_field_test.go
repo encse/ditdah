@@ -39,7 +39,6 @@ func TestInputFieldPublishesNativeKeyHints(t *testing.T) {
 	want := []keybinding.Hint{
 		{Keys: "Enter", Description: "done"},
 		{Keys: "Esc", Description: "cancel"},
-		{Keys: "Tab/Shift+Tab", Description: "next/previous"},
 	}
 
 	if got := field.KeyHints(); !reflect.DeepEqual(got, want) {

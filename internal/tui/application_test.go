@@ -144,6 +144,51 @@ func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 	handle.Close()
 }
 
+func TestApplicationMovesFocusWithTabAndBacktab(t *testing.T) {
+	app := NewApplication(nordTheme).(*application)
+	first := tview.NewBox()
+	second := tview.NewBox()
+	third := tview.NewBox()
+	page := applicationTestPage{
+		id:         "logbook",
+		title:      "Logbook",
+		content:    first,
+		focusables: []tview.Primitive{first, second, third},
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatalf("register page: %v", err)
+	}
+	if err := app.Show(page.ID()); err != nil {
+		t.Fatalf("show page: %v", err)
+	}
+
+	if got := app.captureKey(tcell.NewEventKey(tcell.KeyTab, 0, 0)); got != nil {
+		t.Fatal("Tab was forwarded")
+	}
+	if got := app.engine.GetFocus(); got != second {
+		t.Fatalf("focus after Tab = %T, want second control", got)
+	}
+
+	if got := app.captureKey(tcell.NewEventKey(tcell.KeyBacktab, 0, 0)); got != nil {
+		t.Fatal("Backtab was forwarded")
+	}
+	if got := app.engine.GetFocus(); got != first {
+		t.Fatalf("focus after Backtab = %T, want first control", got)
+	}
+
+	app.captureKey(tcell.NewEventKey(tcell.KeyBacktab, 0, 0))
+	if got := app.engine.GetFocus(); got != third {
+		t.Fatalf("wrapped focus after Backtab = %T, want third control", got)
+	}
+
+	if footer := drawApplicationFooter(t, app); !strings.Contains(
+		footer,
+		"Tab/Shift+Tab next/previous",
+	) {
+		t.Fatalf("footer = %q, want focus navigation hint", footer)
+	}
+}
+
 func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 	app := NewApplication(nordTheme).(*application)
 	content := &hintPrimitive{
@@ -297,11 +342,12 @@ func TestApplicationRunWaitsForContextShutdown(t *testing.T) {
 }
 
 type applicationTestPage struct {
-	id       string
-	title    string
-	status   string
-	content  tview.Primitive
-	bindings []keybinding.Binding
+	id         string
+	title      string
+	status     string
+	content    tview.Primitive
+	focusables []tview.Primitive
+	bindings   []keybinding.Binding
 }
 
 func (p applicationTestPage) ID() string {
@@ -318,6 +364,10 @@ func (p applicationTestPage) Status() string {
 
 func (p applicationTestPage) Content() tview.Primitive {
 	return p.content
+}
+
+func (p applicationTestPage) Focusables() []tview.Primitive {
+	return p.focusables
 }
 
 func (p applicationTestPage) KeyBindings() []keybinding.Binding {

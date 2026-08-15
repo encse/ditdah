@@ -23,6 +23,29 @@ func TestFooterKeepsContextAndKeyHintsSeparate(t *testing.T) {
 	}
 }
 
+func TestFooterGivesHintsFullWidthWithoutContext(t *testing.T) {
+	footer := newTestFactory().Footer().(*footer)
+	if got := footer.GetItemCount(); got != 1 {
+		t.Fatalf("item count without context = %d, want 1", got)
+	}
+	if got := footer.GetItem(0); got != footer.hints {
+		t.Fatalf("only item without context = %T, want hints", got)
+	}
+
+	footer.SetContext("24 QSOs")
+	if got := footer.GetItemCount(); got != 2 {
+		t.Fatalf("item count with context = %d, want 2", got)
+	}
+
+	footer.SetContext("")
+	if got := footer.GetItemCount(); got != 1 {
+		t.Fatalf("item count after clearing context = %d, want 1", got)
+	}
+	if got := footer.GetItem(0); got != footer.hints {
+		t.Fatalf("only item after clearing context = %T, want hints", got)
+	}
+}
+
 func TestFooterEscapesKeyHintMarkup(t *testing.T) {
 	footer := newTestFactory().Footer().(*footer)
 	footer.SetKeyHints([]keybinding.Hint{

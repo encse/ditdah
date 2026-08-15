@@ -26,6 +26,7 @@ type Page interface {
 	ID() string
 	Title() string
 	Content() tview.Primitive
+	Focusables() []tview.Primitive
 	KeyBindings() []keybinding.Binding
 	Status() string
 }
@@ -82,6 +83,10 @@ func (p *page) Title() string {
 
 func (p *page) Content() tview.Primitive {
 	return p.content
+}
+
+func (p *page) Focusables() []tview.Primitive {
+	return []tview.Primitive{p.search, p.table, p.details.TextView}
 }
 
 func (p *page) KeyBindings() []keybinding.Binding {

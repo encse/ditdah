@@ -69,6 +69,10 @@ func (p testPage) Content() tview.Primitive {
 	return p.content
 }
 
+func (p testPage) Focusables() []tview.Primitive {
+	return nil
+}
+
 func (p testPage) KeyBindings() []keybinding.Binding {
 	return nil
 }
