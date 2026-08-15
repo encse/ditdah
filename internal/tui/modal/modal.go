@@ -24,4 +24,5 @@ type Dialog interface {
 // Handle closes an open modal dialog.
 type Handle interface {
 	Close()
+	FocusNext()
 }

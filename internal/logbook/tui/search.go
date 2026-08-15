@@ -16,14 +16,18 @@ func (p *page) newSearch(controls components.Factory) components.InputField {
 	search.SetChangedFunc(func(string) {
 		p.applyFilter()
 	})
-	search.SetDoneFunc(func(key tcell.Key) {
-		switch key {
-		case tcell.KeyEnter:
-			p.leaveSearch(false)
-		case tcell.KeyEscape:
-			p.leaveSearch(true)
-		}
-	})
+	search.SetBindings(
+		keybinding.OnKey(
+			tcell.KeyEnter,
+			keybinding.Hint{Keys: "Enter", Description: "done"},
+			func() { p.leaveSearch(false) },
+		),
+		keybinding.OnKey(
+			tcell.KeyEscape,
+			keybinding.Hint{Keys: "Esc", Description: "clear"},
+			func() { p.leaveSearch(true) },
+		),
+	)
 	return search
 }
 

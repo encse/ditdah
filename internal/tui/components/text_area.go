@@ -15,18 +15,34 @@ type TextArea interface {
 	Value() string
 	SetValue(value string)
 	SetLabelWidth(width int)
-	SetDoneFunc(handler func(key tcell.Key))
+	SetBindings(bindings ...keybinding.Binding)
 }
 
 type textArea struct {
 	*tview.TextArea
-	theme Theme
+	theme    Theme
+	bindings []keybinding.Binding
 }
 
 func (a *textArea) Draw(screen tcell.Screen) {
 	a.TextArea.Draw(screen)
 	if a.HasFocus() {
 		screen.SetCursorStyle(tcell.CursorStyleDefault, a.theme.CursorColor)
+	}
+}
+
+func (a *textArea) InputHandler() func(
+	*tcell.EventKey,
+	func(tview.Primitive),
+) {
+	native := a.TextArea.InputHandler()
+	return func(event *tcell.EventKey, setFocus func(tview.Primitive)) {
+		for _, binding := range a.bindings {
+			if binding.Handle(event) {
+				return
+			}
+		}
+		native(event, setFocus)
 	}
 }
 
@@ -63,11 +79,11 @@ func (a *textArea) BlocksParentBindings() bool {
 }
 
 func (a *textArea) KeyHints() []keybinding.Hint {
-	return []keybinding.Hint{
+	native := []keybinding.Hint{
 		{Keys: "Enter", Description: "new line"},
 		{Keys: "Ctrl-Z/Ctrl-Y", Description: "undo/redo"},
-		{Keys: "Esc", Description: "cancel"},
 	}
+	return keybinding.MergeHints(native, keybinding.Hints(a.bindings)...)
 }
 
 func (a *textArea) MouseHandler() mouseHandler {
@@ -86,8 +102,8 @@ func (a *textArea) SetLabelWidth(width int) {
 	a.TextArea.SetLabelWidth(width)
 }
 
-func (a *textArea) SetDoneFunc(handler func(key tcell.Key)) {
-	a.TextArea.SetFinishedFunc(handler)
+func (a *textArea) SetBindings(bindings ...keybinding.Binding) {
+	a.bindings = append(a.bindings[:0], bindings...)
 }
 
 func (a *textArea) showFocused() {

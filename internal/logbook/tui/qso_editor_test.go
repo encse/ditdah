@@ -6,6 +6,7 @@ import (
 	"time"
 
 	domain "morsemanual/internal/logbook"
+	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -190,6 +191,52 @@ func TestQSOEditorInputEscapeClosesModal(t *testing.T) {
 
 	if !handle.closed {
 		t.Fatal("focused editor input Escape did not close modal")
+	}
+}
+
+func TestQSOEditorInputEnterFocusesNextControl(t *testing.T) {
+	_, host := newTestPage(t)
+	editor := newQSOEditor(host.Components(), domain.QSO{
+		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
+		Mode:      "CW",
+	}, nil)
+	handle := &testModalHandle{}
+	editor.setHandle(handle)
+
+	editor.callsign.InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		nil,
+	)
+
+	if handle.focusNext != 1 {
+		t.Fatalf("FocusNext calls = %d, want 1", handle.focusNext)
+	}
+	if handle.closed {
+		t.Fatal("input Enter closed modal")
+	}
+}
+
+func TestQSOEditorPublishesCancelBinding(t *testing.T) {
+	_, host := newTestPage(t)
+	editor := newQSOEditor(host.Components(), domain.QSO{
+		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
+		Mode:      "CW",
+	}, nil)
+	handle := &testModalHandle{}
+	editor.setHandle(handle)
+	bindings := editor.KeyBindings()
+
+	if len(bindings) != 1 || bindings[0].Hint != (keybinding.Hint{
+		Keys:        "Esc",
+		Description: "cancel",
+	}) {
+		t.Fatalf("editor bindings = %#v, want Esc cancel", bindings)
+	}
+	if !bindings[0].Handle(tcell.NewEventKey(tcell.KeyEscape, 0, 0)) {
+		t.Fatal("editor cancel binding did not handle Escape")
+	}
+	if !handle.closed {
+		t.Fatal("editor cancel binding did not close modal")
 	}
 }
 

@@ -58,3 +58,22 @@ func Hints(bindings []Binding) []Hint {
 	}
 	return hints
 }
+
+// MergeHints adds or replaces hints by their key label. Later hints win.
+func MergeHints(hints []Hint, additional ...Hint) []Hint {
+	merged := append([]Hint(nil), hints...)
+	for _, hint := range additional {
+		replaced := false
+		for index := range merged {
+			if merged[index].Keys == hint.Keys {
+				merged[index] = hint
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			merged = append(merged, hint)
+		}
+	}
+	return merged
+}

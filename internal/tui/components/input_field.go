@@ -17,7 +17,7 @@ type InputField interface {
 	SetLabelWidth(width int)
 	SetPlaceholder(placeholder string)
 	SetChangedFunc(handler func(value string))
-	SetDoneFunc(handler func(key tcell.Key))
+	SetBindings(bindings ...keybinding.Binding)
 }
 
 func (i *inputField) BlocksParentBindings() bool {
@@ -25,10 +25,7 @@ func (i *inputField) BlocksParentBindings() bool {
 }
 
 func (i *inputField) KeyHints() []keybinding.Hint {
-	return []keybinding.Hint{
-		{Keys: "Enter", Description: "done"},
-		{Keys: "Esc", Description: "cancel"},
-	}
+	return keybinding.Hints(i.bindings)
 }
 
 func (i *inputField) MouseHandler() mouseHandler {
@@ -41,12 +38,28 @@ type inputField struct {
 	idleBackground  tcell.Color
 	focusBackground tcell.Color
 	theme           Theme
+	bindings        []keybinding.Binding
 }
 
 func (i *inputField) Draw(screen tcell.Screen) {
 	i.InputField.Draw(screen)
 	if i.HasFocus() {
 		screen.SetCursorStyle(tcell.CursorStyleDefault, i.theme.CursorColor)
+	}
+}
+
+func (i *inputField) InputHandler() func(
+	*tcell.EventKey,
+	func(tview.Primitive),
+) {
+	native := i.InputField.InputHandler()
+	return func(event *tcell.EventKey, setFocus func(tview.Primitive)) {
+		for _, binding := range i.bindings {
+			if binding.Handle(event) {
+				return
+			}
+		}
+		native(event, setFocus)
 	}
 }
 
@@ -104,8 +117,8 @@ func (i *inputField) SetChangedFunc(handler func(value string)) {
 	i.InputField.SetChangedFunc(handler)
 }
 
-func (i *inputField) SetDoneFunc(handler func(key tcell.Key)) {
-	i.InputField.SetDoneFunc(handler)
+func (i *inputField) SetBindings(bindings ...keybinding.Binding) {
+	i.bindings = append(i.bindings[:0], bindings...)
 }
 
 func (i *inputField) SetFormAttributes(

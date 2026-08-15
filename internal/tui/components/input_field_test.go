@@ -34,11 +34,23 @@ func TestInputFieldChangesBackgroundWithFocus(t *testing.T) {
 	assertBackground(t, screen, 12, 2, tcell.ColorBlue)
 }
 
-func TestInputFieldPublishesNativeKeyHints(t *testing.T) {
+func TestInputFieldPublishesConfiguredBindingHints(t *testing.T) {
 	field := newTestFactory().InputField("Search", "")
+	field.SetBindings(
+		keybinding.OnKey(
+			tcell.KeyEnter,
+			keybinding.Hint{Keys: "Enter", Description: "apply"},
+			func() {},
+		),
+		keybinding.OnKey(
+			tcell.KeyEscape,
+			keybinding.Hint{Keys: "Esc", Description: "clear"},
+			func() {},
+		),
+	)
 	want := []keybinding.Hint{
-		{Keys: "Enter", Description: "done"},
-		{Keys: "Esc", Description: "cancel"},
+		{Keys: "Enter", Description: "apply"},
+		{Keys: "Esc", Description: "clear"},
 	}
 
 	if got := field.KeyHints(); !reflect.DeepEqual(got, want) {
@@ -62,14 +74,16 @@ func TestInputFieldValue(t *testing.T) {
 func TestInputFieldCallbacks(t *testing.T) {
 	field := newTestFactory().InputField("Search", "")
 	var changed string
-	var done tcell.Key
+	done := 0
 	field.SetPlaceholder("callsign...")
 	field.SetChangedFunc(func(value string) {
 		changed = value
 	})
-	field.SetDoneFunc(func(key tcell.Key) {
-		done = key
-	})
+	field.SetBindings(keybinding.OnKey(
+		tcell.KeyEnter,
+		keybinding.Hint{Keys: "Enter", Description: "done"},
+		func() { done++ },
+	))
 
 	field.SetValue("HA7NCS")
 	field.InputHandler()(
@@ -80,7 +94,7 @@ func TestInputFieldCallbacks(t *testing.T) {
 	if changed != "HA7NCS" {
 		t.Fatalf("changed value = %q, want %q", changed, "HA7NCS")
 	}
-	if done != tcell.KeyEnter {
-		t.Fatalf("done key = %v, want %v", done, tcell.KeyEnter)
+	if done != 1 {
+		t.Fatalf("done calls = %d, want 1", done)
 	}
 }

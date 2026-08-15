@@ -90,7 +90,11 @@ func newQSOEditor(
 	editor.name = editor.input(controls, "Name", qso.Name)
 	editor.qth = editor.input(controls, "QTH", qso.QTH)
 	editor.notes = controls.TextArea("", qso.Notes)
-	editor.notes.SetDoneFunc(editor.inputDone)
+	editor.notes.SetBindings(keybinding.OnKey(
+		tcell.KeyEscape,
+		keybinding.Hint{Keys: "Esc", Description: "cancel"},
+		editor.close,
+	))
 	editor.message = controls.TextView()
 	editor.ok = controls.Button("OK")
 	editor.cancel = controls.Button("Cancel")
@@ -126,7 +130,11 @@ func (e *qsoEditor) Focusables() []tview.Primitive {
 }
 
 func (e *qsoEditor) KeyBindings() []keybinding.Binding {
-	return nil
+	return []keybinding.Binding{keybinding.OnKey(
+		tcell.KeyEscape,
+		keybinding.Hint{Keys: "Esc", Description: "cancel"},
+		e.close,
+	)}
 }
 
 func (e *qsoEditor) Size() modal.Size {
@@ -228,14 +236,23 @@ func (e *qsoEditor) input(
 ) components.InputField {
 	input := controls.InputField(label, value)
 	input.SetLabelWidth(qsoEditorLabelWidth)
-	input.SetDoneFunc(e.inputDone)
+	input.SetBindings(
+		keybinding.OnKey(
+			tcell.KeyEnter,
+			keybinding.Hint{Keys: "Enter", Description: "next"},
+			func() {
+				if e.handle != nil {
+					e.handle.FocusNext()
+				}
+			},
+		),
+		keybinding.OnKey(
+			tcell.KeyEscape,
+			keybinding.Hint{Keys: "Esc", Description: "cancel"},
+			e.close,
+		),
+	)
 	return input
-}
-
-func (e *qsoEditor) inputDone(key tcell.Key) {
-	if key == tcell.KeyEscape {
-		e.close()
-	}
 }
 
 func (e *qsoEditor) layout(controls components.Factory) tview.Primitive {

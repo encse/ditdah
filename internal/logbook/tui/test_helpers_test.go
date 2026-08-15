@@ -46,11 +46,16 @@ func (h *testHost) OpenModal(dialog modal.Dialog) modal.Handle {
 }
 
 type testModalHandle struct {
-	closed bool
+	closed    bool
+	focusNext int
 }
 
 func (h *testModalHandle) Close() {
 	h.closed = true
+}
+
+func (h *testModalHandle) FocusNext() {
+	h.focusNext++
 }
 
 func testTheme() components.Theme {

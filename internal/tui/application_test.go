@@ -120,6 +120,11 @@ func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 	}
 
 	input := app.controls.InputField("Search", "")
+	input.SetBindings(keybinding.OnKey(
+		tcell.KeyEnter,
+		keybinding.Hint{Keys: "Enter", Description: "done"},
+		func() {},
+	))
 	app.SetFocus(input)
 	pageEvent := tcell.NewEventKey(tcell.KeyRune, 'p', 0)
 	if got := app.captureKey(pageEvent); got != pageEvent {
@@ -219,10 +224,18 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 			bindingForRune("m", "modal", 'm', &modalHandled),
 		},
 	}
-	app.OpenModal(dialog)
+	handle := app.OpenModal(dialog)
 
 	if got := app.engine.GetFocus(); got != first {
 		t.Fatalf("modal focus = %T, want first control", got)
+	}
+	handle.FocusNext()
+	if got := app.engine.GetFocus(); got != second {
+		t.Fatalf("focus after handle FocusNext = %T, want second control", got)
+	}
+	app.captureKey(tcell.NewEventKey(tcell.KeyBacktab, 0, 0))
+	if got := app.engine.GetFocus(); got != first {
+		t.Fatalf("focus after modal Backtab = %T, want first control", got)
 	}
 	pageEvent := tcell.NewEventKey(tcell.KeyRune, 'p', 0)
 	if got := app.captureKey(pageEvent); got != pageEvent {
@@ -300,11 +313,11 @@ func TestApplicationForwardsTypedRunesToFocusedModalInput(t *testing.T) {
 
 	input := app.controls.Modal().InputField("Callsign", "")
 	var handle modal.Handle
-	input.SetDoneFunc(func(key tcell.Key) {
-		if key == tcell.KeyEscape {
-			handle.Close()
-		}
-	})
+	input.SetBindings(keybinding.OnKey(
+		tcell.KeyEscape,
+		keybinding.Hint{Keys: "Esc", Description: "cancel"},
+		func() { handle.Close() },
+	))
 	handle = app.OpenModal(applicationTestModal{
 		content:    input,
 		focusables: []tview.Primitive{input},
@@ -456,6 +469,11 @@ func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 	}
 
 	input := app.controls.InputField("Search", "")
+	input.SetBindings(keybinding.OnKey(
+		tcell.KeyEnter,
+		keybinding.Hint{Keys: "Enter", Description: "done"},
+		func() {},
+	))
 	app.SetFocus(input)
 	line = drawApplicationFooter(t, app)
 	if !strings.Contains(line, "Enter done") {

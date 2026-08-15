@@ -160,10 +160,10 @@ func (a *application) Refresh() {
 	if opened, ok := a.topModal(); ok {
 		blocked := a.parentBindingsBlocked()
 		if !blocked {
-			hints = mergeHints(hints, keybinding.Hints(opened.bindings)...)
+			hints = keybinding.MergeHints(hints, keybinding.Hints(opened.bindings)...)
 		}
 		if len(opened.dialog.Focusables()) > 1 {
-			hints = mergeHints(hints, focusNavigationHint())
+			hints = keybinding.MergeHints(hints, focusNavigationHint())
 		}
 		a.layout.Footer().SetKeyHints(hints)
 		return
@@ -173,11 +173,11 @@ func (a *application) Refresh() {
 		return
 	}
 	if !a.parentBindingsBlocked() {
-		hints = mergeHints(hints, keybinding.Hints(a.activePage.KeyBindings())...)
-		hints = mergeHints(hints, keybinding.Hints(a.globalBindings)...)
+		hints = keybinding.MergeHints(hints, keybinding.Hints(a.activePage.KeyBindings())...)
+		hints = keybinding.MergeHints(hints, keybinding.Hints(a.globalBindings)...)
 	}
 	if len(a.activePage.Focusables()) > 1 {
-		hints = mergeHints(hints, focusNavigationHint())
+		hints = keybinding.MergeHints(hints, focusNavigationHint())
 	}
 	a.layout.Footer().SetKeyHints(hints)
 }
@@ -296,7 +296,13 @@ func (a *application) moveFocus(
 	default:
 		return false
 	}
+	return a.focusRelative(focusables, direction)
+}
 
+func (a *application) focusRelative(
+	focusables []tview.Primitive,
+	direction int,
+) bool {
 	if len(focusables) == 0 {
 		return false
 	}
@@ -347,32 +353,19 @@ func (h *modalHandle) Close() {
 	h.app.closeModal(h.modal)
 }
 
+func (h *modalHandle) FocusNext() {
+	opened, ok := h.app.topModal()
+	if !ok || opened != h.modal || h.modal.closed {
+		return
+	}
+	h.app.focusRelative(h.modal.dialog.Focusables(), 1)
+}
+
 func focusNavigationHint() keybinding.Hint {
 	return keybinding.Hint{
 		Keys:        "Tab/Shift+Tab",
 		Description: "next/previous",
 	}
-}
-
-func mergeHints(
-	hints []keybinding.Hint,
-	additional ...keybinding.Hint,
-) []keybinding.Hint {
-	merged := append([]keybinding.Hint(nil), hints...)
-	for _, hint := range additional {
-		replaced := false
-		for index := range merged {
-			if merged[index].Keys == hint.Keys {
-				merged[index] = hint
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			merged = append(merged, hint)
-		}
-	}
-	return merged
 }
 
 func (a *application) focusedHints() []keybinding.Hint {

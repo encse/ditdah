@@ -62,3 +62,18 @@ func TestHintsPreservesBindingOrder(t *testing.T) {
 		t.Fatalf("Hints() = %#v, want %#v", got, want)
 	}
 }
+
+func TestMergeHintsReplacesEarlierDescriptionForSameKeys(t *testing.T) {
+	got := MergeHints(
+		[]Hint{{Keys: "Esc", Description: "close"}},
+		Hint{Keys: "Esc", Description: "cancel"},
+		Hint{Keys: "Enter", Description: "save"},
+	)
+	want := []Hint{
+		{Keys: "Esc", Description: "cancel"},
+		{Keys: "Enter", Description: "save"},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("MergeHints() = %#v, want %#v", got, want)
+	}
+}

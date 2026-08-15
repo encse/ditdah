@@ -1,7 +1,10 @@
 package components
 
 import (
+	"reflect"
 	"testing"
+
+	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -30,13 +33,23 @@ func TestTextAreaUsesValueAndFocusBackground(t *testing.T) {
 
 func TestTextAreaDoneCallback(t *testing.T) {
 	area := newTestFactory().TextArea("Notes", "")
-	var done tcell.Key
-	area.SetDoneFunc(func(key tcell.Key) {
-		done = key
-	})
+	done := 0
+	area.SetBindings(keybinding.OnKey(
+		tcell.KeyEscape,
+		keybinding.Hint{Keys: "Esc", Description: "cancel"},
+		func() { done++ },
+	))
 	area.InputHandler()(tcell.NewEventKey(tcell.KeyEscape, 0, 0), nil)
 
-	if done != tcell.KeyEscape {
-		t.Fatalf("done key = %v, want Escape", done)
+	if done != 1 {
+		t.Fatalf("done calls = %d, want 1", done)
+	}
+	wantHints := []keybinding.Hint{
+		{Keys: "Enter", Description: "new line"},
+		{Keys: "Ctrl-Z/Ctrl-Y", Description: "undo/redo"},
+		{Keys: "Esc", Description: "cancel"},
+	}
+	if got := area.KeyHints(); !reflect.DeepEqual(got, wantHints) {
+		t.Fatalf("KeyHints() = %#v, want %#v", got, wantHints)
 	}
 }
