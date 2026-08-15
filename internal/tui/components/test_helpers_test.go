@@ -13,9 +13,17 @@ func newTestFactory() Factory {
 
 func newTestFactoryWithOverlays(overlays OverlayHost) Factory {
 	return New(Dependencies{
-		Theme:    testTheme(),
-		Overlays: overlays,
+		Theme:      testTheme(),
+		ModalTheme: testModalTheme(),
+		Overlays:   overlays,
 	})
+}
+
+func testModalTheme() Theme {
+	theme := testTheme()
+	theme.Background = tcell.ColorSilver
+	theme.PrimaryText = tcell.ColorWhite
+	return theme
 }
 
 type testOverlayHost struct {

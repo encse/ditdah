@@ -36,6 +36,7 @@ type Theme struct {
 
 // Factory creates controls which share one theme.
 type Factory interface {
+	Modal() Factory
 	Header() Header
 	Footer() Footer
 	InputField(label, value string) InputField
@@ -52,6 +53,7 @@ type Factory interface {
 
 type factory struct {
 	theme        Theme
+	modalTheme   Theme
 	overlays     OverlayHost
 	focusChanged func()
 }
@@ -59,17 +61,28 @@ type factory struct {
 // Dependencies are shared by every control created by a Factory.
 type Dependencies struct {
 	Theme        Theme
+	ModalTheme   Theme
 	Overlays     OverlayHost
 	FocusChanged func()
 }
 
 // New creates a component factory with shared dependencies.
 func New(dependencies Dependencies) Factory {
+	modalTheme := dependencies.ModalTheme
+	if modalTheme == (Theme{}) {
+		modalTheme = dependencies.Theme
+	}
 	return factory{
 		theme:        dependencies.Theme,
+		modalTheme:   modalTheme,
 		overlays:     dependencies.Overlays,
 		focusChanged: dependencies.FocusChanged,
 	}
+}
+
+func (f factory) Modal() Factory {
+	f.theme = f.modalTheme
+	return f
 }
 
 func (f factory) Header() Header {

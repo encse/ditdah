@@ -16,6 +16,7 @@ type qsoEditor struct {
 }
 
 func newQSOEditor(controls components.Factory, qso domain.QSO) *qsoEditor {
+	controls = controls.Modal()
 	content := controls.TextView()
 	content.SetBorder(" Edit QSO ")
 	return &qsoEditor{content: content, qso: qso}

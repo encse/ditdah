@@ -63,8 +63,9 @@ func NewApplication(theme colorTheme) Application {
 	overlays := overlay.New(engine)
 	var app *application
 	controls := components.New(components.Dependencies{
-		Theme:    theme.components(),
-		Overlays: overlays,
+		Theme:      theme.components(),
+		ModalTheme: theme.modalComponents(),
+		Overlays:   overlays,
 		FocusChanged: func() {
 			if app != nil {
 				app.Refresh()
@@ -136,9 +137,11 @@ func (a *application) OpenModal(dialog modal.Dialog) modal.Handle {
 	opened := &openedModal{dialog: dialog, layer: layer}
 	a.modals = append(a.modals, opened)
 	opened.overlay = a.overlays.Push(layer)
+	focus := dialog.Content()
 	if focusables := dialog.Focusables(); len(focusables) > 0 {
-		a.SetFocus(focusables[0])
+		focus = focusables[0]
 	}
+	a.SetFocus(focus)
 	return &modalHandle{app: a, modal: opened}
 }
 

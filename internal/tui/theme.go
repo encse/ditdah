@@ -1,9 +1,10 @@
 package tui
 
 import (
+	"morsemanual/internal/tui/components"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"morsemanual/internal/tui/components"
 )
 
 type colorTheme struct {
@@ -56,5 +57,26 @@ func (t colorTheme) components() components.Theme {
 		SelectionText:         t.selectionText,
 		SelectionBackground:   t.selectionBackground,
 		PopupBorder:           t.styles.BorderColor,
+	}
+}
+
+func (t colorTheme) modalComponents() components.Theme {
+	background := tcell.NewRGBColor(190, 190, 190)
+	text := tcell.ColorWhite
+	accent := tcell.GetColor("#000080")
+	return components.Theme{
+		Background:            background,
+		PrimaryText:           text,
+		SecondaryText:         text,
+		MutedText:             tcell.GetColor("#606060"),
+		Accent:                text,
+		Border:                tcell.ColorWhite,
+		LabelColor:            text,
+		FieldTextColor:        text,
+		FieldBackground:       tcell.GetColor("#d8d8d8"),
+		ActiveFieldBackground: tcell.ColorWhite,
+		SelectionText:         tcell.ColorWhite,
+		SelectionBackground:   accent,
+		PopupBorder:           accent,
 	}
 }

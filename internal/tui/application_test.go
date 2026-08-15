@@ -263,6 +263,27 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 	}
 }
 
+func TestApplicationFocusesModalContentWithoutFocusableControls(t *testing.T) {
+	app := NewApplication(nordTheme).(*application)
+	page := applicationTestPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatalf("register page: %v", err)
+	}
+	if err := app.Show(page.ID()); err != nil {
+		t.Fatalf("show page: %v", err)
+	}
+
+	content := tview.NewBox()
+	app.OpenModal(applicationTestModal{content: content})
+	if got := app.engine.GetFocus(); got != content {
+		t.Fatalf("modal focus = %T, want modal content", got)
+	}
+}
+
 func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
 	app := NewApplication(nordTheme).(*application)
 	page := applicationTestPage{
