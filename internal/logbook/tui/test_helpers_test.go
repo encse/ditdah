@@ -11,10 +11,11 @@ import (
 )
 
 type testHost struct {
-	focus     tview.Primitive
-	refreshes int
-	controls  components.Factory
-	modal     modal.Dialog
+	focus       tview.Primitive
+	refreshes   int
+	controls    components.Factory
+	modal       modal.Dialog
+	modalHandle *testModalHandle
 }
 
 func newTestPage(t *testing.T) (*page, *testHost) {
@@ -40,28 +41,37 @@ func (h *testHost) Components() components.Factory {
 
 func (h *testHost) OpenModal(dialog modal.Dialog) modal.Handle {
 	h.modal = dialog
-	return testModalHandle{}
+	h.modalHandle = &testModalHandle{}
+	return h.modalHandle
 }
 
-type testModalHandle struct{}
+type testModalHandle struct {
+	closed bool
+}
 
-func (testModalHandle) Close() {}
+func (h *testModalHandle) Close() {
+	h.closed = true
+}
 
 func testTheme() components.Theme {
 	return components.Theme{
-		Background:            tcell.ColorBlack,
-		PrimaryText:           tcell.ColorWhite,
-		SecondaryText:         tcell.ColorSilver,
-		MutedText:             tcell.ColorGray,
-		Accent:                tcell.ColorAqua,
-		Border:                tcell.ColorWhite,
-		LabelColor:            tcell.ColorWhite,
-		FieldTextColor:        tcell.ColorWhite,
-		FieldBackground:       tcell.ColorBlue,
-		ActiveFieldBackground: tcell.ColorGreen,
-		SelectionText:         tcell.ColorBlack,
-		SelectionBackground:   tcell.ColorYellow,
-		PopupBorder:           tcell.ColorWhite,
+		Background:             tcell.ColorBlack,
+		PrimaryText:            tcell.ColorWhite,
+		SecondaryText:          tcell.ColorSilver,
+		MutedText:              tcell.ColorGray,
+		Accent:                 tcell.ColorAqua,
+		Border:                 tcell.ColorWhite,
+		LabelColor:             tcell.ColorWhite,
+		FieldTextColor:         tcell.ColorWhite,
+		FieldBackground:        tcell.ColorBlue,
+		ActiveFieldBackground:  tcell.ColorGreen,
+		SelectionText:          tcell.ColorBlack,
+		SelectionBackground:    tcell.ColorYellow,
+		PopupBorder:            tcell.ColorWhite,
+		ButtonText:             tcell.ColorWhite,
+		ButtonBackground:       tcell.ColorBlue,
+		ActiveButtonText:       tcell.ColorBlack,
+		ActiveButtonBackground: tcell.ColorAqua,
 	}
 }
 
@@ -81,5 +91,20 @@ func assertRune(t *testing.T, screen tcell.Screen, x int, y int, want rune) {
 	got, _, _, _ := screen.GetContent(x, y)
 	if got != want {
 		t.Fatalf("rune at (%d, %d) = %q, want %q", x, y, got, want)
+	}
+}
+
+func assertBackground(
+	t *testing.T,
+	screen tcell.Screen,
+	x int,
+	y int,
+	want tcell.Color,
+) {
+	t.Helper()
+	_, _, style, _ := screen.GetContent(x, y)
+	_, got, _ := style.Decompose()
+	if got != want {
+		t.Fatalf("background at (%d, %d) = %v, want %v", x, y, got, want)
 	}
 }

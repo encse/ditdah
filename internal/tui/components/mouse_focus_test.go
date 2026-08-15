@@ -16,6 +16,8 @@ func TestWrappedControlsKeepTheirIdentityWhenFocusedByMouse(t *testing.T) {
 		y       int
 	}{
 		{name: "input field", control: controls.InputField("", ""), x: 1, y: 1},
+		{name: "text area", control: controls.TextArea("", ""), x: 1, y: 1},
+		{name: "button", control: controls.Button("OK"), x: 1, y: 0},
 		{name: "table", control: controls.Table(""), x: 1, y: 1},
 		{name: "text view", control: controls.TextView(), x: 1, y: 1},
 		{

@@ -14,6 +14,7 @@ type InputField interface {
 	keybinding.ParentBindingBlocker
 	Value() string
 	SetValue(value string)
+	SetLabelWidth(width int)
 	SetPlaceholder(placeholder string)
 	SetChangedFunc(handler func(value string))
 	SetDoneFunc(handler func(key tcell.Key))
@@ -39,6 +40,7 @@ type inputField struct {
 
 	idleBackground  tcell.Color
 	focusBackground tcell.Color
+	theme           Theme
 }
 
 func newInputField(
@@ -58,6 +60,7 @@ func newInputField(
 			SetFieldWidth(0),
 		idleBackground:  theme.FieldBackground,
 		focusBackground: theme.ActiveFieldBackground,
+		theme:           theme,
 	}
 	field.InputField.
 		SetFocusFunc(func() {
@@ -74,6 +77,16 @@ func (i *inputField) Value() string {
 
 func (i *inputField) SetValue(value string) {
 	i.SetText(value)
+}
+
+func (i *inputField) SetLabelWidth(width int) {
+	i.SetFormAttributes(
+		width,
+		i.theme.LabelColor,
+		i.theme.Background,
+		i.theme.FieldTextColor,
+		i.idleBackground,
+	)
 }
 
 func (i *inputField) SetPlaceholder(placeholder string) {

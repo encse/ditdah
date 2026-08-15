@@ -51,7 +51,7 @@ func newSelectField(
 	focusChanged func(),
 ) SelectField {
 	field := &selectField{
-		Box:                 tview.NewBox(),
+		Box:                 tview.NewBox().SetBackgroundColor(theme.Background),
 		label:               label,
 		options:             options,
 		selected:            selected,
@@ -63,6 +63,7 @@ func newSelectField(
 		selectionBackground: theme.SelectionBackground,
 		borderColor:         theme.PopupBorder,
 		focusBackground:     theme.ActiveFieldBackground,
+		labelWidth:          labelWidth,
 		formLabelWidth:      labelWidth,
 		formFieldWidth:      fieldWidth,
 		overlays:            overlays,

@@ -81,6 +81,23 @@ func TestSelectFieldDrawsFullWidthAndBorderedPopup(t *testing.T) {
 	assertBackground(t, screen, 10, 5, tcell.ColorBlue)
 }
 
+func TestSelectFieldUsesThemeBackgroundBehindLabel(t *testing.T) {
+	screen := newTestScreen(t)
+	field := newTestFactory().SelectField(
+		"Mode",
+		[]string{"CW", "SSB"},
+		0,
+		6,
+		24,
+	)
+	field.SetRect(2, 2, 30, 1)
+	field.Draw(screen)
+
+	assertBackground(t, screen, 2, 2, testTheme().Background)
+	assertBackground(t, screen, 7, 2, testTheme().Background)
+	assertBackground(t, screen, 8, 2, testTheme().FieldBackground)
+}
+
 func TestSelectFieldSelectsWithMouse(t *testing.T) {
 	screen := newTestScreen(t)
 	overlays := &testOverlayHost{}

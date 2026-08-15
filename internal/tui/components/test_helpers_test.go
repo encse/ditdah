@@ -68,19 +68,23 @@ func newTestScreen(t *testing.T) tcell.SimulationScreen {
 
 func testTheme() Theme {
 	return Theme{
-		Background:            tcell.ColorBlack,
-		PrimaryText:           tcell.ColorWhite,
-		SecondaryText:         tcell.ColorSilver,
-		MutedText:             tcell.ColorGray,
-		Accent:                tcell.ColorAqua,
-		Border:                tcell.ColorWhite,
-		LabelColor:            tcell.ColorWhite,
-		FieldTextColor:        tcell.ColorWhite,
-		FieldBackground:       tcell.ColorBlue,
-		ActiveFieldBackground: tcell.ColorGreen,
-		SelectionText:         tcell.ColorBlack,
-		SelectionBackground:   tcell.ColorYellow,
-		PopupBorder:           tcell.ColorWhite,
+		Background:             tcell.ColorBlack,
+		PrimaryText:            tcell.ColorWhite,
+		SecondaryText:          tcell.ColorSilver,
+		MutedText:              tcell.ColorGray,
+		Accent:                 tcell.ColorAqua,
+		Border:                 tcell.ColorWhite,
+		LabelColor:             tcell.ColorWhite,
+		FieldTextColor:         tcell.ColorWhite,
+		FieldBackground:        tcell.ColorBlue,
+		ActiveFieldBackground:  tcell.ColorGreen,
+		SelectionText:          tcell.ColorBlack,
+		SelectionBackground:    tcell.ColorYellow,
+		PopupBorder:            tcell.ColorWhite,
+		ButtonText:             tcell.ColorWhite,
+		ButtonBackground:       tcell.ColorBlue,
+		ActiveButtonText:       tcell.ColorBlack,
+		ActiveButtonBackground: tcell.ColorAqua,
 	}
 }
 

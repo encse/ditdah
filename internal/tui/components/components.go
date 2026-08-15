@@ -19,19 +19,23 @@ type OverlayHost interface {
 
 // Theme contains only the colors needed by the component package.
 type Theme struct {
-	Background            tcell.Color
-	PrimaryText           tcell.Color
-	SecondaryText         tcell.Color
-	MutedText             tcell.Color
-	Accent                tcell.Color
-	Border                tcell.Color
-	LabelColor            tcell.Color
-	FieldTextColor        tcell.Color
-	FieldBackground       tcell.Color
-	ActiveFieldBackground tcell.Color
-	SelectionText         tcell.Color
-	SelectionBackground   tcell.Color
-	PopupBorder           tcell.Color
+	Background             tcell.Color
+	PrimaryText            tcell.Color
+	SecondaryText          tcell.Color
+	MutedText              tcell.Color
+	Accent                 tcell.Color
+	Border                 tcell.Color
+	LabelColor             tcell.Color
+	FieldTextColor         tcell.Color
+	FieldBackground        tcell.Color
+	ActiveFieldBackground  tcell.Color
+	SelectionText          tcell.Color
+	SelectionBackground    tcell.Color
+	PopupBorder            tcell.Color
+	ButtonText             tcell.Color
+	ButtonBackground       tcell.Color
+	ActiveButtonText       tcell.Color
+	ActiveButtonBackground tcell.Color
 }
 
 // Factory creates controls which share one theme.
@@ -39,7 +43,9 @@ type Factory interface {
 	Modal() Factory
 	Header() Header
 	Footer() Footer
+	Button(label string) Button
 	InputField(label, value string) InputField
+	TextArea(label, value string) TextArea
 	TextView() TextView
 	Table(title string) Table
 	SelectField(
@@ -93,8 +99,16 @@ func (f factory) Footer() Footer {
 	return newFooter(f)
 }
 
+func (f factory) Button(label string) Button {
+	return newButton(label, f.theme, f.focusChanged)
+}
+
 func (f factory) InputField(label, value string) InputField {
 	return newInputField(label, value, f.theme, f.focusChanged)
+}
+
+func (f factory) TextArea(label, value string) TextArea {
+	return newTextArea(label, value, f.theme, f.focusChanged)
 }
 
 func (f factory) TextView() TextView {
