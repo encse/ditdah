@@ -23,9 +23,6 @@ func TestLayoutArrangesHeaderContentAndFooter(t *testing.T) {
 		id:      "logbook",
 		title:   "Logbook",
 		content: content,
-		bindings: []keybinding.Binding{
-			{Hint: keybinding.Hint{Keys: "q", Description: "quit"}},
-		},
 	})
 	layout.SetRect(0, 0, 40, 12)
 	layout.Draw(screen)
@@ -33,7 +30,6 @@ func TestLayoutArrangesHeaderContentAndFooter(t *testing.T) {
 	assertLayoutRune(t, screen, 0, 0, 'L')
 	assertLayoutRune(t, screen, 0, 1, 'c')
 	assertLayoutRune(t, screen, 0, 11, '2')
-	assertLayoutRune(t, screen, 22, 11, 'q')
 }
 
 func TestLayoutReplacesContent(t *testing.T) {
@@ -56,10 +52,9 @@ func TestLayoutReplacesContent(t *testing.T) {
 }
 
 type testPage struct {
-	id       string
-	title    string
-	content  tview.Primitive
-	bindings []keybinding.Binding
+	id      string
+	title   string
+	content tview.Primitive
 }
 
 func (p testPage) ID() string {
@@ -75,7 +70,7 @@ func (p testPage) Content() tview.Primitive {
 }
 
 func (p testPage) KeyBindings() []keybinding.Binding {
-	return p.bindings
+	return nil
 }
 
 func newLayoutTestScreen(t *testing.T) tcell.SimulationScreen {

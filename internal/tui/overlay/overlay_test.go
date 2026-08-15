@@ -9,11 +9,19 @@ import (
 func TestHostStacksAndRestoresFocus(t *testing.T) {
 	app := tview.NewApplication()
 	content := tview.NewBox()
-	host := New(app, content)
+	host := New(app)
+	host.SetContent(content)
+	changes := 0
+	host.SetChangedFunc(func() {
+		changes++
+	})
 	app.SetFocus(content)
 
 	modal := tview.NewBox()
 	modalHandle := host.Push(modal)
+	if changes != 1 {
+		t.Fatalf("change count after modal push = %d, want 1", changes)
+	}
 	if got := app.GetFocus(); got != modal {
 		t.Fatalf("focus after modal push = %T, want modal", got)
 	}
@@ -25,6 +33,9 @@ func TestHostStacksAndRestoresFocus(t *testing.T) {
 	}
 
 	popupHandle.Close()
+	if changes != 3 {
+		t.Fatalf("change count after popup close = %d, want 3", changes)
+	}
 	if got := app.GetFocus(); got != modal {
 		t.Fatalf("focus after popup close = %T, want modal", got)
 	}
@@ -33,6 +44,9 @@ func TestHostStacksAndRestoresFocus(t *testing.T) {
 	}
 
 	modalHandle.Close()
+	if changes != 4 {
+		t.Fatalf("change count after modal close = %d, want 4", changes)
+	}
 	if got := app.GetFocus(); got != content {
 		t.Fatalf("focus after modal close = %T, want content", got)
 	}

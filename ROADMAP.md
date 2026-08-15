@@ -25,11 +25,11 @@ This document records implementation decisions and future technical work.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.
 - [x] Add a shared `Layout` that arranges the header, active page content, and footer.
 - [x] Define a `Page` abstraction that exposes its identity, title, content, and page-level keybindings without owning the shared header or footer.
-- [ ] Refactor the logbook view into a page and remove its duplicated outer layout, header, and footer management.
-- [ ] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
-- [ ] Refresh footer hints when the active page, focused control, or overlay changes.
-- [ ] Test hint composition, focus-sensitive footer content, modal isolation, and the refactored logbook page.
-- [ ] Extract an application layer that owns the shared layout and overlays, registers pages, handles navigation, and provides global keybindings.
+- [x] Refactor the logbook view into a page and remove its duplicated outer layout, header, and footer management.
+- [x] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
+- [x] Refresh footer hints when the active page, focused control, or overlay changes.
+- [x] Test hint composition, focus-sensitive footer content, modal isolation, and the refactored logbook page.
+- [x] Extract an application layer that owns the shared layout and overlays, registers pages, handles navigation, and provides global keybindings.
 
 ## Database
 

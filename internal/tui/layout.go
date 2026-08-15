@@ -2,7 +2,6 @@ package tui
 
 import (
 	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
 
 	"github.com/rivo/tview"
 )
@@ -57,7 +56,6 @@ func (l *layout) Footer() components.Footer {
 
 func (l *layout) Show(page Page) {
 	l.header.SetTitle(page.Title())
-	l.footer.SetKeyHints(keybinding.Hints(page.KeyBindings()))
 	l.setContent(page.Content())
 }
 

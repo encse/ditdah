@@ -8,7 +8,7 @@ import (
 
 	"morsemanual/internal/logbook"
 	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/overlay"
+	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -36,151 +36,127 @@ var logbookColumns = []logbookColumn{
 	{heading: "QTH", expanded: true},
 }
 
-type logbookView struct {
+type logbookPage struct {
 	ctx   context.Context
-	app   *tview.Application
+	host  PageHost
 	store logbook.Store
 	theme colorTheme
 
-	header   components.TextView
-	search   components.InputField
-	table    components.Table
-	details  components.TextView
-	footer   components.TextView
-	overlays overlay.Host
+	content tview.Primitive
+	search  components.InputField
+	table   components.Table
+	details components.TextView
 
 	qsos         []logbook.QSO
 	filteredQsos []logbook.QSO
-	searching    bool
+	selectedID   string
 }
+
+var _ Page = (*logbookPage)(nil)
 
 // Run opens the logbook screen and blocks until the user quits or ctx is
 // cancelled.
 func Run(ctx context.Context, store logbook.Store) error {
-	tview.Styles = nordTheme.styles
-
-	view := newLogbookView(ctx, store, nordTheme)
-	if err := view.load(); err != nil {
+	app := NewApplication(nordTheme)
+	page := newLogbookPage(ctx, app, store)
+	if err := page.load(); err != nil {
 		return err
 	}
 
-	done := make(chan struct{})
-	defer close(done)
-	go func() {
-		select {
-		case <-ctx.Done():
-			view.app.Stop()
-		case <-done:
-		}
-	}()
-
-	if err := view.app.SetRoot(view.overlays.Root(), true).EnableMouse(true).Run(); err != nil {
-		if ctx.Err() != nil {
-			return nil
-		}
+	if err := app.Register(page); err != nil {
 		return err
 	}
-
-	return nil
+	if err := app.Show(page.ID()); err != nil {
+		return err
+	}
+	return app.Run(ctx)
 }
 
-func newLogbookView(
+func newLogbookPage(
 	ctx context.Context,
+	host PageHost,
 	store logbook.Store,
-	theme colorTheme,
-) *logbookView {
-	view := &logbookView{
+) *logbookPage {
+	controls := host.Components()
+	page := &logbookPage{
 		ctx:   ctx,
-		app:   tview.NewApplication(),
+		host:  host,
 		store: store,
-		theme: theme,
+		theme: host.Theme(),
 	}
-	layout := tview.NewFlex().SetDirection(tview.FlexRow)
-	view.overlays = overlay.New(view.app, layout)
-	controls := components.New(components.Dependencies{
-		Theme:    theme.components(),
-		Overlays: view.overlays,
-	})
 
-	view.header = controls.TextView()
-	view.header.SetDynamicColors(true)
-	view.header.SetTextColor(theme.accent)
-
-	view.search = controls.InputField(" Search  ", "")
-	view.search.SetPlaceholder("callsign, date, frequency, mode, name, QTH...")
-	view.search.SetChangedFunc(func(string) {
-		view.applyFilter()
+	page.search = controls.InputField(" Search  ", "")
+	page.search.SetPlaceholder("callsign, date, frequency, mode, name, QTH...")
+	page.search.SetChangedFunc(func(string) {
+		page.applyFilter()
 	})
-	view.search.SetDoneFunc(func(key tcell.Key) {
+	page.search.SetDoneFunc(func(key tcell.Key) {
 		switch key {
 		case tcell.KeyEnter:
-			view.leaveSearch(false)
+			page.leaveSearch(false)
 		case tcell.KeyEscape:
-			view.leaveSearch(true)
+			page.leaveSearch(true)
 		}
 	})
 
-	view.table = controls.Table(" QSOs ")
-	view.table.SetSelectionChangedFunc(func(row, _ int) {
-		view.renderDetails(row - 1)
+	page.table = controls.Table(" QSOs ")
+	page.table.SetSelectionChangedFunc(func(row, _ int) {
+		page.selectionChanged(row - 1)
 	})
 
-	view.details = controls.TextView()
-	view.details.SetDynamicColors(true)
-	view.details.SetWordWrap(true)
-	view.details.SetBorder(" QSO info ")
+	page.details = controls.TextView()
+	page.details.SetDynamicColors(true)
+	page.details.SetWordWrap(true)
+	page.details.SetBorder(" QSO info ")
 
-	view.footer = controls.TextView()
-	view.footer.SetDynamicColors(true)
-	view.footer.SetTextAlign(tview.AlignCenter)
-	view.footer.SetTextColor(theme.muted)
-
-	layout.
-		AddItem(view.header, 1, 0, false).
-		AddItem(view.search, 1, 0, false).
-		AddItem(view.table, 0, 2, true).
-		AddItem(view.details, 9, 0, false).
-		AddItem(view.footer, 1, 0, false)
-
-	view.app.SetInputCapture(view.captureKey)
-	return view
+	content := tview.NewFlex().SetDirection(tview.FlexRow)
+	content.
+		AddItem(page.search, 1, 0, false).
+		AddItem(page.table, 0, 2, true).
+		AddItem(page.details, 9, 0, false)
+	page.content = content
+	return page
 }
 
-func (v *logbookView) captureKey(event *tcell.EventKey) *tcell.EventKey {
-	if v.overlays != nil && v.overlays.Active() {
-		return event
-	}
-	if v.searching {
-		return event
-	}
-
-	switch {
-	case event.Key() == tcell.KeyCtrlC:
-		v.app.Stop()
-		return nil
-	case event.Key() == tcell.KeyRune && event.Rune() == 'q':
-		v.app.Stop()
-		return nil
-	case event.Key() == tcell.KeyRune && event.Rune() == '/':
-		v.searching = true
-		v.app.SetFocus(v.search)
-		v.renderFooter()
-		return nil
-	}
-
-	return event
+func (v *logbookPage) ID() string {
+	return "logbook"
 }
 
-func (v *logbookView) leaveSearch(clear bool) {
-	v.searching = false
+func (v *logbookPage) Title() string {
+	return "Logbook"
+}
+
+func (v *logbookPage) Content() tview.Primitive {
+	return v.content
+}
+
+func (v *logbookPage) KeyBindings() []keybinding.Binding {
+	return []keybinding.Binding{
+		{
+			Hint: keybinding.Hint{Keys: "/", Description: "search"},
+			Handler: func(event *tcell.EventKey) bool {
+				if event.Key() != tcell.KeyRune || event.Rune() != '/' {
+					return false
+				}
+				v.host.SetFocus(v.search)
+				return true
+			},
+		},
+	}
+}
+
+func (v *logbookPage) Status() string {
+	return fmt.Sprintf("(%d/%d)", len(v.filteredQsos), len(v.qsos))
+}
+
+func (v *logbookPage) leaveSearch(clear bool) {
 	if clear {
 		v.search.SetValue("")
 	}
-	v.app.SetFocus(v.table)
-	v.renderFooter()
+	v.host.SetFocus(v.table)
 }
 
-func (v *logbookView) load() error {
+func (v *logbookPage) load() error {
 	var qsos []logbook.QSO
 	for offset := 0; ; offset += qsoPageSize {
 		page, err := v.store.List(v.ctx, logbook.Filter{
@@ -201,8 +177,7 @@ func (v *logbookView) load() error {
 	return nil
 }
 
-func (v *logbookView) applyFilter() {
-	selectedID := v.selectedID()
+func (v *logbookPage) applyFilter() {
 	query := strings.ToLower(strings.TrimSpace(v.search.Value()))
 
 	v.filteredQsos = v.filteredQsos[:0]
@@ -212,12 +187,34 @@ func (v *logbookView) applyFilter() {
 		}
 	}
 
-	v.renderTable(selectedID)
-	v.renderHeader()
-	v.renderFooter()
+	v.refreshView()
 }
 
-func (v *logbookView) renderTable(selectedID string) {
+func (v *logbookPage) refreshView() {
+	selectedIndex := v.renderTable(v.selectedID)
+	if selectedIndex >= 0 {
+		v.selectedID = v.filteredQsos[selectedIndex].ID
+		v.table.Select(selectedIndex+1, 0)
+	} else {
+		v.selectedID = ""
+	}
+	v.renderDetails(selectedIndex)
+	v.host.Refresh()
+}
+
+func (v *logbookPage) selectionChanged(index int) {
+	selectedID := ""
+	if index >= 0 && index < len(v.filteredQsos) {
+		selectedID = v.filteredQsos[index].ID
+	}
+	if selectedID == v.selectedID {
+		return
+	}
+	v.selectedID = selectedID
+	v.refreshView()
+}
+
+func (v *logbookPage) renderTable(selectedID string) int {
 	v.table.Clear()
 	for column, definition := range logbookColumns {
 		heading := definition.heading
@@ -274,36 +271,13 @@ func (v *logbookView) renderTable(selectedID string) {
 			Style:    components.TableCellMuted,
 			Disabled: true,
 		})
-		v.renderDetails(-1)
-		return
+		return -1
 	}
 
-	v.table.Select(selectedRow, 0)
-	v.renderDetails(selectedRow - 1)
+	return selectedRow - 1
 }
 
-func (v *logbookView) renderHeader() {
-	text := fmt.Sprintf(
-		"[::b] Logbook[-:-:-]  %s(%d/%d)[-]",
-		colorTag(v.theme.muted),
-		len(v.filteredQsos),
-		len(v.qsos),
-	)
-	v.header.SetText(text)
-}
-
-func (v *logbookView) renderFooter() {
-	if v.searching {
-		v.footer.SetText("[::b]Enter[-:-:-] apply   [::b]Esc[-:-:-] clear search")
-		return
-	}
-	v.footer.SetText(
-		"[::b]↑/k ↓/j ←/→[-:-:-] move   [::b]PgUp/PgDn[-:-:-] page   " +
-			"[::b]/[-:-:-] search   [::b]q[-:-:-] quit",
-	)
-}
-
-func (v *logbookView) renderDetails(index int) {
+func (v *logbookPage) renderDetails(index int) {
 	v.details.Clear()
 	if index < 0 || index >= len(v.filteredQsos) {
 		fmt.Fprint(v.details, colorTag(v.theme.muted)+"No QSO is selected.[-]")
@@ -332,15 +306,6 @@ func (v *logbookView) renderDetails(index int) {
 		}
 		fmt.Fprintln(v.details, detailPair(row[0], row[1], row[2], row[3]))
 	}
-}
-
-func (v *logbookView) selectedID() string {
-	row, _ := v.table.Selection()
-	index := row - 1
-	if index < 0 || index >= len(v.filteredQsos) {
-		return ""
-	}
-	return v.filteredQsos[index].ID
 }
 
 func searchableText(qso logbook.QSO) string {

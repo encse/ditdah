@@ -48,8 +48,9 @@ func newSelectField(
 	fieldWidth int,
 	theme Theme,
 	overlays OverlayHost,
+	focusChanged func(),
 ) SelectField {
-	return &selectField{
+	field := &selectField{
 		Box:                 tview.NewBox(),
 		label:               label,
 		options:             options,
@@ -66,6 +67,10 @@ func newSelectField(
 		formFieldWidth:      fieldWidth,
 		overlays:            overlays,
 	}
+	field.SetFocusFunc(func() {
+		notify(focusChanged)
+	})
+	return field
 }
 
 func (s *selectField) GetLabel() string {

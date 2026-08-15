@@ -12,6 +12,8 @@ import (
 type Host interface {
 	components.OverlayHost
 	Root() tview.Primitive
+	SetContent(content tview.Primitive)
+	SetChangedFunc(handler func())
 	Active() bool
 }
 
@@ -20,6 +22,7 @@ type host struct {
 	pages   *tview.Pages
 	nextID  uint64
 	entries []entry
+	changed func()
 }
 
 type entry struct {
@@ -33,17 +36,25 @@ type handle struct {
 	closed bool
 }
 
-// New creates an overlay host above content.
-func New(app *tview.Application, content tview.Primitive) Host {
+// New creates an initially empty overlay host.
+func New(app *tview.Application) Host {
 	return &host{
-		app: app,
-		pages: tview.NewPages().
-			AddPage("content", content, true, true),
+		app:   app,
+		pages: tview.NewPages(),
 	}
 }
 
 func (h *host) Root() tview.Primitive {
 	return h.pages
+}
+
+func (h *host) SetContent(content tview.Primitive) {
+	h.pages.RemovePage("content").
+		AddPage("content", content, true, true)
+}
+
+func (h *host) SetChangedFunc(handler func()) {
+	h.changed = handler
 }
 
 func (h *host) Active() bool {
@@ -59,6 +70,7 @@ func (h *host) Push(primitive tview.Primitive) components.Overlay {
 	})
 	h.pages.AddPage(name, primitive, true, true)
 	h.app.SetFocus(primitive)
+	h.notifyChanged()
 	return &handle{host: h, name: name}
 }
 
@@ -80,6 +92,13 @@ func (h *host) close(name string) {
 	}
 	h.entries = h.entries[:index]
 	h.app.SetFocus(previousFocus)
+	h.notifyChanged()
+}
+
+func (h *host) notifyChanged() {
+	if h.changed != nil {
+		h.changed()
+	}
 }
 
 func (h *handle) Close() {

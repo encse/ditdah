@@ -11,11 +11,16 @@ import (
 type InputField interface {
 	tview.FormItem
 	keybinding.HintProvider
+	keybinding.ParentBindingBlocker
 	Value() string
 	SetValue(value string)
 	SetPlaceholder(placeholder string)
 	SetChangedFunc(handler func(value string))
 	SetDoneFunc(handler func(key tcell.Key))
+}
+
+func (i *inputField) BlocksParentBindings() bool {
+	return true
 }
 
 func (i *inputField) KeyHints() []keybinding.Hint {
@@ -26,6 +31,10 @@ func (i *inputField) KeyHints() []keybinding.Hint {
 	}
 }
 
+func (i *inputField) MouseHandler() mouseHandler {
+	return keepMouseOwner(i, i.InputField.MouseHandler())
+}
+
 type inputField struct {
 	*tview.InputField
 
@@ -33,7 +42,12 @@ type inputField struct {
 	focusBackground tcell.Color
 }
 
-func newInputField(label, value string, theme Theme) InputField {
+func newInputField(
+	label string,
+	value string,
+	theme Theme,
+	focusChanged func(),
+) InputField {
 	field := &inputField{
 		InputField: tview.NewInputField().
 			SetLabel(label).
@@ -47,7 +61,10 @@ func newInputField(label, value string, theme Theme) InputField {
 		focusBackground: theme.ActiveFieldBackground,
 	}
 	field.InputField.
-		SetFocusFunc(field.showFocused).
+		SetFocusFunc(func() {
+			field.showFocused()
+			notify(focusChanged)
+		}).
 		SetBlurFunc(field.showIdle)
 	return field
 }

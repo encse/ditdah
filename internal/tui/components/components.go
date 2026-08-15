@@ -51,21 +51,24 @@ type Factory interface {
 }
 
 type factory struct {
-	theme    Theme
-	overlays OverlayHost
+	theme        Theme
+	overlays     OverlayHost
+	focusChanged func()
 }
 
 // Dependencies are shared by every control created by a Factory.
 type Dependencies struct {
-	Theme    Theme
-	Overlays OverlayHost
+	Theme        Theme
+	Overlays     OverlayHost
+	FocusChanged func()
 }
 
 // New creates a component factory with shared dependencies.
 func New(dependencies Dependencies) Factory {
 	return factory{
-		theme:    dependencies.Theme,
-		overlays: dependencies.Overlays,
+		theme:        dependencies.Theme,
+		overlays:     dependencies.Overlays,
+		focusChanged: dependencies.FocusChanged,
 	}
 }
 
@@ -78,15 +81,15 @@ func (f factory) Footer() Footer {
 }
 
 func (f factory) InputField(label, value string) InputField {
-	return newInputField(label, value, f.theme)
+	return newInputField(label, value, f.theme, f.focusChanged)
 }
 
 func (f factory) TextView() TextView {
-	return newTextView(f.theme)
+	return newTextView(f.theme, f.focusChanged)
 }
 
 func (f factory) Table(title string) Table {
-	return newTable(title, f.theme)
+	return newTable(title, f.theme, f.focusChanged)
 }
 
 func (f factory) SelectField(
@@ -104,5 +107,40 @@ func (f factory) SelectField(
 		fieldWidth,
 		f.theme,
 		f.overlays,
+		f.focusChanged,
 	)
+}
+
+func notify(handler func()) {
+	if handler != nil {
+		handler()
+	}
+}
+
+type mouseHandler = func(
+	action tview.MouseAction,
+	event *tcell.EventMouse,
+	setFocus func(tview.Primitive),
+) (consumed bool, capture tview.Primitive)
+
+// keepMouseOwner delegates mouse behaviour to an embedded tview primitive
+// without allowing that primitive to replace its application wrapper as the
+// focused or captured control.
+func keepMouseOwner(owner tview.Primitive, handler mouseHandler) mouseHandler {
+	if handler == nil {
+		return nil
+	}
+	return func(
+		action tview.MouseAction,
+		event *tcell.EventMouse,
+		setFocus func(tview.Primitive),
+	) (bool, tview.Primitive) {
+		consumed, capture := handler(action, event, func(tview.Primitive) {
+			setFocus(owner)
+		})
+		if capture != nil {
+			capture = owner
+		}
+		return consumed, capture
+	}
 }

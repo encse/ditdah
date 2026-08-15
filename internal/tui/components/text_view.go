@@ -37,10 +37,17 @@ type textView struct {
 	theme Theme
 }
 
-func newTextView(theme Theme) TextView {
+func (v *textView) MouseHandler() mouseHandler {
+	return keepMouseOwner(v, v.TextView.MouseHandler())
+}
+
+func newTextView(theme Theme, focusChanged func()) TextView {
 	view := tview.NewTextView().
 		SetTextColor(theme.PrimaryText)
 	view.SetBackgroundColor(theme.Background)
+	view.SetFocusFunc(func() {
+		notify(focusChanged)
+	})
 	return &textView{TextView: view, theme: theme}
 }
 

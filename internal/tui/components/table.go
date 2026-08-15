@@ -45,12 +45,16 @@ func (t *table) KeyHints() []keybinding.Hint {
 	}
 }
 
+func (t *table) MouseHandler() mouseHandler {
+	return keepMouseOwner(t, t.Table.MouseHandler())
+}
+
 type table struct {
 	*tview.Table
 	theme Theme
 }
 
-func newTable(title string, theme Theme) Table {
+func newTable(title string, theme Theme, focusChanged func()) Table {
 	view := tview.NewTable().
 		SetBorders(false).
 		SetSelectable(true, false).
@@ -67,6 +71,9 @@ func newTable(title string, theme Theme) Table {
 			Background(theme.SelectionBackground).
 			Bold(true),
 	)
+	view.SetFocusFunc(func() {
+		notify(focusChanged)
+	})
 	return &table{Table: view, theme: theme}
 }
 

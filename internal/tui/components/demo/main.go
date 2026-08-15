@@ -23,7 +23,8 @@ func run() error {
 	theme := demoTheme()
 	app := tview.NewApplication()
 	content := tview.NewFlex().SetDirection(tview.FlexRow)
-	overlays := overlay.New(app, content)
+	overlays := overlay.New(app)
+	overlays.SetContent(content)
 	controls := components.New(components.Dependencies{
 		Theme:    theme,
 		Overlays: overlays,

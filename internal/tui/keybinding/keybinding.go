@@ -16,6 +16,12 @@ type HintProvider interface {
 	KeyHints() []Hint
 }
 
+// ParentBindingBlocker marks a focused control which must receive input before
+// page-level or application-level bindings are considered.
+type ParentBindingBlocker interface {
+	BlocksParentBindings() bool
+}
+
 // Binding is an application-handled keyboard action and its user-visible hint.
 type Binding struct {
 	Hint    Hint
