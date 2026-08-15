@@ -36,6 +36,8 @@ type Theme struct {
 
 // Factory creates controls which share one theme.
 type Factory interface {
+	Header() Header
+	Footer() Footer
 	InputField(label, value string) InputField
 	TextView() TextView
 	Table(title string) Table
@@ -65,6 +67,14 @@ func New(dependencies Dependencies) Factory {
 		theme:    dependencies.Theme,
 		overlays: dependencies.Overlays,
 	}
+}
+
+func (f factory) Header() Header {
+	return newHeader(f)
+}
+
+func (f factory) Footer() Footer {
+	return newFooter(f)
 }
 
 func (f factory) InputField(label, value string) InputField {
