@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"morsemanual/internal/tui/components"
+	"morsemanual/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -13,6 +14,7 @@ type testHost struct {
 	focus     tview.Primitive
 	refreshes int
 	controls  components.Factory
+	modal     modal.Dialog
 }
 
 func newTestPage(t *testing.T) (*page, *testHost) {
@@ -35,6 +37,15 @@ func (h *testHost) Refresh() {
 func (h *testHost) Components() components.Factory {
 	return h.controls
 }
+
+func (h *testHost) OpenModal(dialog modal.Dialog) modal.Handle {
+	h.modal = dialog
+	return testModalHandle{}
+}
+
+type testModalHandle struct{}
+
+func (testModalHandle) Close() {}
 
 func testTheme() components.Theme {
 	return components.Theme{

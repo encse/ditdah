@@ -19,6 +19,9 @@ func TestHostStacksAndRestoresFocus(t *testing.T) {
 
 	modal := tview.NewBox()
 	modalHandle := host.Push(modal)
+	if got := host.Top(); got != modal {
+		t.Fatalf("top overlay = %T, want modal", got)
+	}
 	if changes != 1 {
 		t.Fatalf("change count after modal push = %d, want 1", changes)
 	}
@@ -28,6 +31,9 @@ func TestHostStacksAndRestoresFocus(t *testing.T) {
 
 	popup := tview.NewBox()
 	popupHandle := host.Push(popup)
+	if got := host.Top(); got != popup {
+		t.Fatalf("top overlay = %T, want popup", got)
+	}
 	if got := app.GetFocus(); got != popup {
 		t.Fatalf("focus after popup push = %T, want popup", got)
 	}

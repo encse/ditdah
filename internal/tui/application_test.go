@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"morsemanual/internal/tui/keybinding"
+	"morsemanual/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
@@ -186,6 +187,121 @@ func TestApplicationMovesFocusWithTabAndBacktab(t *testing.T) {
 		"Tab/Shift+Tab next/previous",
 	) {
 		t.Fatalf("footer = %q, want focus navigation hint", footer)
+	}
+}
+
+func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
+	app := NewApplication(nordTheme).(*application)
+	pageContent := tview.NewBox()
+	pageHandled := 0
+	page := applicationTestPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: pageContent,
+		bindings: []keybinding.Binding{
+			bindingForRune("p", "page", 'p', &pageHandled),
+		},
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatalf("register page: %v", err)
+	}
+	if err := app.Show(page.ID()); err != nil {
+		t.Fatalf("show page: %v", err)
+	}
+
+	first := tview.NewBox()
+	second := tview.NewBox()
+	modalHandled := 0
+	dialog := applicationTestModal{
+		content:    tview.NewFlex().AddItem(first, 0, 1, true),
+		focusables: []tview.Primitive{first, second},
+		bindings: []keybinding.Binding{
+			bindingForRune("m", "modal", 'm', &modalHandled),
+		},
+	}
+	app.OpenModal(dialog)
+
+	if got := app.engine.GetFocus(); got != first {
+		t.Fatalf("modal focus = %T, want first control", got)
+	}
+	pageEvent := tcell.NewEventKey(tcell.KeyRune, 'p', 0)
+	if got := app.captureKey(pageEvent); got != pageEvent {
+		t.Fatal("unhandled modal event was not forwarded to modal content")
+	}
+	if pageHandled != 0 {
+		t.Fatalf("page binding handled %d modal events, want 0", pageHandled)
+	}
+	if got := app.captureKey(tcell.NewEventKey(tcell.KeyRune, 'm', 0)); got != nil {
+		t.Fatal("handled modal binding was forwarded")
+	}
+	if modalHandled != 1 {
+		t.Fatalf("modal binding handled %d events, want 1", modalHandled)
+	}
+
+	app.captureKey(tcell.NewEventKey(tcell.KeyTab, 0, 0))
+	if got := app.engine.GetFocus(); got != second {
+		t.Fatalf("focus after modal Tab = %T, want second control", got)
+	}
+	footer := drawApplicationFooter(t, app)
+	for _, expected := range []string{"m modal", "Esc close", "Tab/Shift+Tab next/previous"} {
+		if !strings.Contains(footer, expected) {
+			t.Errorf("modal footer = %q, want %q", footer, expected)
+		}
+	}
+	if strings.Contains(footer, "p page") {
+		t.Errorf("modal footer = %q, unexpectedly contains page binding", footer)
+	}
+
+	if got := app.captureKey(tcell.NewEventKey(tcell.KeyEscape, 0, 0)); got != nil {
+		t.Fatal("Escape was forwarded")
+	}
+	if app.overlays.Active() {
+		t.Fatal("overlay remains active after closing modal")
+	}
+	if got := app.engine.GetFocus(); got != pageContent {
+		t.Fatalf("restored focus = %T, want page content", got)
+	}
+}
+
+func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
+	app := NewApplication(nordTheme).(*application)
+	page := applicationTestPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatalf("register page: %v", err)
+	}
+	if err := app.Show(page.ID()); err != nil {
+		t.Fatalf("show page: %v", err)
+	}
+
+	modalHandled := 0
+	dialog := applicationTestModal{
+		content: tview.NewBox(),
+		bindings: []keybinding.Binding{
+			bindingForRune("m", "modal", 'm', &modalHandled),
+		},
+	}
+	app.OpenModal(dialog)
+	popup := &hintPrimitive{Box: tview.NewBox()}
+	popupHandle := app.overlays.Push(popup)
+
+	event := tcell.NewEventKey(tcell.KeyRune, 'm', 0)
+	if got := app.captureKey(event); got != event {
+		t.Fatal("popup event reached modal dispatcher")
+	}
+	if modalHandled != 0 {
+		t.Fatalf("modal handled %d popup events, want 0", modalHandled)
+	}
+
+	popupHandle.Close()
+	if got := app.captureKey(event); got != nil {
+		t.Fatal("modal binding was forwarded after popup closed")
+	}
+	if modalHandled != 1 {
+		t.Fatalf("modal handled %d events after popup closed, want 1", modalHandled)
 	}
 }
 
@@ -377,6 +493,28 @@ func (p applicationTestPage) KeyBindings() []keybinding.Binding {
 type hintPrimitive struct {
 	*tview.Box
 	hints []keybinding.Hint
+}
+
+type applicationTestModal struct {
+	content    tview.Primitive
+	focusables []tview.Primitive
+	bindings   []keybinding.Binding
+}
+
+func (m applicationTestModal) Content() tview.Primitive {
+	return m.content
+}
+
+func (m applicationTestModal) Focusables() []tview.Primitive {
+	return m.focusables
+}
+
+func (m applicationTestModal) KeyBindings() []keybinding.Binding {
+	return m.bindings
+}
+
+func (m applicationTestModal) Size() modal.Size {
+	return modal.Size{Width: 30, Height: 10}
 }
 
 func (p *hintPrimitive) KeyHints() []keybinding.Hint {

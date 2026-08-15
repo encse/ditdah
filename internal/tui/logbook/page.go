@@ -8,6 +8,7 @@ import (
 	domain "morsemanual/internal/logbook"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
+	"morsemanual/internal/tui/modal"
 
 	"github.com/rivo/tview"
 )
@@ -19,6 +20,7 @@ type Host interface {
 	SetFocus(primitive tview.Primitive)
 	Refresh()
 	Components() components.Factory
+	OpenModal(dialog modal.Dialog) modal.Handle
 }
 
 // Page is the logbook page exposed to the terminal application.
@@ -90,7 +92,7 @@ func (p *page) Focusables() []tview.Primitive {
 }
 
 func (p *page) KeyBindings() []keybinding.Binding {
-	return p.searchBindings()
+	return append(p.searchBindings(), p.editBinding())
 }
 
 func (p *page) Status() string {

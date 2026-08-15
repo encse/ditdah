@@ -6,6 +6,7 @@ import (
 
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
+	"morsemanual/internal/tui/modal"
 	"morsemanual/internal/tui/overlay"
 
 	"github.com/gdamore/tcell/v2"
@@ -19,6 +20,7 @@ type PageHost interface {
 	Refresh()
 	Components() components.Factory
 	Theme() colorTheme
+	OpenModal(dialog modal.Dialog) modal.Handle
 }
 
 // Application owns the shared TUI infrastructure and registered pages.
@@ -39,6 +41,19 @@ type application struct {
 	pages          map[string]Page
 	activePage     Page
 	globalBindings []keybinding.Binding
+	modals         []*openedModal
+}
+
+type openedModal struct {
+	dialog  modal.Dialog
+	layer   *modalLayer
+	overlay components.Overlay
+	closed  bool
+}
+
+type modalHandle struct {
+	app   *application
+	modal *openedModal
 }
 
 // NewApplication creates the terminal application infrastructure.
@@ -109,6 +124,24 @@ func (a *application) SetFocus(primitive tview.Primitive) {
 	a.Refresh()
 }
 
+func (a *application) OpenModal(dialog modal.Dialog) modal.Handle {
+	size := dialog.Size()
+	layer := newModalLayer(
+		dialog.Content(),
+		size.Width,
+		size.Height,
+		a.theme.styles.BorderColor,
+		a.theme.styles.PrimitiveBackgroundColor,
+	)
+	opened := &openedModal{dialog: dialog, layer: layer}
+	a.modals = append(a.modals, opened)
+	opened.overlay = a.overlays.Push(layer)
+	if focusables := dialog.Focusables(); len(focusables) > 0 {
+		a.SetFocus(focusables[0])
+	}
+	return &modalHandle{app: a, modal: opened}
+}
+
 func (a *application) Refresh() {
 	if a.activePage == nil {
 		return
@@ -121,15 +154,27 @@ func (a *application) Refresh() {
 	}
 
 	hints := a.focusedHints()
-	if !a.overlays.Active() && !a.parentBindingsBlocked() {
+	if opened, ok := a.topModal(); ok {
+		if !a.parentBindingsBlocked() {
+			hints = append(hints, keybinding.Hints(opened.dialog.KeyBindings())...)
+		}
+		hints = append(hints, keybinding.Hint{Keys: "Esc", Description: "close"})
+		if len(opened.dialog.Focusables()) > 1 {
+			hints = append(hints, focusNavigationHint())
+		}
+		a.layout.Footer().SetKeyHints(hints)
+		return
+	}
+	if a.overlays.Active() {
+		a.layout.Footer().SetKeyHints(hints)
+		return
+	}
+	if !a.parentBindingsBlocked() {
 		hints = append(hints, keybinding.Hints(a.activePage.KeyBindings())...)
 		hints = append(hints, keybinding.Hints(a.globalBindings)...)
 	}
-	if !a.overlays.Active() && len(a.activePage.Focusables()) > 1 {
-		hints = append(hints, keybinding.Hint{
-			Keys:        "Tab/Shift+Tab",
-			Description: "next/previous",
-		})
+	if len(a.activePage.Focusables()) > 1 {
+		hints = append(hints, focusNavigationHint())
 	}
 	a.layout.Footer().SetKeyHints(hints)
 }
@@ -184,10 +229,17 @@ func (a *application) captureKey(event *tcell.EventKey) *tcell.EventKey {
 		a.Stop()
 		return nil
 	}
-	if a.overlays.Active() || a.activePage == nil {
+	if a.activePage == nil {
 		return event
 	}
-	if a.moveFocus(event) {
+	if a.overlays.Active() {
+		opened, ok := a.topModal()
+		if !ok {
+			return event
+		}
+		return a.captureModal(opened, event)
+	}
+	if a.moveFocus(event, a.activePage.Focusables()) {
 		return nil
 	}
 	if a.parentBindingsBlocked() {
@@ -209,7 +261,33 @@ func (a *application) captureKey(event *tcell.EventKey) *tcell.EventKey {
 	return event
 }
 
-func (a *application) moveFocus(event *tcell.EventKey) bool {
+func (a *application) captureModal(
+	opened *openedModal,
+	event *tcell.EventKey,
+) *tcell.EventKey {
+	if event.Key() == tcell.KeyEscape {
+		a.closeModal(opened)
+		return nil
+	}
+	if a.moveFocus(event, opened.dialog.Focusables()) {
+		return nil
+	}
+	if a.parentBindingsBlocked() {
+		return event
+	}
+	for _, binding := range opened.dialog.KeyBindings() {
+		if binding.Handle(event) {
+			a.Refresh()
+			return nil
+		}
+	}
+	return event
+}
+
+func (a *application) moveFocus(
+	event *tcell.EventKey,
+	focusables []tview.Primitive,
+) bool {
 	direction := 0
 	switch event.Key() {
 	case tcell.KeyTab:
@@ -220,7 +298,6 @@ func (a *application) moveFocus(event *tcell.EventKey) bool {
 		return false
 	}
 
-	focusables := a.activePage.Focusables()
 	if len(focusables) == 0 {
 		return false
 	}
@@ -239,6 +316,43 @@ func (a *application) moveFocus(event *tcell.EventKey) bool {
 	nextIndex = (nextIndex + len(focusables)) % len(focusables)
 	a.SetFocus(focusables[nextIndex])
 	return true
+}
+
+func (a *application) topModal() (*openedModal, bool) {
+	if len(a.modals) == 0 {
+		return nil, false
+	}
+	opened := a.modals[len(a.modals)-1]
+	return opened, a.overlays.Top() == opened.layer
+}
+
+func (a *application) closeModal(target *openedModal) {
+	index := -1
+	for modalIndex, opened := range a.modals {
+		if opened == target {
+			index = modalIndex
+			break
+		}
+	}
+	if index < 0 || target.closed {
+		return
+	}
+	for _, opened := range a.modals[index:] {
+		opened.closed = true
+	}
+	a.modals = a.modals[:index]
+	target.overlay.Close()
+}
+
+func (h *modalHandle) Close() {
+	h.app.closeModal(h.modal)
+}
+
+func focusNavigationHint() keybinding.Hint {
+	return keybinding.Hint{
+		Keys:        "Tab/Shift+Tab",
+		Description: "next/previous",
+	}
 }
 
 func (a *application) focusedHints() []keybinding.Hint {

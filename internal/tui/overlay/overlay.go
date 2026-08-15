@@ -15,6 +15,7 @@ type Host interface {
 	SetContent(content tview.Primitive)
 	SetChangedFunc(handler func())
 	Active() bool
+	Top() tview.Primitive
 }
 
 type host struct {
@@ -27,6 +28,7 @@ type host struct {
 
 type entry struct {
 	name          string
+	primitive     tview.Primitive
 	previousFocus tview.Primitive
 }
 
@@ -61,11 +63,19 @@ func (h *host) Active() bool {
 	return len(h.entries) > 0
 }
 
+func (h *host) Top() tview.Primitive {
+	if len(h.entries) == 0 {
+		return nil
+	}
+	return h.entries[len(h.entries)-1].primitive
+}
+
 func (h *host) Push(primitive tview.Primitive) components.Overlay {
 	h.nextID++
 	name := fmt.Sprintf("overlay-%d", h.nextID)
 	h.entries = append(h.entries, entry{
 		name:          name,
+		primitive:     primitive,
 		previousFocus: h.app.GetFocus(),
 	})
 	h.pages.AddPage(name, primitive, true, true)

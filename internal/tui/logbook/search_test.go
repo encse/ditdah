@@ -14,8 +14,11 @@ import (
 func TestSearchBindingFocusesSearch(t *testing.T) {
 	page, host := newTestPage(t)
 	event := tcell.NewEventKey(tcell.KeyRune, '/', 0)
-	bindings := page.KeyBindings()
-	if len(bindings) != 1 || !bindings[0].Handle(event) {
+	handled := false
+	for _, binding := range page.KeyBindings() {
+		handled = binding.Handle(event) || handled
+	}
+	if !handled {
 		t.Fatal("search binding did not handle /")
 	}
 	if host.focus != page.search {
