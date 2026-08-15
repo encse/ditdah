@@ -157,6 +157,7 @@ func demoTheme() components.Theme {
 		PrimaryText:            tcell.GetColor("#eceff4"),
 		SecondaryText:          tcell.GetColor("#d8dee9"),
 		MutedText:              tcell.GetColor("#81a1c1"),
+		DangerText:             tcell.GetColor("#bf616a"),
 		Accent:                 tcell.GetColor("#88c0d0"),
 		Border:                 tcell.GetColor("#4c566a"),
 		LabelColor:             tcell.GetColor("#d8dee9"),
@@ -171,5 +172,7 @@ func demoTheme() components.Theme {
 		ButtonBackground:       tcell.GetColor("#5e81ac"),
 		ActiveButtonText:       tcell.GetColor("#2e3440"),
 		ActiveButtonBackground: tcell.GetColor("#88c0d0"),
+		DangerButtonBackground: tcell.GetColor("#bf616a"),
+		ActiveDangerBackground: tcell.GetColor("#d08770"),
 	}
 }

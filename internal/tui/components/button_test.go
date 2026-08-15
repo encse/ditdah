@@ -23,3 +23,14 @@ func TestButtonUsesThemeAndInvokesAction(t *testing.T) {
 		t.Fatal("button action was not invoked")
 	}
 }
+
+func TestDangerButtonUsesDangerTheme(t *testing.T) {
+	button := newTestFactory().DangerButton("Delete")
+	button.SetRect(1, 1, 10, 1)
+	button.Focus(nil)
+
+	screen := newTestScreen(t)
+	button.Draw(screen)
+	assertBackground(t, screen, 1, 1, testTheme().ActiveDangerBackground)
+	assertForeground(t, screen, 4, 1, testTheme().ActiveButtonText)
+}

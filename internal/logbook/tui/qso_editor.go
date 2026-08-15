@@ -14,7 +14,6 @@ import (
 	"morsemanual/internal/tui/keybinding"
 	"morsemanual/internal/tui/modal"
 
-	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -281,10 +280,17 @@ func (e *qsoEditor) layout(controls components.Factory) tview.Primitive {
 		).
 		AddItem(nil, 2, 0, false)
 	surface := controls.TextView()
-	surface.SetBorder(" Edit QSO ")
+	surface.SetBorder(e.title())
 	return tview.NewPages().
 		AddPage("surface", surface, true, true).
 		AddPage("content", padded, true, true)
+}
+
+func (e *qsoEditor) title() string {
+	if e.qso.ID == "" {
+		return " New QSO "
+	}
+	return " Edit QSO "
 }
 
 func editorModes(current string) ([]string, int) {
@@ -298,44 +304,4 @@ func editorModes(current string) ([]string, int) {
 		selected = 0
 	}
 	return modes, selected
-}
-
-func (p *page) editBinding() keybinding.Binding {
-	return keybinding.OnKey(
-		tcell.KeyEnter,
-		"edit QSO",
-		func() {
-			qso, ok := p.selectedQSO()
-			if !ok {
-				return
-			}
-			editor := newQSOEditor(p.host.Components(), qso, p.updateQSO)
-			editor.setHandle(p.host.OpenModal(editor))
-		},
-	)
-}
-
-func (p *page) updateQSO(qso domain.QSO) (domain.QSO, error) {
-	updated, err := p.store.Update(p.ctx, qso)
-	if err != nil {
-		return domain.QSO{}, fmt.Errorf("update QSO: %w", err)
-	}
-	for index := range p.qsos {
-		if p.qsos[index].ID == updated.ID {
-			p.qsos[index] = updated
-			break
-		}
-	}
-	p.selectedID = updated.ID
-	p.applyFilter()
-	return updated, nil
-}
-
-func (p *page) selectedQSO() (domain.QSO, bool) {
-	for _, qso := range p.filteredQsos {
-		if qso.ID == p.selectedID {
-			return qso, true
-		}
-	}
-	return domain.QSO{}, false
 }

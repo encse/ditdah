@@ -48,6 +48,7 @@ func (t colorTheme) components() components.Theme {
 		PrimaryText:            t.styles.PrimaryTextColor,
 		SecondaryText:          t.styles.SecondaryTextColor,
 		MutedText:              t.muted,
+		DangerText:             tcell.GetColor("#bf616a"),
 		Accent:                 t.accent,
 		Border:                 t.styles.BorderColor,
 		LabelColor:             t.styles.SecondaryTextColor,
@@ -62,6 +63,8 @@ func (t colorTheme) components() components.Theme {
 		ButtonBackground:       t.selectionBackground,
 		ActiveButtonText:       t.styles.PrimitiveBackgroundColor,
 		ActiveButtonBackground: t.accent,
+		DangerButtonBackground: tcell.GetColor("#bf616a"),
+		ActiveDangerBackground: tcell.GetColor("#d08770"),
 	}
 }
 
@@ -74,6 +77,7 @@ func (t colorTheme) modalComponents() components.Theme {
 		PrimaryText:            text,
 		SecondaryText:          text,
 		MutedText:              tcell.GetColor("#606060"),
+		DangerText:             tcell.GetColor("#8b1a1a"),
 		Accent:                 text,
 		Border:                 tcell.ColorWhite,
 		LabelColor:             text,
@@ -88,5 +92,7 @@ func (t colorTheme) modalComponents() components.Theme {
 		ButtonBackground:       tcell.GetColor("#5e81ac"),
 		ActiveButtonText:       tcell.GetColor("#2e3440"),
 		ActiveButtonBackground: tcell.GetColor("#88c0d0"),
+		DangerButtonBackground: tcell.GetColor("#9f3038"),
+		ActiveDangerBackground: tcell.GetColor("#bf616a"),
 	}
 }

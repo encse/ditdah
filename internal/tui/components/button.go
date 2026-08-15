@@ -16,13 +16,39 @@ type button struct {
 }
 
 func newButton(label string, theme Theme, focusChanged func()) Button {
+	return newStyledButton(
+		label,
+		theme,
+		theme.ButtonBackground,
+		theme.ActiveButtonBackground,
+		focusChanged,
+	)
+}
+
+func newDangerButton(label string, theme Theme, focusChanged func()) Button {
+	return newStyledButton(
+		label,
+		theme,
+		theme.DangerButtonBackground,
+		theme.ActiveDangerBackground,
+		focusChanged,
+	)
+}
+
+func newStyledButton(
+	label string,
+	theme Theme,
+	background tcell.Color,
+	activeBackground tcell.Color,
+	focusChanged func(),
+) Button {
 	view := tview.NewButton(label).
 		SetStyle(tcell.StyleDefault.
 			Foreground(theme.ButtonText).
-			Background(theme.ButtonBackground)).
+			Background(background)).
 		SetActivatedStyle(tcell.StyleDefault.
 			Foreground(theme.ActiveButtonText).
-			Background(theme.ActiveButtonBackground).
+			Background(activeBackground).
 			Bold(true))
 	view.SetFocusFunc(func() {
 		notify(focusChanged)

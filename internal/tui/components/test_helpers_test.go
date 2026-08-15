@@ -76,6 +76,7 @@ func testTheme() Theme {
 		PrimaryText:            tcell.ColorWhite,
 		SecondaryText:          tcell.ColorSilver,
 		MutedText:              tcell.ColorGray,
+		DangerText:             tcell.ColorRed,
 		Accent:                 tcell.ColorAqua,
 		Border:                 tcell.ColorWhite,
 		LabelColor:             tcell.ColorWhite,
@@ -90,6 +91,8 @@ func testTheme() Theme {
 		ButtonBackground:       tcell.ColorBlue,
 		ActiveButtonText:       tcell.ColorBlack,
 		ActiveButtonBackground: tcell.ColorAqua,
+		DangerButtonBackground: tcell.ColorMaroon,
+		ActiveDangerBackground: tcell.ColorRed,
 	}
 }
 

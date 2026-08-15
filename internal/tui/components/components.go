@@ -26,6 +26,7 @@ type Theme struct {
 	PrimaryText            tcell.Color
 	SecondaryText          tcell.Color
 	MutedText              tcell.Color
+	DangerText             tcell.Color
 	Accent                 tcell.Color
 	Border                 tcell.Color
 	LabelColor             tcell.Color
@@ -40,6 +41,8 @@ type Theme struct {
 	ButtonBackground       tcell.Color
 	ActiveButtonText       tcell.Color
 	ActiveButtonBackground tcell.Color
+	DangerButtonBackground tcell.Color
+	ActiveDangerBackground tcell.Color
 }
 
 // Factory creates controls which share one theme.
@@ -48,6 +51,7 @@ type Factory interface {
 	Header() Header
 	Footer() Footer
 	Button(label string) Button
+	DangerButton(label string) Button
 	InputField(label, value string) InputField
 	TextArea(label, value string) TextArea
 	TextView() TextView
@@ -105,6 +109,10 @@ func (f factory) Footer() Footer {
 
 func (f factory) Button(label string) Button {
 	return newButton(label, f.theme, f.focusChanged)
+}
+
+func (f factory) DangerButton(label string) Button {
+	return newDangerButton(label, f.theme, f.focusChanged)
 }
 
 func (f factory) InputField(label, value string) InputField {

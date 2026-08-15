@@ -15,6 +15,7 @@ const (
 	TextViewSecondary
 	TextViewMuted
 	TextViewAccent
+	TextViewDanger
 )
 
 // TextView is an application-styled text display and writer.
@@ -89,6 +90,8 @@ func (v *textView) SetStyle(style TextViewStyle) {
 		color = v.theme.MutedText
 	case TextViewAccent:
 		color = v.theme.Accent
+	case TextViewDanger:
+		color = v.theme.DangerText
 	default:
 		color = v.theme.PrimaryText
 	}

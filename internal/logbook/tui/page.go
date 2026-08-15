@@ -78,7 +78,12 @@ func (p *page) Focusables() []tview.Primitive {
 }
 
 func (p *page) KeyBindings() []keybinding.Binding {
-	return append(p.searchBindings(), p.editBinding())
+	return append(
+		p.searchBindings(),
+		p.createBinding(),
+		p.editBinding(),
+		p.deleteBinding(),
+	)
 }
 
 func (p *page) Status() string {

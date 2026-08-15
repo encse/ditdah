@@ -50,6 +50,6 @@ This document records implementation decisions and future technical work.
 
 - [ ] Implement QRZ synchronization on top of the stored synchronization state.
 - [x] Add the initial read-only logbook TUI with table, details, and search.
-- [ ] Add QSO creation, editing, and deletion to the logbook TUI.
+- [x] Add QSO creation, editing, and confirmed deletion to the logbook TUI.
 - [ ] Add the Morse user-interface view.
 - [ ] Add further domain stores and migrations as their features are implemented.
