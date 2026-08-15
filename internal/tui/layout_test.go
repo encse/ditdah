@@ -7,6 +7,7 @@ import (
 	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 func TestLayoutArrangesHeaderContentAndFooter(t *testing.T) {
@@ -17,18 +18,22 @@ func TestLayoutArrangesHeaderContentAndFooter(t *testing.T) {
 	layout := NewLayout(controls)
 	content := controls.TextView()
 	content.SetText("content")
-	layout.Header().SetTitle("Logbook")
 	layout.Footer().SetContext("24 QSOs")
-	layout.Footer().SetKeyHints([]keybinding.Hint{
-		{Keys: "q", Description: "quit"},
+	layout.Show(testPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: content,
+		bindings: []keybinding.Binding{
+			{Hint: keybinding.Hint{Keys: "q", Description: "quit"}},
+		},
 	})
-	layout.SetContent(content)
 	layout.SetRect(0, 0, 40, 12)
 	layout.Draw(screen)
 
 	assertLayoutRune(t, screen, 0, 0, 'L')
 	assertLayoutRune(t, screen, 0, 1, 'c')
 	assertLayoutRune(t, screen, 0, 11, '2')
+	assertLayoutRune(t, screen, 22, 11, 'q')
 }
 
 func TestLayoutReplacesContent(t *testing.T) {
@@ -39,8 +44,8 @@ func TestLayoutReplacesContent(t *testing.T) {
 	first := controls.TextView()
 	second := controls.TextView()
 
-	layout.SetContent(first)
-	layout.SetContent(second)
+	layout.Show(testPage{id: "first", title: "First", content: first})
+	layout.Show(testPage{id: "second", title: "Second", content: second})
 
 	if got := layout.contentArea.GetItemCount(); got != 1 {
 		t.Fatalf("content item count = %d, want 1", got)
@@ -48,6 +53,29 @@ func TestLayoutReplacesContent(t *testing.T) {
 	if got := layout.contentArea.GetItem(0); got != second {
 		t.Fatalf("content = %T, want replacement content", got)
 	}
+}
+
+type testPage struct {
+	id       string
+	title    string
+	content  tview.Primitive
+	bindings []keybinding.Binding
+}
+
+func (p testPage) ID() string {
+	return p.id
+}
+
+func (p testPage) Title() string {
+	return p.title
+}
+
+func (p testPage) Content() tview.Primitive {
+	return p.content
+}
+
+func (p testPage) KeyBindings() []keybinding.Binding {
+	return p.bindings
 }
 
 func newLayoutTestScreen(t *testing.T) tcell.SimulationScreen {

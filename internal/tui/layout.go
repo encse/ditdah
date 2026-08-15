@@ -2,6 +2,7 @@ package tui
 
 import (
 	"morsemanual/internal/tui/components"
+	"morsemanual/internal/tui/keybinding"
 
 	"github.com/rivo/tview"
 )
@@ -12,7 +13,7 @@ type Layout interface {
 	tview.Primitive
 	Header() components.Header
 	Footer() components.Footer
-	SetContent(content tview.Primitive)
+	Show(page Page)
 }
 
 type layout struct {
@@ -42,7 +43,7 @@ func NewLayout(controls components.Factory) Layout {
 		AddItem(header, 1, 0, false).
 		AddItem(contentArea, 0, 1, true).
 		AddItem(footer, 1, 0, false)
-	layout.SetContent(nil)
+	layout.setContent(nil)
 	return layout
 }
 
@@ -54,7 +55,13 @@ func (l *layout) Footer() components.Footer {
 	return l.footer
 }
 
-func (l *layout) SetContent(content tview.Primitive) {
+func (l *layout) Show(page Page) {
+	l.header.SetTitle(page.Title())
+	l.footer.SetKeyHints(keybinding.Hints(page.KeyBindings()))
+	l.setContent(page.Content())
+}
+
+func (l *layout) setContent(content tview.Primitive) {
 	if content == nil {
 		content = l.emptyContent
 	}
