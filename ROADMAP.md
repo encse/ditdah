@@ -43,6 +43,7 @@ This document records implementation decisions and future technical work.
 - [x] Use Jet-generated types and query builders instead of handwritten row types and query SQL.
 - [x] Keep the application-owned QSO domain model separate from Jet's generated persistence model.
 - [x] Store whether and when a QSO was synchronized to QRZ.
+- [x] Persist the station callsign and QRZ credentials in a singleton application settings record.
 - [x] Allow arbitrary operating-mode strings so additional modes do not require a closed enum or database constraint.
 - [x] Allow Jet SQL DSL and generated table packages to use dot imports inside SQLite store implementations.
 

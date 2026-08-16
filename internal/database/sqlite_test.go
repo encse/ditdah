@@ -16,8 +16,9 @@ func TestOpenSQLiteAppliesMigrationsOnce(t *testing.T) {
 			t.Fatalf("OpenSQLite() attempt %d error = %v", attempt+1, err)
 		}
 
-		assertSchemaVersion(t, db, 1)
+		assertSchemaVersion(t, db, 2)
 		assertTableExists(t, db, "qso")
+		assertTableExists(t, db, "application_settings")
 
 		if err := db.Close(); err != nil {
 			t.Fatalf("Close() attempt %d error = %v", attempt+1, err)
