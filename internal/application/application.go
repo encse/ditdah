@@ -10,7 +10,6 @@ import (
 	"morsemanual/internal/database"
 	logbookpage "morsemanual/internal/logbook/tui"
 	settingspage "morsemanual/internal/settings/tui"
-	"morsemanual/internal/stores"
 	"morsemanual/internal/tui"
 	"morsemanual/internal/tui/keybinding"
 )
@@ -26,8 +25,7 @@ func Run(ctx context.Context, databasePath string) (err error) {
 		err = errors.Join(err, db.Close())
 	}()
 
-	applicationStores := stores.New(db)
-	terminal, err := newTerminalApplication(ctx, applicationStores)
+	terminal, err := newTerminalApplication(ctx, newDependencies(db))
 	if err != nil {
 		return err
 	}
@@ -40,16 +38,21 @@ func Run(ctx context.Context, databasePath string) (err error) {
 
 func newTerminalApplication(
 	ctx context.Context,
-	applicationStores stores.Stores,
+	deps dependencies,
 ) (tui.Application, error) {
 	terminal := tui.NewApplication()
 	terminal.AddMenuItem(
 		"Settings",
 		keybinding.OnRune('s', "settings", func() {
-			settingspage.Open(ctx, terminal, applicationStores.Settings)
+			settingspage.Open(
+				ctx,
+				terminal,
+				deps.stores.Settings,
+				deps.qrz,
+			)
 		}),
 	)
-	page, err := logbookpage.New(ctx, terminal, applicationStores.Logbook)
+	page, err := logbookpage.New(ctx, terminal, deps.stores.Logbook)
 	if err != nil {
 		return nil, err
 	}

@@ -9,8 +9,9 @@ import (
 )
 
 func TestTerminalApplicationRegistersOnlyLogbookPage(t *testing.T) {
-	terminal, err := newTerminalApplication(t.Context(), stores.Stores{
-		Logbook: emptyLogbookStore{},
+	terminal, err := newTerminalApplication(t.Context(), dependencies{
+		stores: stores.Stores{Logbook: emptyLogbookStore{}},
+		qrz:    unusedQRZService{},
 	})
 	if err != nil {
 		t.Fatalf("newTerminalApplication() error = %v", err)
@@ -22,6 +23,16 @@ func TestTerminalApplicationRegistersOnlyLogbookPage(t *testing.T) {
 
 type emptyLogbookStore struct {
 	logbook.Store
+}
+
+type unusedQRZService struct{}
+
+func (unusedQRZService) ValidateLogin(context.Context, string, string) error {
+	return nil
+}
+
+func (unusedQRZService) ValidateAPIKey(context.Context, string) error {
+	return nil
 }
 
 func (emptyLogbookStore) List(
