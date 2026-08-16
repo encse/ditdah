@@ -49,6 +49,7 @@ This document records implementation decisions and future technical work.
 - [x] Keep the application-owned QSO domain model separate from Jet's generated persistence model.
 - [x] Store whether and when a QSO was synchronized to QRZ.
 - [x] Persist the station callsign and QRZ credentials in a singleton application settings record.
+- [x] Cache positive and negative lookups by normalized input callsign while retaining the provider query callsign, provider metadata, and optional QRZ station data.
 - [x] Allow arbitrary operating-mode strings so additional modes do not require a closed enum or database constraint.
 - [x] Allow Jet SQL DSL and generated table packages to use dot imports inside SQLite store implementations.
 

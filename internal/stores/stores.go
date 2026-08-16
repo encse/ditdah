@@ -4,6 +4,7 @@ package stores
 import (
 	"database/sql"
 
+	"morsemanual/internal/callsign"
 	"morsemanual/internal/logbook"
 	"morsemanual/internal/settings"
 )
@@ -11,6 +12,7 @@ import (
 // Stores contains the persistence boundaries shared by application features.
 // It is assembled once from the application-owned database connection.
 type Stores struct {
+	Callsign callsign.Store
 	Logbook  logbook.Store
 	Settings settings.Store
 }
@@ -18,6 +20,7 @@ type Stores struct {
 // New creates all domain stores over the shared application database.
 func New(db *sql.DB) Stores {
 	return Stores{
+		Callsign: callsign.NewSQLiteStore(db),
 		Logbook:  logbook.NewSQLiteStore(db),
 		Settings: settings.NewSQLiteStore(db),
 	}

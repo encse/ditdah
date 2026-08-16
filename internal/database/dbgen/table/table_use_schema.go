@@ -11,5 +11,6 @@ package table
 // this method only once at the beginning of the program.
 func UseSchema(schema string) {
 	ApplicationSettings = ApplicationSettings.FromSchema(schema)
+	CallsignLookup = CallsignLookup.FromSchema(schema)
 	Qso = Qso.FromSchema(schema)
 }
