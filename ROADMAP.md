@@ -10,6 +10,7 @@ This document records implementation decisions and future technical work.
 - [x] Keep UI, domain models, and persistence separate.
 - [x] Keep SQLite connection setup, migrations, and the shared generated database model in `internal/database`.
 - [x] Keep domain queries and persistence mapping in their domain package, such as `internal/logbook`.
+- [x] Construct all domain stores once at application startup and pass them through the composition layer as one store collection.
 - [x] Use the standard `*sql.DB` directly; the application owns and closes it, while domain stores use the shared connection without an extra database wrapper interface.
 - [x] Use `tview` for the classic pane-, table-, and menu-oriented terminal interface.
 - [x] Use the Nord color scheme to match the original Python application.

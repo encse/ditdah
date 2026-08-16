@@ -5,10 +5,13 @@ import (
 	"testing"
 
 	"morsemanual/internal/logbook"
+	"morsemanual/internal/stores"
 )
 
 func TestTerminalApplicationRegistersOnlyLogbookPage(t *testing.T) {
-	terminal, err := newTerminalApplication(t.Context(), emptyLogbookStore{})
+	terminal, err := newTerminalApplication(t.Context(), stores.Stores{
+		Logbook: emptyLogbookStore{},
+	})
 	if err != nil {
 		t.Fatalf("newTerminalApplication() error = %v", err)
 	}

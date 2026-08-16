@@ -8,8 +8,8 @@ import (
 	"fmt"
 
 	"morsemanual/internal/database"
-	"morsemanual/internal/logbook"
 	logbookpage "morsemanual/internal/logbook/tui"
+	"morsemanual/internal/stores"
 	"morsemanual/internal/tui"
 )
 
@@ -24,8 +24,8 @@ func Run(ctx context.Context, databasePath string) (err error) {
 		err = errors.Join(err, db.Close())
 	}()
 
-	store := logbook.NewSQLiteStore(db)
-	terminal, err := newTerminalApplication(ctx, store)
+	applicationStores := stores.New(db)
+	terminal, err := newTerminalApplication(ctx, applicationStores)
 	if err != nil {
 		return err
 	}
@@ -38,10 +38,10 @@ func Run(ctx context.Context, databasePath string) (err error) {
 
 func newTerminalApplication(
 	ctx context.Context,
-	store logbook.Store,
+	applicationStores stores.Stores,
 ) (tui.Application, error) {
 	terminal := tui.NewApplication()
-	page, err := logbookpage.New(ctx, terminal, store)
+	page, err := logbookpage.New(ctx, terminal, applicationStores.Logbook)
 	if err != nil {
 		return nil, err
 	}
