@@ -71,14 +71,11 @@ func (d *apiKeyDialog) close() {
 }
 
 func (d *apiKeyDialog) layout(controls components.Factory) tview.Primitive {
-	body := tview.NewFlex().
-		SetDirection(tview.FlexRow).
+	body := controls.Flex(tview.FlexRow).
 		AddItem(d.apiKey, 1, 0, false).
 		AddItem(d.message, 1, 0, false).
-		AddItem(centeredButtons(d.update, d.cancel), 1, 0, false)
-	surface := controls.TextView()
-	surface.SetBorder(" QRZ.com API key ")
-	return tview.NewPages().
-		AddPage("surface", surface, true, true).
-		AddPage("content", pad(body, 2, 3), true, true)
+		AddItem(centeredButtons(controls, d.update, d.cancel), 1, 0, false)
+	stack := controls.PageStack(" QRZ.com API key ")
+	stack.Add("content", pad(controls, body, 1, 2, 3), true)
+	return stack
 }

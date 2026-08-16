@@ -19,13 +19,15 @@ import (
 const settingsLabelWidth = 20
 
 type dialog struct {
-	ctx     context.Context
-	host    ui.PageHost
-	store   domain.Store
-	qrz     qrz.Service
-	content tview.Primitive
-	values  domain.Settings
-	handle  modal.Handle
+	ctx      context.Context
+	host     ui.PageHost
+	store    domain.Store
+	qrz      qrz.Service
+	content  tview.Primitive
+	pages    components.PageStack
+	values   domain.Settings
+	handle   modal.Handle
+	checking bool
 
 	stationCallsign components.InputField
 	loginStatus     components.TextView
@@ -49,12 +51,8 @@ func Open(
 ) {
 	values, loadErr := store.Load(ctx)
 	dialog := newDialog(ctx, host, store, qrzService, values)
-	if loadErr != nil {
-		dialog.showError(fmt.Errorf("load settings: %w", loadErr))
-	} else {
-		dialog.validateStoredCredentials()
-	}
 	dialog.handle = host.OpenModal(dialog)
+	dialog.finishValidation(loadErr)
 }
 
 func newDialog(
@@ -66,11 +64,12 @@ func newDialog(
 ) *dialog {
 	controls := host.Components().Modal()
 	dialog := &dialog{
-		ctx:    ctx,
-		host:   host,
-		store:  store,
-		qrz:    qrzService,
-		values: values,
+		ctx:      ctx,
+		host:     host,
+		store:    store,
+		qrz:      qrzService,
+		values:   values,
+		checking: true,
 	}
 	dialog.stationCallsign = dialog.input(
 		controls,
@@ -114,6 +113,9 @@ func (d *dialog) Content() tview.Primitive {
 }
 
 func (d *dialog) Focusables() []tview.Primitive {
+	if d.checking {
+		return nil
+	}
 	return d.focusables
 }
 
@@ -122,7 +124,7 @@ func (d *dialog) KeyBindings() []keybinding.Binding {
 }
 
 func (d *dialog) Size() modal.Size {
-	return modal.Size{Width: 72, Height: 12}
+	return modal.Size{Width: 72, Height: 13}
 }
 
 func (d *dialog) input(
@@ -135,17 +137,35 @@ func (d *dialog) input(
 	return input
 }
 
-func (d *dialog) validateStoredCredentials() {
+func (d *dialog) finishValidation(loadErr error) {
+	var loginErr, apiKeyErr error
+	if loadErr == nil {
+		loginErr, apiKeyErr = d.validateStoredCredentials()
+	}
+	if loadErr != nil {
+		d.showError(fmt.Errorf("load settings: %w", loadErr))
+	} else {
+		d.showLoginStatus(loginErr)
+		d.showAPIKeyStatus(apiKeyErr)
+	}
+	d.checking = false
+	d.pages.Show("settings")
+	d.host.SetFocus(d.stationCallsign)
+}
+
+func (d *dialog) validateStoredCredentials() (error, error) {
+	var loginErr, apiKeyErr error
 	if d.values.QRZPassword != "" {
-		d.showLoginStatus(d.qrz.ValidateLogin(
+		loginErr = d.qrz.ValidateLogin(
 			d.ctx,
 			d.values.StationCallsign,
 			d.values.QRZPassword,
-		))
+		)
 	}
 	if d.values.QRZAPIKey != "" {
-		d.showAPIKeyStatus(d.qrz.ValidateAPIKey(d.ctx, d.values.QRZAPIKey))
+		apiKeyErr = d.qrz.ValidateAPIKey(d.ctx, d.values.QRZAPIKey)
 	}
+	return loginErr, apiKeyErr
 }
 
 func (d *dialog) submit() {
@@ -287,25 +307,31 @@ func (d *dialog) layout(controls components.Factory) tview.Primitive {
 		d.updateAPIKey,
 		d.clearAPIKey,
 	)
-	fields := tview.NewGrid().
+	fields := controls.Grid().
 		SetRows(1, 1, 1, 1, 1).
 		SetColumns(0).
 		AddItem(d.stationCallsign, 0, 0, 1, 1, 0, 0, false).
 		AddItem(loginRow, 2, 0, 1, 1, 0, 0, false).
 		AddItem(apiKeyRow, 4, 0, 1, 1, 0, 0, false)
-	buttons := centeredButtons(d.ok, d.cancel)
-	body := tview.NewFlex().
-		SetDirection(tview.FlexRow).
+	buttons := centeredButtons(controls, d.ok, d.cancel)
+	body := controls.Flex(tview.FlexRow).
 		AddItem(fields, 5, 0, false).
 		AddItem(nil, 1, 0, false).
 		AddItem(d.message, 1, 0, false).
 		AddItem(buttons, 1, 0, false)
-	padded := pad(body, 2, 3)
-	surface := controls.TextView()
-	surface.SetBorder(" Settings ")
-	return tview.NewPages().
-		AddPage("surface", surface, true, true).
-		AddPage("content", padded, true, true)
+	padded := pad(controls, body, 1, 2, 3)
+	progress := controls.TextView()
+	progress.SetStyle(components.TextViewAccent)
+	progress.SetTextAlign(tview.AlignCenter)
+	progress.SetText("Checking QRZ.com credentials...")
+	loading := controls.Flex(tview.FlexRow).
+		AddItem(nil, 0, 1, false).
+		AddItem(progress, 1, 0, false).
+		AddItem(nil, 0, 1, false)
+	d.pages = controls.PageStack(" Settings ")
+	d.pages.Add("checking", loading, true)
+	d.pages.Add("settings", padded, false)
+	return d.pages
 }
 
 func credentialRow(
@@ -317,7 +343,7 @@ func credentialRow(
 ) tview.Primitive {
 	labelView := controls.TextView()
 	labelView.SetText(label)
-	return tview.NewGrid().
+	return controls.Grid().
 		SetRows(1).
 		SetColumns(settingsLabelWidth, 0, 2, 10, 1, 10).
 		AddItem(labelView, 0, 0, 1, 1, 0, 0, false).
@@ -326,8 +352,12 @@ func credentialRow(
 		AddItem(clear, 0, 5, 1, 1, 0, 0, false)
 }
 
-func centeredButtons(first, second tview.Primitive) tview.Primitive {
-	return tview.NewFlex().
+func centeredButtons(
+	controls components.Factory,
+	first,
+	second tview.Primitive,
+) tview.Primitive {
+	return controls.Flex(tview.FlexColumn).
 		AddItem(nil, 0, 1, false).
 		AddItem(first, 12, 0, false).
 		AddItem(nil, 2, 0, false).
@@ -335,12 +365,17 @@ func centeredButtons(first, second tview.Primitive) tview.Primitive {
 		AddItem(nil, 0, 1, false)
 }
 
-func pad(content tview.Primitive, vertical, horizontal int) tview.Primitive {
-	return tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(nil, vertical, 0, false).
+func pad(
+	controls components.Factory,
+	content tview.Primitive,
+	top,
+	bottom,
+	horizontal int,
+) tview.Primitive {
+	return controls.Flex(tview.FlexRow).
+		AddItem(nil, top, 0, false).
 		AddItem(
-			tview.NewFlex().
+			controls.Flex(tview.FlexColumn).
 				AddItem(nil, horizontal, 0, false).
 				AddItem(content, 0, 1, false).
 				AddItem(nil, horizontal, 0, false),
@@ -348,5 +383,5 @@ func pad(content tview.Primitive, vertical, horizontal int) tview.Primitive {
 			1,
 			false,
 		).
-		AddItem(nil, vertical, 0, false)
+		AddItem(nil, bottom, 0, false)
 }

@@ -176,6 +176,9 @@ func (a *application) OpenModal(dialog modal.Dialog) modal.Handle {
 		focus = focusables[0]
 	}
 	a.SetFocus(focus)
+	// Modals are opened from direct event handling. Drawing here makes the
+	// modal visible before the caller starts any following synchronous work.
+	a.engine.ForceDraw()
 	return &modalHandle{app: a, modal: opened}
 }
 

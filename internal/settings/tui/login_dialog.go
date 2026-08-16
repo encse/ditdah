@@ -78,19 +78,19 @@ func (d *loginDialog) close() {
 }
 
 func (d *loginDialog) layout(controls components.Factory) tview.Primitive {
-	fields := tview.NewGrid().
+	fields := controls.Grid().
 		SetRows(1, 1, 1).
 		SetColumns(0).
 		AddItem(d.callsign, 0, 0, 1, 1, 0, 0, false).
 		AddItem(d.password, 2, 0, 1, 1, 0, 0, false)
-	body := tview.NewFlex().
-		SetDirection(tview.FlexRow).
+	body := controls.Flex(tview.FlexRow).
 		AddItem(fields, 3, 0, false).
 		AddItem(d.message, 1, 0, false).
-		AddItem(centeredButtons(d.login, d.cancel), 1, 0, false)
-	surface := controls.TextView()
-	surface.SetBorder(fmt.Sprintf(" Login to QRZ.com as %s ", d.callsign.Value()))
-	return tview.NewPages().
-		AddPage("surface", surface, true, true).
-		AddPage("content", pad(body, 2, 3), true, true)
+		AddItem(centeredButtons(controls, d.login, d.cancel), 1, 0, false)
+	stack := controls.PageStack(fmt.Sprintf(
+		" Login to QRZ.com as %s ",
+		d.callsign.Value(),
+	))
+	stack.Add("content", pad(controls, body, 1, 2, 3), true)
+	return stack
 }

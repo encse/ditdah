@@ -14,6 +14,28 @@ import (
 	"github.com/rivo/tview"
 )
 
+func TestOpenShowsProgressUntilCredentialValidationFinishes(t *testing.T) {
+	store := &recordingStore{loaded: domain.Settings{
+		StationCallsign: "HA7NCS",
+		QRZPassword:     "password",
+	}}
+	service := &recordingQRZService{}
+	host := newTestHost()
+
+	dialog := newDialog(t.Context(), host, store, service, store.loaded)
+	if len(dialog.Focusables()) != 0 {
+		t.Fatal("settings controls are focusable while validation is running")
+	}
+	if page := dialog.pages.Active(); page != "checking" {
+		t.Fatalf("front page = %q, want checking", page)
+	}
+
+	dialog.finishValidation(nil)
+	if page := dialog.pages.Active(); page != "settings" {
+		t.Fatalf("front page = %q, want settings", page)
+	}
+}
+
 func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 	store := &recordingStore{loaded: domain.Settings{
 		StationCallsign: "HA7NCS",
@@ -42,6 +64,59 @@ func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 			dialog.loginStatus.Text(),
 			dialog.apiKeyStatus.Text(),
 		)
+	}
+}
+
+func TestSettingsButtonsReceiveMouseClicks(t *testing.T) {
+	store := &recordingStore{}
+	host := newTestHost()
+	dialog := newDialog(
+		t.Context(),
+		host,
+		store,
+		&recordingQRZService{},
+		domain.Settings{},
+	)
+	handle := &testHandle{}
+	dialog.handle = handle
+	dialog.finishValidation(nil)
+	size := dialog.Size()
+	dialog.Content().SetRect(0, 0, size.Width, size.Height)
+
+	screen := tcell.NewSimulationScreen("UTF-8")
+	if err := screen.Init(); err != nil {
+		t.Fatalf("initialize screen: %v", err)
+	}
+	t.Cleanup(screen.Fini)
+	screen.SetSize(size.Width, size.Height)
+	dialog.Content().Draw(screen)
+
+	x, y, width, _ := dialog.cancel.GetRect()
+	consumed, _ := dialog.Content().MouseHandler()(
+		tview.MouseLeftClick,
+		tcell.NewEventMouse(x+width/2, y, tcell.Button1, 0),
+		func(tview.Primitive) {},
+	)
+	if !consumed {
+		t.Fatal("Cancel mouse click was not consumed")
+	}
+	if !handle.closed {
+		t.Fatal("Cancel mouse click did not close settings")
+	}
+
+	handle = &testHandle{}
+	dialog.handle = handle
+	x, y, width, _ = dialog.ok.GetRect()
+	consumed, _ = dialog.Content().MouseHandler()(
+		tview.MouseLeftClick,
+		tcell.NewEventMouse(x+width/2, y, tcell.Button1, 0),
+		func(tview.Primitive) {},
+	)
+	if !consumed {
+		t.Fatal("OK mouse click was not consumed")
+	}
+	if store.saveCalls != 1 || !handle.closed {
+		t.Fatal("OK mouse click did not save and close settings")
 	}
 }
 

@@ -48,6 +48,8 @@ type Theme struct {
 // Factory creates controls which share one theme.
 type Factory interface {
 	Modal() Factory
+	Flex(direction int) *tview.Flex
+	Grid() *tview.Grid
 	Header() Header
 	Footer() Footer
 	Menu(label string, items []MenuItem) Menu
@@ -56,6 +58,7 @@ type Factory interface {
 	InputField(label, value string) InputField
 	TextArea(label, value string) TextArea
 	TextView() TextView
+	PageStack(title string) PageStack
 	Table(title string) Table
 	SelectField(
 		label string,
@@ -100,6 +103,18 @@ func (f factory) Modal() Factory {
 	return f
 }
 
+func (f factory) Flex(direction int) *tview.Flex {
+	flex := tview.NewFlex().SetDirection(direction)
+	flex.SetBackgroundColor(f.theme.Background)
+	return flex
+}
+
+func (f factory) Grid() *tview.Grid {
+	grid := tview.NewGrid()
+	grid.SetBackgroundColor(f.theme.Background)
+	return grid
+}
+
 func (f factory) Header() Header {
 	return newHeader(f)
 }
@@ -130,6 +145,10 @@ func (f factory) TextArea(label, value string) TextArea {
 
 func (f factory) TextView() TextView {
 	return newTextView(f.theme, f.focusChanged)
+}
+
+func (f factory) PageStack(title string) PageStack {
+	return newPageStack(title, f.theme, f.focusChanged)
 }
 
 func (f factory) Table(title string) Table {
