@@ -17,6 +17,7 @@ import (
 // Application owns the shared TUI infrastructure and registered pages.
 type Application interface {
 	PageHost
+	AddMenuItem(label string, binding keybinding.Binding)
 	Register(page Page) error
 	Show(pageID string) error
 	Run(ctx context.Context) error
@@ -32,6 +33,8 @@ type application struct {
 	pages          map[string]Page
 	activePage     Page
 	globalBindings []keybinding.Binding
+	menuItems      []components.MenuItem
+	exitBinding    keybinding.Binding
 	modals         []*openedModal
 }
 
@@ -80,15 +83,39 @@ func newApplication(theme colorTheme) Application {
 		theme:    theme,
 		pages:    make(map[string]Page),
 	}
-	quit := app.quitBinding()
-	layout.Header().SetMenu(
-		newApplicationMenu(controls, quit),
-		applicationMenuWidth,
-	)
-	app.globalBindings = []keybinding.Binding{quit}
+	app.exitBinding = app.quitBinding()
+	app.rebuildApplicationMenu()
 	engine.SetInputCapture(app.captureKey)
 	overlays.SetChangedFunc(app.Refresh)
 	return app
+}
+
+func (a *application) AddMenuItem(
+	label string,
+	binding keybinding.Binding,
+) {
+	a.menuItems = append(a.menuItems, components.MenuItem{
+		Label:   label,
+		Binding: binding,
+	})
+	a.rebuildApplicationMenu()
+}
+
+func (a *application) rebuildApplicationMenu() {
+	items := append([]components.MenuItem(nil), a.menuItems...)
+	items = append(items, components.MenuItem{
+		Label:   "Exit",
+		Binding: a.exitBinding,
+	})
+	a.layout.Header().SetMenu(
+		newApplicationMenu(a.controls, items),
+		applicationMenuWidth,
+	)
+
+	a.globalBindings = a.globalBindings[:0]
+	for _, item := range items {
+		a.globalBindings = append(a.globalBindings, item.Binding)
+	}
 }
 
 func (a *application) Components() components.Factory {

@@ -2,7 +2,6 @@ package tui
 
 import (
 	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
 
 	"github.com/rivo/tview"
 )
@@ -20,13 +19,10 @@ type applicationMenu struct {
 
 func newApplicationMenu(
 	controls components.Factory,
-	exit keybinding.Binding,
+	items []components.MenuItem,
 ) *applicationMenu {
 	menuControls := controls.Modal()
-	button := menuControls.Menu(applicationMenuLabel, []components.MenuItem{{
-		Label:   "Exit",
-		Binding: exit,
-	}})
+	button := menuControls.Menu(applicationMenuLabel, items)
 	background := menuControls.TextView()
 	return &applicationMenu{
 		Flex: tview.NewFlex().

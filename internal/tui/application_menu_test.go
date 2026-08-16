@@ -14,10 +14,10 @@ func TestApplicationMenuDisplaysModalColoredHamburger(t *testing.T) {
 		Theme:      nordTheme.components(),
 		ModalTheme: nordTheme.modalComponents(),
 	})
-	menu := newApplicationMenu(
-		controls,
-		keybinding.OnRune('q', "quit", func() {}),
-	)
+	menu := newApplicationMenu(controls, []components.MenuItem{{
+		Label:   "Exit",
+		Binding: keybinding.OnRune('q', "quit", func() {}),
+	}})
 	screen := newLayoutTestScreen(t)
 	menu.SetRect(0, 0, applicationMenuWidth, 1)
 	menu.Draw(screen)

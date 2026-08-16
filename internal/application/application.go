@@ -9,8 +9,10 @@ import (
 
 	"morsemanual/internal/database"
 	logbookpage "morsemanual/internal/logbook/tui"
+	settingspage "morsemanual/internal/settings/tui"
 	"morsemanual/internal/stores"
 	"morsemanual/internal/tui"
+	"morsemanual/internal/tui/keybinding"
 )
 
 // Run opens the application database and runs the terminal UI until the user
@@ -41,6 +43,12 @@ func newTerminalApplication(
 	applicationStores stores.Stores,
 ) (tui.Application, error) {
 	terminal := tui.NewApplication()
+	terminal.AddMenuItem(
+		"Settings",
+		keybinding.OnRune('s', "settings", func() {
+			settingspage.Open(ctx, terminal, applicationStores.Settings)
+		}),
+	)
 	page, err := logbookpage.New(ctx, terminal, applicationStores.Logbook)
 	if err != nil {
 		return nil, err

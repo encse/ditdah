@@ -79,6 +79,19 @@ func TestInputFieldValue(t *testing.T) {
 	}
 }
 
+func TestInputFieldMasksSensitiveValues(t *testing.T) {
+	field := newTestFactory().InputField("Password", "secret")
+	field.SetMaskCharacter('*')
+	field.SetRect(0, 0, 20, 1)
+
+	screen := newTestScreen(t)
+	field.Draw(screen)
+	assertRune(t, screen, 8, 0, '*')
+	if got := field.Value(); got != "secret" {
+		t.Fatalf("Value() = %q, want unmasked value", got)
+	}
+}
+
 func TestInputFieldCallbacks(t *testing.T) {
 	field := newTestFactory().InputField("Search", "")
 	var changed string

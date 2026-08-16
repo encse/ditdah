@@ -28,6 +28,7 @@ This document records implementation decisions and future technical work.
 - [x] Keep Tab focus navigation application-owned; control popups close themselves when that focus move dismisses them.
 - [x] Add a structured header component that can contain the current page title, application menu, and status information.
 - [x] Add an application header menu with an Exit action backed by the application shutdown path.
+- [x] Add a settings modal for the station callsign and QRZ credentials, opened from the application menu.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.
 - [x] Add a shared `Layout` that arranges the header, active page content, and footer.
 - [x] Define a `Page` abstraction that exposes its identity, title, content, and page-level keybindings without owning the shared header or footer.

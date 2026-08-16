@@ -73,6 +73,30 @@ func TestApplicationOwnsQuitBinding(t *testing.T) {
 	}
 }
 
+func TestApplicationMenuItemsAlsoRegisterGlobalBindings(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	opened := 0
+	app.AddMenuItem(
+		"Settings",
+		keybinding.OnRune('s', "settings", func() { opened++ }),
+	)
+
+	if len(app.menuItems) != 1 || app.menuItems[0].Label != "Settings" {
+		t.Fatalf("menu items = %#v", app.menuItems)
+	}
+	if len(app.globalBindings) != 2 {
+		t.Fatalf("global binding count = %d, want 2", len(app.globalBindings))
+	}
+	if !app.globalBindings[0].Handle(
+		tcell.NewEventKey(tcell.KeyRune, 's', 0),
+	) {
+		t.Fatal("settings binding did not handle s")
+	}
+	if opened != 1 {
+		t.Fatalf("settings opens = %d, want 1", opened)
+	}
+}
+
 func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	pageHandled := 0

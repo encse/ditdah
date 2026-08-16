@@ -15,6 +15,7 @@ type InputField interface {
 	Value() string
 	SetValue(value string)
 	SetLabelWidth(width int)
+	SetMaskCharacter(mask rune)
 	SetPlaceholder(placeholder string)
 	SetChangedFunc(handler func(value string))
 	SetBindings(bindings ...keybinding.Binding)
@@ -107,6 +108,10 @@ func (i *inputField) SetLabelWidth(width int) {
 		i.theme.FieldTextColor,
 		i.idleBackground,
 	)
+}
+
+func (i *inputField) SetMaskCharacter(mask rune) {
+	i.InputField.SetMaskCharacter(mask)
 }
 
 func (i *inputField) SetPlaceholder(placeholder string) {
