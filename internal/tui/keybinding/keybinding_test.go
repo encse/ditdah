@@ -56,6 +56,18 @@ func TestOnDerivesHintFromEveryAcceptedStroke(t *testing.T) {
 	}
 }
 
+func TestBindingCanBeInvokedWithoutKeyboardEvent(t *testing.T) {
+	handled := 0
+	binding := OnRune('q', "quit", func() { handled++ })
+
+	if !binding.Invoke() {
+		t.Fatal("Invoke() = false, want true")
+	}
+	if handled != 1 {
+		t.Fatalf("handler calls = %d, want 1", handled)
+	}
+}
+
 func TestHintsKeepsApplicationKeysAndHidesConventionalKeys(t *testing.T) {
 	bindings := []Binding{
 		OnRune('/', "search", func() {}),

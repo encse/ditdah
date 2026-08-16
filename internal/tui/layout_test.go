@@ -13,7 +13,8 @@ import (
 func TestLayoutArrangesHeaderContentAndFooter(t *testing.T) {
 	screen := newLayoutTestScreen(t)
 	controls := components.New(components.Dependencies{
-		Theme: nordTheme.components(),
+		Theme:      nordTheme.components(),
+		ModalTheme: nordTheme.modalComponents(),
 	})
 	layout := NewLayout(controls)
 	content := controls.TextView()
@@ -27,7 +28,12 @@ func TestLayoutArrangesHeaderContentAndFooter(t *testing.T) {
 	layout.SetRect(0, 0, 40, 12)
 	layout.Draw(screen)
 
-	assertLayoutRune(t, screen, 0, 0, 'L')
+	assertLayoutRune(t, screen, 16, 0, 'L')
+	_, _, headerStyle, _ := screen.GetContent(30, 0)
+	_, headerBackground, _ := headerStyle.Decompose()
+	if want := tcell.NewRGBColor(190, 190, 190); headerBackground != want {
+		t.Fatalf("header background = %v, want %v", headerBackground, want)
+	}
 	assertLayoutRune(t, screen, 0, 1, 'c')
 	assertLayoutRune(t, screen, 0, 11, '2')
 }

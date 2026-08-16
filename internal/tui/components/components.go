@@ -50,6 +50,7 @@ type Factory interface {
 	Modal() Factory
 	Header() Header
 	Footer() Footer
+	Menu(label string, items []MenuItem) Menu
 	Button(label string) Button
 	DangerButton(label string) Button
 	InputField(label, value string) InputField
@@ -105,6 +106,10 @@ func (f factory) Header() Header {
 
 func (f factory) Footer() Footer {
 	return newFooter(f)
+}
+
+func (f factory) Menu(label string, items []MenuItem) Menu {
+	return newMenu(label, items, f.theme, f.overlays, f.focusChanged)
 }
 
 func (f factory) Button(label string) Button {

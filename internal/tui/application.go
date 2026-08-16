@@ -80,7 +80,12 @@ func newApplication(theme colorTheme) Application {
 		theme:    theme,
 		pages:    make(map[string]Page),
 	}
-	app.globalBindings = []keybinding.Binding{app.quitBinding()}
+	quit := app.quitBinding()
+	layout.Header().SetMenu(
+		newApplicationMenu(controls, quit),
+		applicationMenuWidth,
+	)
+	app.globalBindings = []keybinding.Binding{quit}
 	engine.SetInputCapture(app.captureKey)
 	overlays.SetChangedFunc(app.Refresh)
 	return app

@@ -75,16 +75,21 @@ func OnRune(character rune, description string, handler func()) Binding {
 
 // Handle invokes the callback only when the event matches a configured stroke.
 func (b Binding) Handle(event *tcell.EventKey) bool {
-	if b.handler == nil {
-		return false
-	}
 	for _, stroke := range b.strokes {
 		if stroke.matches(event) {
-			b.handler()
-			return true
+			return b.Invoke()
 		}
 	}
 	return false
+}
+
+// Invoke runs the binding action without synthesizing a keyboard event.
+func (b Binding) Invoke() bool {
+	if b.handler == nil {
+		return false
+	}
+	b.handler()
+	return true
 }
 
 // Hint returns the description derived from the binding's keyboard strokes.

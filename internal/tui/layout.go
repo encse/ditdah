@@ -26,7 +26,7 @@ type layout struct {
 // NewLayout creates the shared application layout from application-styled
 // components.
 func NewLayout(controls components.Factory) Layout {
-	header := controls.Header()
+	header := controls.Modal().Header()
 	footer := controls.Footer()
 	contentArea := tview.NewFlex()
 	emptyContent := controls.TextView()
