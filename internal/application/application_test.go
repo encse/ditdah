@@ -9,7 +9,7 @@ import (
 	"morsemanual/internal/stores"
 )
 
-func TestTerminalApplicationRegistersOnlyLogbookPage(t *testing.T) {
+func TestTerminalApplicationRegistersLogbookAndDecoderPages(t *testing.T) {
 	terminal, err := newTerminalApplication(t.Context(), dependencies{
 		stores: stores.Stores{
 			Logbook:  emptyLogbookStore{},

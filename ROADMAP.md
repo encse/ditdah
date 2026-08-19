@@ -36,6 +36,7 @@ This document records implementation decisions and future technical work.
 - [x] Add a shared `Layout` that arranges the header, active page content, and footer.
 - [x] Define a `Page` abstraction that exposes its identity, title, content, and page-level keybindings without owning the shared header or footer.
 - [x] Refactor the logbook view into a page and remove its duplicated outer layout, header, and footer management.
+- [x] Add a separate Morse decoder page and application-level F1/F2 navigation between it and the logbook.
 - [x] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
 - [x] Enforce mouse focus and capture centrally from declared page, modal, application, and overlay focusables so decorative controls cannot steal input.
 - [x] Refresh footer hints when the active page, focused control, or overlay changes.
@@ -60,5 +61,6 @@ This document records implementation decisions and future technical work.
 - [x] Implement QRZ synchronization on top of the validated credentials and stored synchronization state, retaining remote log IDs so edited records can be replaced without duplicates.
 - [x] Add the initial read-only logbook TUI with table, details, and search.
 - [x] Add QSO creation, editing, and confirmed deletion to the logbook TUI.
-- [ ] Add the Morse user-interface view.
+- [x] Add the Morse user-interface page shell.
+- [ ] Connect live audio capture and decoder output to the Morse page.
 - [ ] Add further domain stores and migrations as their features are implemented.
