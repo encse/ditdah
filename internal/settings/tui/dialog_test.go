@@ -374,6 +374,12 @@ func (h *testHost) SetFocus(tview.Primitive) {}
 
 func (h *testHost) Refresh() {}
 
+func (h *testHost) Update(update func()) {
+	if update != nil {
+		update()
+	}
+}
+
 func (h *testHost) Components() components.Factory { return h.controls }
 
 func (h *testHost) OpenModal(dialog modal.Dialog) modal.Handle {

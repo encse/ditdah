@@ -36,11 +36,11 @@ func Run(ctx context.Context, databasePath string) (err error) {
 		err = errors.Join(err, deps.close())
 	}()
 
-	terminal, err := newTerminalApplication(ctx, deps)
+	terminal, initialPageID, err := newTerminalApplication(ctx, deps)
 	if err != nil {
 		return err
 	}
-	if err := terminal.Run(ctx); err != nil {
+	if err := terminal.Run(ctx, initialPageID); err != nil {
 		return fmt.Errorf("run terminal UI: %w", err)
 	}
 
@@ -50,7 +50,7 @@ func Run(ctx context.Context, databasePath string) (err error) {
 func newTerminalApplication(
 	ctx context.Context,
 	deps dependencies,
-) (tui.Application, error) {
+) (tui.Application, string, error) {
 	terminal := tui.NewApplication()
 	logbook, err := logbookpage.New(
 		ctx,
@@ -59,12 +59,16 @@ func newTerminalApplication(
 		deps.qrzSync,
 	)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	decoder := decoderpage.New(terminal)
+	decoder := decoderpage.New(
+		terminal,
+		deps.audio,
+		deps.stores.Settings,
+	)
 	for _, page := range []tui.Page{logbook, decoder} {
 		if err := terminal.Register(page); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 
@@ -91,19 +95,5 @@ func newTerminalApplication(
 			)
 		}),
 	)
-	terminal.AddMenuItem(
-		"Morse input",
-		keybinding.OnRune('i', "Morse input", func() {
-			settingspage.OpenMorseInput(
-				ctx,
-				terminal,
-				deps.audio,
-				deps.stores.Settings,
-			)
-		}),
-	)
-	if err := terminal.Show(logbook.ID()); err != nil {
-		return nil, err
-	}
-	return terminal, nil
+	return terminal, logbook.ID(), nil
 }

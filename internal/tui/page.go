@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"context"
+
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
 	"morsemanual/internal/tui/modal"
@@ -12,6 +14,7 @@ import (
 type PageHost interface {
 	SetFocus(primitive tview.Primitive)
 	Refresh()
+	Update(update func())
 	Components() components.Factory
 	OpenModal(dialog modal.Dialog) modal.Handle
 }
@@ -24,4 +27,6 @@ type Page interface {
 	Content() tview.Primitive
 	Focusables() []tview.Primitive
 	KeyBindings() []keybinding.Binding
+	MenuItems(ctx context.Context) []components.MenuItem
+	Run(ctx context.Context)
 }

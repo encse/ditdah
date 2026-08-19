@@ -28,6 +28,7 @@ type morseInputDialog struct {
 	ok         components.Button
 	cancel     components.Button
 	focusables []tview.Primitive
+	onSaved    func()
 }
 
 // OpenMorseInput displays the audio capture device used by the Morse decoder.
@@ -36,6 +37,7 @@ func OpenMorseInput(
 	host ui.PageHost,
 	inputs audio.DeviceLister,
 	store domain.Store,
+	onSaved func(),
 ) {
 	values, loadErr := store.Load(ctx)
 	var devices []audio.Device
@@ -45,7 +47,7 @@ func OpenMorseInput(
 	} else {
 		devices, devicesErr = inputs.Devices()
 	}
-	dialog := newMorseInputDialog(ctx, host, store, values, devices)
+	dialog := newMorseInputDialog(ctx, host, store, values, devices, onSaved)
 	dialog.handle = host.OpenModal(dialog)
 	dialog.showInitialError(errors.Join(loadErr, devicesErr))
 }
@@ -56,6 +58,7 @@ func newMorseInputDialog(
 	store domain.Store,
 	values domain.Settings,
 	devices []audio.Device,
+	onSaved func(),
 ) *morseInputDialog {
 	controls := host.Components().Modal()
 	options := make([]string, len(devices))
@@ -71,6 +74,7 @@ func newMorseInputDialog(
 		store:   store,
 		values:  values,
 		devices: append([]audio.Device(nil), devices...),
+		onSaved: onSaved,
 	}
 	dialog.input = controls.SelectField(
 		"Audio input",
@@ -115,6 +119,9 @@ func (d *morseInputDialog) submit() {
 		return
 	}
 	d.values = saved
+	if d.onSaved != nil {
+		d.onSaved()
+	}
 	d.close()
 }
 

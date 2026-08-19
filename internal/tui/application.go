@@ -2,8 +2,10 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
+	"morsemanual/internal/mailbox"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
 	"morsemanual/internal/tui/modal"
@@ -20,8 +22,7 @@ type Application interface {
 	AddMenuItem(label string, binding keybinding.Binding)
 	Register(page Page) error
 	Show(pageID string) error
-	Run(ctx context.Context) error
-	Stop()
+	Run(ctx context.Context, initialPageID string) error
 }
 
 type application struct {
@@ -31,14 +32,21 @@ type application struct {
 	controls       components.Factory
 	theme          colorTheme
 	pages          map[string]Page
+	pageOrder      []Page
 	activePage     Page
 	globalBindings []keybinding.Binding
 	menuItems      []components.MenuItem
 	exitBinding    keybinding.Binding
+	exitBindingSet bool
 	modals         []*openedModal
 	root           tview.Primitive
 	appFocusables  []tview.Primitive
+	menuContext    context.Context
+	pageChanges    mailbox.Mailbox[Page]
 }
+
+var errPageChanged = errors.New("active page changed")
+var errPageStopped = errors.New("active page stopped while visible")
 
 type openedModal struct {
 	dialog       modal.Dialog
@@ -85,10 +93,8 @@ func newApplication(theme colorTheme) Application {
 		theme:    theme,
 		pages:    make(map[string]Page),
 	}
-	app.exitBinding = app.quitBinding()
 	app.rebuildApplicationMenu()
 	app.root = newMouseFocusGuard(overlays.Root(), app.mousePrimitiveAllowed)
-	engine.SetInputCapture(app.captureKey)
 	overlays.SetChangedFunc(app.Refresh)
 	return app
 }
@@ -106,10 +112,17 @@ func (a *application) AddMenuItem(
 
 func (a *application) rebuildApplicationMenu() {
 	items := append([]components.MenuItem(nil), a.menuItems...)
-	items = append(items, components.MenuItem{
-		Label:   "Exit",
-		Binding: a.exitBinding,
-	})
+	if a.menuContext != nil {
+		for _, page := range a.pageOrder {
+			items = append(items, page.MenuItems(a.menuContext)...)
+		}
+	}
+	if a.exitBindingSet {
+		items = append(items, components.MenuItem{
+			Label:   "Exit",
+			Binding: a.exitBinding,
+		})
+	}
 	menu := newApplicationMenu(a.controls, items)
 	a.layout.Header().SetMenu(menu, applicationMenuWidth)
 	a.appFocusables = []tview.Primitive{menu.button}
@@ -133,6 +146,7 @@ func (a *application) Register(page Page) error {
 		return fmt.Errorf("register page %q: duplicate ID", id)
 	}
 	a.pages[id] = page
+	a.pageOrder = append(a.pageOrder, page)
 	return nil
 }
 
@@ -141,10 +155,17 @@ func (a *application) Show(pageID string) error {
 	if !exists {
 		return fmt.Errorf("show page %q: not registered", pageID)
 	}
+	if a.pageChanges == nil {
+		return errors.New("show page: application is not running")
+	}
+	a.pageChanges.Send(page)
+	return nil
+}
+
+func (a *application) showPage(page Page) {
 	a.activePage = page
 	a.layout.Show(page)
 	a.SetFocus(page.Content())
-	return nil
 }
 
 func (a *application) SetFocus(primitive tview.Primitive) {
@@ -228,16 +249,34 @@ func (a *application) Refresh() {
 	a.layout.Footer().SetKeyHints(hints)
 }
 
-func (a *application) Run(ctx context.Context) error {
-	if a.activePage == nil {
-		return fmt.Errorf("run terminal application: no active page")
+// Update serializes a background update with tview drawing.
+func (a *application) Update(update func()) {
+	a.engine.QueueUpdateDraw(func() {
+		if update != nil {
+			update()
+		}
+		a.Refresh()
+	})
+}
+
+func (a *application) Run(ctx context.Context, initialPageID string) error {
+	initialPage, exists := a.pages[initialPageID]
+	if !exists {
+		return fmt.Errorf(
+			"run terminal application: page %q is not registered",
+			initialPageID,
+		)
 	}
 	if ctx.Err() != nil {
 		return nil
 	}
+	a.pageChanges = mailbox.New[Page](initialPage)
 
 	runCtx, cancel := context.WithCancel(ctx)
-	group, groupCtx := errgroup.WithContext(runCtx)
+	defer cancel()
+	a.initializeRuntime(runCtx, cancel)
+
+	var group errgroup.Group
 	group.Go(func() error {
 		defer cancel()
 		return a.engine.
@@ -245,30 +284,75 @@ func (a *application) Run(ctx context.Context) error {
 			EnableMouse(true).
 			Run()
 	})
-	group.Go(func() error {
-		<-groupCtx.Done()
-		if ctx.Err() != nil {
-			a.Stop()
-		}
-		return nil
-	})
 
-	return group.Wait()
-}
-
-func (a *application) Stop() {
+	pageErr := a.runPages(runCtx)
+	cancel()
 	a.engine.Stop()
+	return errors.Join(pageErr, group.Wait())
 }
 
-func (a *application) quitBinding() keybinding.Binding {
-	return keybinding.OnRune('q', "quit", a.Stop)
+func (a *application) initializeRuntime(
+	ctx context.Context,
+	cancel context.CancelFunc,
+) {
+	a.menuContext = ctx
+	a.exitBinding = keybinding.OnRune('q', "quit", cancel)
+	a.exitBindingSet = true
+	a.rebuildApplicationMenu()
+	a.engine.SetInputCapture(a.runtimeInputCapture(cancel))
+}
+
+func (a *application) runtimeInputCapture(
+	cancel context.CancelFunc,
+) func(*tcell.EventKey) *tcell.EventKey {
+	return func(event *tcell.EventKey) *tcell.EventKey {
+		if event.Key() == tcell.KeyCtrlC {
+			cancel()
+			return nil
+		}
+		return a.captureKey(event)
+	}
+}
+
+func (a *application) runPages(ctx context.Context) error {
+	page, err := a.pageChanges.Receive(ctx)
+	if err != nil {
+		return err
+	}
+	for ctx.Err() == nil {
+		a.Update(func() {
+			a.showPage(page)
+		})
+
+		var nextPage Page
+		group, pageCtx := errgroup.WithContext(ctx)
+		group.Go(func() error {
+			page.Run(pageCtx)
+			return errPageStopped
+		})
+		group.Go(func() error {
+			var err error
+			nextPage, err = a.pageChanges.Receive(pageCtx)
+			if err != nil {
+				return err
+			}
+			return errPageChanged
+		})
+
+		err = group.Wait()
+		if ctx.Err() != nil {
+			return nil
+		}
+		if !errors.Is(err, errPageChanged) {
+			return fmt.Errorf("run page %q: %w", page.ID(), err)
+		}
+
+		page = nextPage
+	}
+	return nil
 }
 
 func (a *application) captureKey(event *tcell.EventKey) *tcell.EventKey {
-	if event.Key() == tcell.KeyCtrlC {
-		a.Stop()
-		return nil
-	}
 	if a.activePage == nil {
 		return event
 	}

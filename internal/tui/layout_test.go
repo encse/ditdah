@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"testing"
 
 	"morsemanual/internal/tui/components"
@@ -82,6 +83,10 @@ func (p testPage) Focusables() []tview.Primitive {
 func (p testPage) KeyBindings() []keybinding.Binding {
 	return nil
 }
+
+func (p testPage) MenuItems(context.Context) []components.MenuItem { return nil }
+
+func (p testPage) Run(ctx context.Context) { <-ctx.Done() }
 
 func newLayoutTestScreen(t *testing.T) tcell.SimulationScreen {
 	t.Helper()

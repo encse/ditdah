@@ -95,6 +95,10 @@ func (p *page) KeyBindings() []keybinding.Binding {
 	)
 }
 
+func (p *page) MenuItems(context.Context) []components.MenuItem { return nil }
+
+func (p *page) Run(ctx context.Context) { <-ctx.Done() }
+
 func (p *page) Status() string {
 	return fmt.Sprintf("(%d/%d)", len(p.filteredQsos), len(p.qsos))
 }

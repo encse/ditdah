@@ -10,7 +10,7 @@ import (
 )
 
 func TestTerminalApplicationRegistersLogbookAndDecoderPages(t *testing.T) {
-	terminal, err := newTerminalApplication(t.Context(), dependencies{
+	terminal, initialPageID, err := newTerminalApplication(t.Context(), dependencies{
 		stores: stores.Stores{
 			Logbook:  emptyLogbookStore{},
 			Settings: emptySettingsStore{},
@@ -22,6 +22,9 @@ func TestTerminalApplicationRegistersLogbookAndDecoderPages(t *testing.T) {
 	}
 	if terminal == nil {
 		t.Fatal("newTerminalApplication() returned nil")
+	}
+	if initialPageID != "logbook" {
+		t.Fatalf("initial page ID = %q, want logbook", initialPageID)
 	}
 }
 

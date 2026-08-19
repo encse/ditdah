@@ -19,7 +19,7 @@ func TestOpenMorseInputLoadsDevicesAndSavedSelection(t *testing.T) {
 		{ID: "usb", Name: "USB radio"},
 	}}
 
-	OpenMorseInput(t.Context(), host, inputs, store)
+	OpenMorseInput(t.Context(), host, inputs, store, nil)
 	dialog := host.lastDialog().(*morseInputDialog)
 
 	index, label := dialog.input.CurrentOption()
@@ -41,6 +41,7 @@ func TestMorseInputDefaultsToSystemDefaultDevice(t *testing.T) {
 			{ID: "first", Name: "Line input"},
 			{ID: "default", Name: "USB radio", IsDefault: true},
 		},
+		nil,
 	)
 
 	index, label := dialog.input.CurrentOption()
@@ -56,6 +57,7 @@ func TestMorseInputKeepsUnavailableSelectionUnselected(t *testing.T) {
 		&recordingStore{},
 		domain.Settings{MorseInputDeviceID: "disconnected"},
 		[]audio.Device{{ID: "available", Name: "Built-in input", IsDefault: true}},
+		nil,
 	)
 	dialog.showInitialError(nil)
 
@@ -75,12 +77,14 @@ func TestMorseInputSubmitPersistsDeviceIDAndPreservesSettings(t *testing.T) {
 	}
 	store := &recordingStore{loaded: values}
 	host := newTestHost()
+	reloads := 0
 	dialog := newMorseInputDialog(
 		t.Context(),
 		host,
 		store,
 		values,
 		[]audio.Device{{ID: "capture-id", Name: "USB radio"}},
+		func() { reloads++ },
 	)
 	dialog.handle = host.OpenModal(dialog)
 
@@ -94,6 +98,9 @@ func TestMorseInputSubmitPersistsDeviceIDAndPreservesSettings(t *testing.T) {
 	if !host.lastHandle().closed {
 		t.Fatal("successful input selection did not close dialog")
 	}
+	if reloads != 1 {
+		t.Fatalf("decoder reloads = %d, want 1", reloads)
+	}
 }
 
 func TestMorseInputSubmitRequiresAvailableSelection(t *testing.T) {
@@ -103,6 +110,7 @@ func TestMorseInputSubmitRequiresAvailableSelection(t *testing.T) {
 		newTestHost(),
 		store,
 		domain.Settings{},
+		nil,
 		nil,
 	)
 
@@ -132,6 +140,7 @@ func TestOpenMorseInputShowsDeviceEnumerationError(t *testing.T) {
 		host,
 		recordingDeviceLister{err: errors.New("capture backend failed")},
 		&recordingStore{},
+		nil,
 	)
 	dialog := host.lastDialog().(*morseInputDialog)
 	if !strings.Contains(dialog.message.Text(), "capture backend failed") {

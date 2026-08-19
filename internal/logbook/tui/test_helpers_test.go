@@ -35,6 +35,12 @@ func (h *testHost) Refresh() {
 	h.refreshes++
 }
 
+func (h *testHost) Update(update func()) {
+	if update != nil {
+		update()
+	}
+}
+
 func (h *testHost) Components() components.Factory {
 	return h.controls
 }

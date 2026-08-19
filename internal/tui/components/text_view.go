@@ -26,6 +26,7 @@ type TextView interface {
 	InnerRect() (x int, y int, width int, height int)
 	ScrollOffset() (row int, column int)
 	ScrollToStart()
+	ScrollToEnd()
 	Text() string
 	SetText(text string)
 	SetStyle(style TextViewStyle)
@@ -71,6 +72,10 @@ func (v *textView) ScrollOffset() (int, int) {
 
 func (v *textView) ScrollToStart() {
 	v.ScrollToBeginning()
+}
+
+func (v *textView) ScrollToEnd() {
+	v.TextView.ScrollToEnd()
 }
 
 func (v *textView) Text() string {

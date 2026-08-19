@@ -37,6 +37,11 @@ This document records implementation decisions and future technical work.
 - [x] Define a `Page` abstraction that exposes its identity, title, content, and page-level keybindings without owning the shared header or footer.
 - [x] Refactor the logbook view into a page and remove its duplicated outer layout, header, and footer management.
 - [x] Add a separate Morse decoder page and application-level F1/F2 navigation between it and the logbook.
+- [x] Give every page a context-bound `Run` lifecycle; cancel and wait for the active page before hiding it or stopping the terminal.
+- [x] Coordinate page changes through an initialized, latest-value mailbox inside the application run loop; scope each page and mailbox receiver to one local `errgroup` and wait for both before switching.
+- [x] Pass the initial page ID directly to `Application.Run`; create the page mailbox there so startup and later navigation use the same data path.
+- [x] Let pages contribute their own application-menu items when registered.
+- [ ] Pass the application runtime context to keybinding handlers during dispatch, then remove constructor-captured and page-stored contexts from UI actions, including context-dependent menu items.
 - [x] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
 - [x] Enforce mouse focus and capture centrally from declared page, modal, application, and overlay focusables so decorative controls cannot steal input.
 - [x] Refresh footer hints when the active page, focused control, or overlay changes.
@@ -62,5 +67,6 @@ This document records implementation decisions and future technical work.
 - [x] Add the initial read-only logbook TUI with table, details, and search.
 - [x] Add QSO creation, editing, and confirmed deletion to the logbook TUI.
 - [x] Add the Morse user-interface page shell.
-- [ ] Connect live audio capture and decoder output to the Morse page.
+- [x] Split the Morse page into a large scrollable decoded-text panel and a reserved right-side panel.
+- [x] Connect the selected live audio capture device to the streaming decoder and Morse output panel; coalesce saved input changes through a trigger and restart only the current audio session.
 - [ ] Add further domain stores and migrations as their features are implemented.
