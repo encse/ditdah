@@ -6,11 +6,12 @@ import (
 	"strings"
 )
 
-// Settings contains the user-configurable station and QRZ values.
+// Settings contains the user-configurable station, QRZ, and audio values.
 type Settings struct {
-	StationCallsign string
-	QRZPassword     string
-	QRZAPIKey       string
+	StationCallsign    string
+	QRZPassword        string
+	QRZAPIKey          string
+	MorseInputDeviceID string
 }
 
 // Store loads and saves the application's single settings record.
@@ -24,5 +25,6 @@ func normalize(settings Settings) Settings {
 		strings.TrimSpace(settings.StationCallsign),
 	)
 	settings.QRZAPIKey = strings.TrimSpace(settings.QRZAPIKey)
+	settings.MorseInputDeviceID = strings.TrimSpace(settings.MorseInputDeviceID)
 	return settings
 }

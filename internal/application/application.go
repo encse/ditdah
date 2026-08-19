@@ -25,7 +25,15 @@ func Run(ctx context.Context, databasePath string) (err error) {
 		err = errors.Join(err, db.Close())
 	}()
 
-	terminal, err := newTerminalApplication(ctx, newDependencies(db))
+	deps, err := newDependencies(db)
+	if err != nil {
+		return fmt.Errorf("initialize dependencies: %w", err)
+	}
+	defer func() {
+		err = errors.Join(err, deps.close())
+	}()
+
+	terminal, err := newTerminalApplication(ctx, deps)
 	if err != nil {
 		return err
 	}
@@ -49,6 +57,17 @@ func newTerminalApplication(
 				terminal,
 				deps.stores.Settings,
 				deps.qrz,
+			)
+		}),
+	)
+	terminal.AddMenuItem(
+		"Morse input",
+		keybinding.OnRune('i', "Morse input", func() {
+			settingspage.OpenMorseInput(
+				ctx,
+				terminal,
+				deps.audio,
+				deps.stores.Settings,
 			)
 		}),
 	)

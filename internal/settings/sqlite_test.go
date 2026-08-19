@@ -23,9 +23,10 @@ func TestSQLiteStoreSavesAndLoadsSettings(t *testing.T) {
 	store := openTestStore(t)
 	ctx := context.Background()
 	want := Settings{
-		StationCallsign: " ha7ncs ",
-		QRZPassword:     " password with spaces ",
-		QRZAPIKey:       " api-key ",
+		StationCallsign:    " ha7ncs ",
+		QRZPassword:        " password with spaces ",
+		QRZAPIKey:          " api-key ",
+		MorseInputDeviceID: " input-id ",
 	}
 
 	saved, err := store.Save(ctx, want)
@@ -34,6 +35,7 @@ func TestSQLiteStoreSavesAndLoadsSettings(t *testing.T) {
 	}
 	want.StationCallsign = "HA7NCS"
 	want.QRZAPIKey = "api-key"
+	want.MorseInputDeviceID = "input-id"
 	if saved != want {
 		t.Fatalf("Save() = %#v, want %#v", saved, want)
 	}
@@ -54,9 +56,10 @@ func TestSQLiteStoreOverwritesSettings(t *testing.T) {
 		t.Fatalf("first Save() error = %v", err)
 	}
 	want := Settings{
-		StationCallsign: "OE1ABC",
-		QRZPassword:     "secret",
-		QRZAPIKey:       "key",
+		StationCallsign:    "OE1ABC",
+		QRZPassword:        "secret",
+		QRZAPIKey:          "key",
+		MorseInputDeviceID: "capture-2",
 	}
 	if _, err := store.Save(ctx, want); err != nil {
 		t.Fatalf("second Save() error = %v", err)

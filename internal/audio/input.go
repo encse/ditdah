@@ -85,8 +85,10 @@ func (i *input) Devices() ([]Device, error) {
 	devices := make([]Device, 0, len(infos))
 	for _, info := range infos {
 		devices = append(devices, Device{
-			id:   info.ID,
-			Name: info.Name(),
+			id:        info.ID,
+			ID:        info.ID.String(),
+			Name:      info.Name(),
+			IsDefault: info.IsDefault != 0,
 		})
 	}
 

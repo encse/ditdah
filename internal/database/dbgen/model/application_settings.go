@@ -8,8 +8,9 @@
 package model
 
 type ApplicationSettings struct {
-	ID              int64 `sql:"primary_key"`
-	StationCallsign string
-	QrzPassword     string
-	QrzAPIKey       string
+	ID                 int64 `sql:"primary_key"`
+	StationCallsign    string
+	QrzPassword        string
+	QrzAPIKey          string
+	MorseInputDeviceID string
 }

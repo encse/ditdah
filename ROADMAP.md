@@ -29,6 +29,7 @@ This document records implementation decisions and future technical work.
 - [x] Add a structured header component that can contain the current page title, application menu, and status information.
 - [x] Add an application header menu with an Exit action backed by the application shutdown path.
 - [x] Add a settings modal for the station callsign and validated QRZ credentials, opened from the application menu.
+- [x] Add an application menu dialog for selecting and persisting the Morse decoder audio input by device ID.
 - [x] Draw a settings progress state before synchronously validating saved QRZ credentials, then reveal the interactive form without fire-and-forget goroutines.
 - [x] Edit QRZ login and Logbook API credentials in nested modal dialogs and persist staged changes only when the main settings dialog is confirmed.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.

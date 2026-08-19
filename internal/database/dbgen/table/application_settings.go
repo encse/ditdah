@@ -17,10 +17,11 @@ type applicationSettingsTable struct {
 	sqlite.Table
 
 	// Columns
-	ID              sqlite.ColumnInteger
-	StationCallsign sqlite.ColumnString
-	QrzPassword     sqlite.ColumnString
-	QrzAPIKey       sqlite.ColumnString
+	ID                 sqlite.ColumnInteger
+	StationCallsign    sqlite.ColumnString
+	QrzPassword        sqlite.ColumnString
+	QrzAPIKey          sqlite.ColumnString
+	MorseInputDeviceID sqlite.ColumnString
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -62,23 +63,25 @@ func newApplicationSettingsTable(schemaName, tableName, alias string) *Applicati
 
 func newApplicationSettingsTableImpl(schemaName, tableName, alias string) applicationSettingsTable {
 	var (
-		IDColumn              = sqlite.IntegerColumn("id")
-		StationCallsignColumn = sqlite.StringColumn("station_callsign")
-		QrzPasswordColumn     = sqlite.StringColumn("qrz_password")
-		QrzAPIKeyColumn       = sqlite.StringColumn("qrz_api_key")
-		allColumns            = sqlite.ColumnList{IDColumn, StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn}
-		mutableColumns        = sqlite.ColumnList{StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn}
-		defaultColumns        = sqlite.ColumnList{IDColumn, StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn}
+		IDColumn                 = sqlite.IntegerColumn("id")
+		StationCallsignColumn    = sqlite.StringColumn("station_callsign")
+		QrzPasswordColumn        = sqlite.StringColumn("qrz_password")
+		QrzAPIKeyColumn          = sqlite.StringColumn("qrz_api_key")
+		MorseInputDeviceIDColumn = sqlite.StringColumn("morse_input_device_id")
+		allColumns               = sqlite.ColumnList{IDColumn, StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn}
+		mutableColumns           = sqlite.ColumnList{StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn}
+		defaultColumns           = sqlite.ColumnList{IDColumn, StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn}
 	)
 
 	return applicationSettingsTable{
 		Table: sqlite.NewTable(schemaName, tableName, alias, allColumns...),
 
 		//Columns
-		ID:              IDColumn,
-		StationCallsign: StationCallsignColumn,
-		QrzPassword:     QrzPasswordColumn,
-		QrzAPIKey:       QrzAPIKeyColumn,
+		ID:                 IDColumn,
+		StationCallsign:    StationCallsignColumn,
+		QrzPassword:        QrzPasswordColumn,
+		QrzAPIKey:          QrzAPIKeyColumn,
+		MorseInputDeviceID: MorseInputDeviceIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

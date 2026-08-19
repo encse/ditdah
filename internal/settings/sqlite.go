@@ -59,6 +59,9 @@ func (s *sqliteStore) Save(
 			ApplicationSettings.QrzAPIKey.SET(
 				ApplicationSettings.EXCLUDED.QrzAPIKey,
 			),
+			ApplicationSettings.MorseInputDeviceID.SET(
+				ApplicationSettings.EXCLUDED.MorseInputDeviceID,
+			),
 		))
 
 	if _, err := statement.ExecContext(ctx, s.db); err != nil {
@@ -70,17 +73,19 @@ func (s *sqliteStore) Save(
 
 func settingsFromModel(stored dbmodel.ApplicationSettings) Settings {
 	return Settings{
-		StationCallsign: stored.StationCallsign,
-		QRZPassword:     stored.QrzPassword,
-		QRZAPIKey:       stored.QrzAPIKey,
+		StationCallsign:    stored.StationCallsign,
+		QRZPassword:        stored.QrzPassword,
+		QRZAPIKey:          stored.QrzAPIKey,
+		MorseInputDeviceID: stored.MorseInputDeviceID,
 	}
 }
 
 func settingsToModel(settings Settings) dbmodel.ApplicationSettings {
 	return dbmodel.ApplicationSettings{
-		ID:              settingsID,
-		StationCallsign: settings.StationCallsign,
-		QrzPassword:     settings.QRZPassword,
-		QrzAPIKey:       settings.QRZAPIKey,
+		ID:                 settingsID,
+		StationCallsign:    settings.StationCallsign,
+		QrzPassword:        settings.QRZPassword,
+		QrzAPIKey:          settings.QRZAPIKey,
+		MorseInputDeviceID: settings.MorseInputDeviceID,
 	}
 }
