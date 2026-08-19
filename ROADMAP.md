@@ -26,8 +26,13 @@ This document records implementation decisions and future technical work.
 - [x] Keep conventional Enter, Escape, Space, and Tab bindings active but hide them from the footer.
 - [x] Handle modal Escape centrally in the application, never in individual modal controls or dialogs.
 - [x] Keep Tab focus navigation application-owned; control popups close themselves when that focus move dismisses them.
-- [x] Add a structured header component that can contain the current page title, application menu, and status information.
+- [x] Add a structured header component for fixed application navigation and status information; intentionally omit the redundant current-page title.
 - [x] Add an application header menu with an Exit action backed by the application shutdown path.
+- [x] Represent the fixed top navigation as one menu-bar component whose elements are the hamburger menu, F1 Logbook, and F2 Morse decoder; keep it outside contextual hint refreshes.
+- [x] Use a uniform two-cell gap around the hamburger and between top navigation actions, and keep the hamburger background unchanged while focused or open.
+- [x] Use an ASCII `[=]` menu marker because ambiguous-width Unicode symbols such as `☰` can desynchronize tcell's cursor position from the host terminal.
+- [x] Make the header and footer keybinding hints clickable through the same binding handlers used by keyboard input, and retain function-key navigation while the application menu is open.
+- [x] Let the overlay host focus each new layer exactly once; avoid re-focusing layers already selected by `tview.Pages`, because `tview.Application.SetFocus` blurs even when the target is unchanged.
 - [x] Add a settings modal for the station callsign and validated QRZ credentials, opened from the application menu.
 - [x] Add an application menu dialog for selecting and persisting the Morse decoder audio input by device ID.
 - [x] Draw a settings progress state before synchronously validating saved QRZ credentials, then reveal the interactive form without fire-and-forget goroutines.

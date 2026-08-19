@@ -11,11 +11,11 @@ import (
 func TestMenuOpensBorderedPopupAndInvokesSelectedItem(t *testing.T) {
 	screen := newTestScreen(t)
 	overlays := &testOverlayHost{}
-	exited := false
+	invocations := 0
 	menu := newTestFactoryWithOverlays(overlays).Menu("File", []MenuItem{{
 		Label: "Exit",
 		Binding: keybinding.OnRune(
-			'q', "quit", func() { exited = true },
+			'q', "quit", func() { invocations++ },
 		),
 	}})
 	menu.SetRect(5, 1, 10, 1)
@@ -23,7 +23,7 @@ func TestMenuOpensBorderedPopupAndInvokesSelectedItem(t *testing.T) {
 	assertRune(t, screen, 8, 1, 'F')
 
 	menu.MouseHandler()(
-		tview.MouseLeftDown,
+		tview.MouseLeftClick,
 		tcell.NewEventMouse(7, 1, tcell.Button1, 0),
 		func(primitive tview.Primitive) { primitive.Focus(nil) },
 	)
@@ -35,20 +35,30 @@ func TestMenuOpensBorderedPopupAndInvokesSelectedItem(t *testing.T) {
 	assertRune(t, screen, 8, 1, 'F')
 
 	popup.MouseHandler()(
-		tview.MouseLeftClick,
+		tview.MouseLeftDown,
 		tcell.NewEventMouse(7, 3, tcell.Button1, 0),
 		func(tview.Primitive) {},
 	)
+	popup.MouseHandler()(
+		tview.MouseLeftUp,
+		tcell.NewEventMouse(7, 3, tcell.ButtonNone, 0),
+		func(tview.Primitive) {},
+	)
+	popup.MouseHandler()(
+		tview.MouseLeftClick,
+		tcell.NewEventMouse(7, 3, tcell.ButtonNone, 0),
+		func(tview.Primitive) {},
+	)
 
-	if !exited {
-		t.Fatal("Exit menu item did not invoke its action")
+	if invocations != 1 {
+		t.Fatalf("Exit menu item invocations = %d, want 1", invocations)
 	}
 	if overlays.primitive != nil {
 		t.Fatal("menu popup remained open after selection")
 	}
 }
 
-func TestMenuPopupConsumesOutsideClickAndCloses(t *testing.T) {
+func TestMenuPopupPassesOutsideClickThroughAfterClosing(t *testing.T) {
 	screen := newTestScreen(t)
 	overlays := &testOverlayHost{}
 	menu := newTestFactoryWithOverlays(overlays).Menu(
@@ -62,15 +72,32 @@ func TestMenuPopupConsumesOutsideClickAndCloses(t *testing.T) {
 	popup.Draw(screen)
 
 	consumed, _ := popup.MouseHandler()(
-		tview.MouseLeftDown,
+		tview.MouseLeftClick,
 		tcell.NewEventMouse(0, 0, tcell.Button1, 0),
 		func(tview.Primitive) {},
 	)
 
-	if !consumed {
-		t.Fatal("outside click was not consumed")
+	if consumed {
+		t.Fatal("outside click was consumed")
 	}
 	if overlays.primitive != nil {
 		t.Fatal("menu popup remained open after outside click")
 	}
+}
+
+func TestMenuDoesNotChangeBackgroundWhenFocusedOrOpen(t *testing.T) {
+	screen := newTestScreen(t)
+	overlays := &testOverlayHost{}
+	menu := newTestFactoryWithOverlays(overlays).Menu(
+		"File",
+		[]MenuItem{{Label: "Exit"}},
+	)
+	menu.SetRect(0, 0, 6, 1)
+	menu.Focus(nil)
+	menu.Draw(screen)
+	assertBackground(t, screen, 2, 0, testTheme().Background)
+
+	menu.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	menu.Draw(screen)
+	assertBackground(t, screen, 2, 0, testTheme().Background)
 }

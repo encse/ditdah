@@ -79,6 +79,58 @@ func TestHeaderStatusClickCannotStealPageFocusOrMouseCapture(t *testing.T) {
 	}
 }
 
+func TestApplicationMenuItemHandlesPhysicalMouseClick(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	selected := make(chan struct{}, 1)
+	app.AddMenuItem(
+		"Settings",
+		keybinding.OnRune('s', "settings", func() { selected <- struct{}{} }),
+	)
+	page := applicationTestPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatal(err)
+	}
+
+	drawn := make(chan struct{}, 8)
+	menuDrawn := make(chan struct{}, 1)
+	app.engine.SetBeforeDrawFunc(func(tcell.Screen) bool {
+		if app.activePage != nil {
+			select {
+			case drawn <- struct{}{}:
+			default:
+			}
+		}
+		if app.overlays.Active() {
+			select {
+			case menuDrawn <- struct{}{}:
+			default:
+			}
+		}
+		return false
+	})
+	screen := tcell.NewSimulationScreen("UTF-8")
+	app.engine.SetScreen(screen)
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() { done <- app.Run(ctx, page.ID()) }()
+	waitForApplicationSignal(t, drawn, "initial application draw")
+
+	// One physical click on the hamburger.
+	screen.InjectMouse(2, 0, tcell.Button1, 0)
+	screen.InjectMouse(2, 0, tcell.ButtonNone, 0)
+	waitForApplicationSignal(t, menuDrawn, "open menu draw")
+
+	// One physical click on the first menu item.
+	screen.InjectMouse(2, 2, tcell.Button1, 0)
+	screen.InjectMouse(2, 2, tcell.ButtonNone, 0)
+	waitForApplicationSignal(t, selected, "menu item callback")
+	finishTestApplication(t, cancel, done)
+}
+
 func TestApplicationRejectsDuplicateAndUnknownPages(t *testing.T) {
 	app := newApplication(nordTheme)
 	page := applicationTestPage{
@@ -123,6 +175,7 @@ func TestApplicationMenuItemsAlsoRegisterGlobalBindings(t *testing.T) {
 		"Settings",
 		keybinding.OnRune('s', "settings", func() { opened++ }),
 	)
+	app.buildApplicationMenu()
 
 	if len(app.menuItems) != 1 || app.menuItems[0].Label != "Settings" {
 		t.Fatalf("menu items = %#v", app.menuItems)
@@ -137,6 +190,39 @@ func TestApplicationMenuItemsAlsoRegisterGlobalBindings(t *testing.T) {
 	}
 	if opened != 1 {
 		t.Fatalf("settings opens = %d, want 1", opened)
+	}
+}
+
+func TestApplicationPlacesFunctionBindingsOnlyInHeader(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	page := applicationTestPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatal(err)
+	}
+	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Logbook", func() {}))
+	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {}))
+	app.AddKeyBinding(keybinding.OnRune('q', "quit", func() {}))
+	app.buildApplicationMenu()
+	app.showPage(page)
+	app.Refresh()
+
+	header := drawApplicationLine(t, app, 0)
+	footer := drawApplicationLine(t, app, 5)
+	if !strings.Contains(header, "F1 Logbook") {
+		t.Fatalf("header = %q, want F1 Logbook", header)
+	}
+	if strings.Contains(footer, "F1 Logbook") {
+		t.Fatalf("footer = %q, contains F1 Logbook", footer)
+	}
+	if !strings.Contains(footer, "q quit") {
+		t.Fatalf("footer = %q, want q quit", footer)
+	}
+	if len(app.menuItems) != 0 {
+		t.Fatalf("menu items = %#v, want no function-key menu item", app.menuItems)
 	}
 }
 
@@ -159,7 +245,7 @@ func TestRegisteredPageContributesApplicationMenuItems(t *testing.T) {
 		t.Fatal(err)
 	}
 	app.menuContext = t.Context()
-	app.rebuildApplicationMenu()
+	app.buildApplicationMenu()
 	if len(app.globalBindings) != 1 {
 		t.Fatalf("global bindings = %d, want 1", len(app.globalBindings))
 	}
@@ -995,6 +1081,14 @@ func waitForApplicationSignal(
 }
 
 func drawApplicationFooter(t *testing.T, app *application) string {
+	return drawApplicationLine(t, app, 5)
+}
+
+func drawApplicationLine(
+	t *testing.T,
+	app *application,
+	y int,
+) string {
 	t.Helper()
 	screen := tcell.NewSimulationScreen("UTF-8")
 	if err := screen.Init(); err != nil {
@@ -1007,7 +1101,7 @@ func drawApplicationFooter(t *testing.T, app *application) string {
 
 	var line strings.Builder
 	for x := 0; x < 100; x++ {
-		character, _, _, _ := screen.GetContent(x, 5)
+		character, _, _, _ := screen.GetContent(x, y)
 		line.WriteRune(character)
 	}
 	return strings.TrimSpace(line.String())

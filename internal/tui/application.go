@@ -20,29 +20,31 @@ import (
 type Application interface {
 	PageHost
 	AddMenuItem(label string, binding keybinding.Binding)
+	AddKeyBinding(binding keybinding.Binding)
 	Register(page Page) error
 	Show(pageID string) error
 	Run(ctx context.Context, initialPageID string) error
 }
 
 type application struct {
-	engine         *tview.Application
-	layout         Layout
-	overlays       overlay.Host
-	controls       components.Factory
-	theme          colorTheme
-	pages          map[string]Page
-	pageOrder      []Page
-	activePage     Page
-	globalBindings []keybinding.Binding
-	menuItems      []components.MenuItem
-	exitBinding    keybinding.Binding
-	exitBindingSet bool
-	modals         []*openedModal
-	root           tview.Primitive
-	appFocusables  []tview.Primitive
-	menuContext    context.Context
-	pageChanges    mailbox.Mailbox[Page]
+	engine              *tview.Application
+	layout              Layout
+	overlays            overlay.Host
+	controls            components.Factory
+	theme               colorTheme
+	pages               map[string]Page
+	pageOrder           []Page
+	activePage          Page
+	globalBindings      []keybinding.Binding
+	applicationBindings []keybinding.Binding
+	menuItems           []components.MenuItem
+	exitBinding         keybinding.Binding
+	exitBindingSet      bool
+	modals              []*openedModal
+	root                tview.Primitive
+	appFocusables       []tview.Primitive
+	menuContext         context.Context
+	pageChanges         mailbox.Mailbox[Page]
 }
 
 var errPageChanged = errors.New("active page changed")
@@ -93,7 +95,6 @@ func newApplication(theme colorTheme) Application {
 		theme:    theme,
 		pages:    make(map[string]Page),
 	}
-	app.rebuildApplicationMenu()
 	app.root = newMouseFocusGuard(overlays.Root(), app.mousePrimitiveAllowed)
 	overlays.SetChangedFunc(app.Refresh)
 	return app
@@ -107,10 +108,13 @@ func (a *application) AddMenuItem(
 		Label:   label,
 		Binding: binding,
 	})
-	a.rebuildApplicationMenu()
 }
 
-func (a *application) rebuildApplicationMenu() {
+func (a *application) AddKeyBinding(binding keybinding.Binding) {
+	a.applicationBindings = append(a.applicationBindings, binding)
+}
+
+func (a *application) buildApplicationMenu() {
 	items := append([]components.MenuItem(nil), a.menuItems...)
 	if a.menuContext != nil {
 		for _, page := range a.pageOrder {
@@ -123,11 +127,15 @@ func (a *application) rebuildApplicationMenu() {
 			Binding: a.exitBinding,
 		})
 	}
-	menu := newApplicationMenu(a.controls, items)
-	a.layout.Header().SetMenu(menu, applicationMenuWidth)
+	functionKeys, _ := keybinding.SplitFunctionBindings(a.applicationBindings)
+	menu := newApplicationMenu(a.controls, items, functionKeys)
+	a.layout.Header().SetMenu(menu, menu.Width())
 	a.appFocusables = []tview.Primitive{menu.button}
 
-	a.globalBindings = a.globalBindings[:0]
+	a.globalBindings = append(
+		a.globalBindings[:0],
+		a.applicationBindings...,
+	)
 	for _, item := range items {
 		a.globalBindings = append(a.globalBindings, item.Binding)
 	}
@@ -216,37 +224,42 @@ func (a *application) Refresh() {
 		a.layout.Header().SetStatus("")
 	}
 
-	hints := keybinding.Hints(a.focusedBindings())
+	bindings := keybinding.Visible(a.focusedBindings())
 	if opened, ok := a.topModal(); ok {
 		blocked := a.parentBindingsBlocked()
-		hints = keybinding.MergeBindingHints(hints, opened.closeBinding)
+		bindings = keybinding.Merge(bindings, opened.closeBinding)
 		if !blocked {
-			hints = keybinding.MergeBindingHints(hints, opened.bindings...)
+			bindings = keybinding.Merge(bindings, opened.bindings...)
 		}
 		if len(opened.dialog.Focusables()) > 1 {
-			hints = keybinding.MergeBindingHints(
-				hints,
+			bindings = keybinding.Merge(
+				bindings,
 				a.focusNavigationBindings(opened.dialog.Focusables())...,
 			)
 		}
-		a.layout.Footer().SetKeyHints(hints)
+		a.setKeyBindings(bindings)
 		return
 	}
 	if a.overlays.Active() {
-		a.layout.Footer().SetKeyHints(hints)
+		a.setKeyBindings(bindings)
 		return
 	}
 	if !a.parentBindingsBlocked() {
-		hints = keybinding.MergeBindingHints(hints, a.activePage.KeyBindings()...)
-		hints = keybinding.MergeBindingHints(hints, a.globalBindings...)
+		bindings = keybinding.Merge(bindings, a.activePage.KeyBindings()...)
+		bindings = keybinding.Merge(bindings, a.globalBindings...)
 	}
 	if len(a.activePage.Focusables()) > 1 {
-		hints = keybinding.MergeBindingHints(
-			hints,
+		bindings = keybinding.Merge(
+			bindings,
 			a.focusNavigationBindings(a.activePage.Focusables())...,
 		)
 	}
-	a.layout.Footer().SetKeyHints(hints)
+	a.setKeyBindings(bindings)
+}
+
+func (a *application) setKeyBindings(bindings []keybinding.Binding) {
+	_, footer := keybinding.SplitFunctionBindings(bindings)
+	a.layout.Footer().SetKeyBindings(footer)
 }
 
 // Update serializes a background update with tview drawing.
@@ -298,7 +311,7 @@ func (a *application) initializeRuntime(
 	a.menuContext = ctx
 	a.exitBinding = keybinding.OnRune('q', "quit", cancel)
 	a.exitBindingSet = true
-	a.rebuildApplicationMenu()
+	a.buildApplicationMenu()
 	a.engine.SetInputCapture(a.runtimeInputCapture(cancel))
 }
 

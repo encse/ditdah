@@ -66,3 +66,21 @@ func TestHostStacksAndRestoresFocus(t *testing.T) {
 		t.Fatalf("focus before top without overlay = %T, want nil", got)
 	}
 }
+
+func TestPushDoesNotBlurOverlayAlreadyFocusedByPages(t *testing.T) {
+	app := tview.NewApplication()
+	host := New(app)
+	host.SetContent(tview.NewBox())
+	app.SetFocus(host.Root())
+
+	blurs := 0
+	popup := tview.NewBox().SetBlurFunc(func() { blurs++ })
+	host.Push(popup)
+
+	if got := app.GetFocus(); got != popup {
+		t.Fatalf("focus after popup push = %T, want popup", got)
+	}
+	if blurs != 0 {
+		t.Fatalf("popup blur count during push = %d, want 0", blurs)
+	}
+}

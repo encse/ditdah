@@ -29,7 +29,7 @@ func TestLayoutArrangesHeaderContentAndFooter(t *testing.T) {
 	layout.SetRect(0, 0, 40, 12)
 	layout.Draw(screen)
 
-	assertLayoutRune(t, screen, 16, 0, 'L')
+	assertLayoutRune(t, screen, 16, 0, ' ')
 	_, _, headerStyle, _ := screen.GetContent(30, 0)
 	_, headerBackground, _ := headerStyle.Decompose()
 	if want := tcell.NewRGBColor(190, 190, 190); headerBackground != want {

@@ -72,14 +72,12 @@ func newTerminalApplication(
 		}
 	}
 
-	terminal.AddMenuItem(
-		"Logbook",
-		keybinding.OnKey(tcell.KeyF1, "logbook", func() {
+	terminal.AddKeyBinding(
+		keybinding.OnKey(tcell.KeyF1, "Logbook", func() {
 			_ = terminal.Show(logbook.ID())
 		}),
 	)
-	terminal.AddMenuItem(
-		"Morse decoder",
+	terminal.AddKeyBinding(
 		keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {
 			_ = terminal.Show(decoder.ID())
 		}),

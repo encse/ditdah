@@ -55,7 +55,6 @@ func (l *layout) Footer() components.Footer {
 }
 
 func (l *layout) Show(page Page) {
-	l.header.SetTitle(page.Title())
 	l.setContent(page.Content())
 }
 

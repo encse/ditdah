@@ -17,19 +17,36 @@ func TestApplicationMenuDisplaysModalColoredHamburger(t *testing.T) {
 	menu := newApplicationMenu(controls, []components.MenuItem{{
 		Label:   "Exit",
 		Binding: keybinding.OnRune('q', "quit", func() {}),
-	}})
+	}}, []keybinding.Binding{
+		keybinding.OnKey(tcell.KeyF1, "Logbook", func() {}),
+		keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {}),
+	})
 	screen := newLayoutTestScreen(t)
-	menu.SetRect(0, 0, applicationMenuWidth, 1)
+	menu.SetRect(0, 0, menu.Width(), 1)
 	menu.Draw(screen)
-	assertLayoutRune(t, screen, 2, 0, '☰')
-	_, _, style, _ := screen.GetContent(2, 0)
-	_, background, _ := style.Decompose()
+	assertLayoutRune(t, screen, 2, 0, '[')
+	assertLayoutRune(t, screen, 3, 0, '=')
+	assertLayoutRune(t, screen, 4, 0, ']')
+	assertLayoutRune(t, screen, 7, 0, 'F')
+	assertLayoutRune(t, screen, 10, 0, 'L')
+	assertLayoutRune(t, screen, 19, 0, 'F')
+	_, _, style, _ := screen.GetContent(3, 0)
+	menuForeground, background, _ := style.Decompose()
 	if want := tcell.NewRGBColor(190, 190, 190); background != want {
 		t.Fatalf("menu background = %v, want %v", background, want)
 	}
-	_, _, style, _ = screen.GetContent(10, 0)
+	_, _, style, _ = screen.GetContent(6, 0)
 	_, background, _ = style.Decompose()
 	if want := tcell.NewRGBColor(190, 190, 190); background != want {
-		t.Fatalf("menu spacer background = %v, want %v", background, want)
+		t.Fatalf("menu edge background = %v, want %v", background, want)
+	}
+	_, _, style, _ = screen.GetContent(7, 0)
+	functionForeground, _, _ := style.Decompose()
+	if functionForeground != menuForeground {
+		t.Fatalf(
+			"function-key color = %v, want menu color %v",
+			functionForeground,
+			menuForeground,
+		)
 	}
 }

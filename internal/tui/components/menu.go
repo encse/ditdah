@@ -32,8 +32,6 @@ type menu struct {
 	items               []MenuItem
 	textColor           tcell.Color
 	background          tcell.Color
-	activeText          tcell.Color
-	activeBackground    tcell.Color
 	listText            tcell.Color
 	listBackground      tcell.Color
 	selectionText       tcell.Color
@@ -57,8 +55,6 @@ func newMenu(
 		items:               append([]MenuItem(nil), items...),
 		textColor:           theme.PrimaryText,
 		background:          theme.Background,
-		activeText:          theme.SelectionText,
-		activeBackground:    theme.SelectionBackground,
 		listText:            theme.PrimaryText,
 		listBackground:      theme.Background,
 		selectionText:       theme.SelectionText,
@@ -90,10 +86,7 @@ func (m *menu) Draw(screen tcell.Screen) {
 		Foreground(m.textColor).
 		Background(m.background)
 	if m.HasFocus() || m.open {
-		style = tcell.StyleDefault.
-			Foreground(m.activeText).
-			Background(m.activeBackground).
-			Bold(true)
+		style = style.Bold(true)
 	}
 	fill(screen, x, y, width, style)
 
@@ -125,7 +118,8 @@ func (m *menu) MouseHandler() mouseHandler {
 		setFocus func(tview.Primitive),
 	) (bool, tview.Primitive) {
 		x, y := event.Position()
-		if action != tview.MouseLeftDown || !m.InRect(x, y) {
+		if (action != tview.MouseLeftClick &&
+			action != tview.MouseLeftDoubleClick) || !m.InRect(x, y) {
 			return false, nil
 		}
 		setFocus(m)
@@ -134,7 +128,7 @@ func (m *menu) MouseHandler() mouseHandler {
 		} else {
 			m.openPopup()
 		}
-		return true, m
+		return true, nil
 	})
 }
 
@@ -313,29 +307,42 @@ func (p *menuPopup) MouseHandler() mouseHandler {
 		event *tcell.EventMouse,
 		_ func(tview.Primitive),
 	) (bool, tview.Primitive) {
+		if !p.menu.open {
+			return true, nil
+		}
 		x, y := event.Position()
 		inside := x >= p.x && x < p.x+p.width &&
 			y >= p.y && y < p.y+p.height
-		var capture tview.Primitive
-		if action == tview.MouseLeftDown {
-			capture = p
-		}
 		if inside {
 			if handler := p.list.MouseHandler(); handler != nil {
+				listAction := action
+				// tview detects double-clicks globally, so a quick click on
+				// the hamburger followed by a click on an item arrives here
+				// as a double-click even though the controls differ.
+				if listAction == tview.MouseLeftDoubleClick {
+					listAction = tview.MouseLeftClick
+				}
 				consumed, _ := handler(
-					action,
+					listAction,
 					event,
 					func(tview.Primitive) {},
 				)
 				if consumed {
-					return true, capture
+					return true, nil
 				}
 			}
-			return true, capture
+			return true, nil
 		}
-		if action == tview.MouseLeftDown || action == tview.MouseLeftClick {
+		if action == tview.MouseLeftClick ||
+			action == tview.MouseLeftDoubleClick {
 			p.menu.closePopup()
+			if p.menu.InRect(x, y) {
+				return true, nil
+			}
+			// Let the completed click reach another control, such as F1/F2.
+			return false, nil
 		}
-		return true, capture
+		// Only a completed click dismisses the popup.
+		return true, nil
 	})
 }

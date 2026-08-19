@@ -3,6 +3,7 @@
 package keybinding
 
 import (
+	"strconv"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"
@@ -134,6 +135,38 @@ func Hints(bindings []Binding) []Hint {
 	return hints
 }
 
+// Visible returns the handled bindings which are advertised in the UI.
+func Visible(bindings []Binding) []Binding {
+	visible := make([]Binding, 0, len(bindings))
+	for _, binding := range bindings {
+		if binding.handler != nil && visibleInFooter(binding.Hint()) {
+			visible = append(visible, binding)
+		}
+	}
+	return visible
+}
+
+// Merge adds or replaces visible bindings by their key label. Later bindings
+// win, matching keyboard dispatch and the existing hint composition rules.
+func Merge(bindings []Binding, additional ...Binding) []Binding {
+	merged := append([]Binding(nil), bindings...)
+	for _, binding := range Visible(additional) {
+		key := binding.Hint().Keys
+		replaced := false
+		for index := range merged {
+			if merged[index].Hint().Keys == key {
+				merged[index] = binding
+				replaced = true
+				break
+			}
+		}
+		if !replaced {
+			merged = append(merged, binding)
+		}
+	}
+	return merged
+}
+
 func visibleInFooter(hint Hint) bool {
 	switch hint.Keys {
 	case "", "Enter", "Esc", "Space", "Enter/Space", "Tab", "Shift+Tab":
@@ -143,26 +176,34 @@ func visibleInFooter(hint Hint) bool {
 	}
 }
 
-// MergeBindingHints adds the visible hints from bindings. Later hints win.
-func MergeBindingHints(hints []Hint, bindings ...Binding) []Hint {
-	return MergeHints(hints, Hints(bindings)...)
-}
-
-// MergeHints adds or replaces hints by their key label. Later hints win.
-func MergeHints(hints []Hint, additional ...Hint) []Hint {
-	merged := append([]Hint(nil), hints...)
-	for _, hint := range additional {
-		replaced := false
-		for index := range merged {
-			if merged[index].Keys == hint.Keys {
-				merged[index] = hint
-				replaced = true
-				break
-			}
-		}
-		if !replaced {
-			merged = append(merged, hint)
+// SplitFunctionBindings separates function-key bindings from all other
+// visible bindings.
+func SplitFunctionBindings(
+	bindings []Binding,
+) (functionKeys []Binding, other []Binding) {
+	for _, binding := range Visible(bindings) {
+		if isFunctionKeyHint(binding.Hint().Keys) {
+			functionKeys = append(functionKeys, binding)
+		} else {
+			other = append(other, binding)
 		}
 	}
-	return merged
+	return functionKeys, other
+}
+
+func isFunctionKeyHint(keys string) bool {
+	parts := strings.Split(keys, "/")
+	if len(parts) == 0 {
+		return false
+	}
+	for _, part := range parts {
+		if len(part) < 2 || part[0] != 'F' {
+			return false
+		}
+		number, err := strconv.Atoi(part[1:])
+		if err != nil || number < 1 || number > 64 {
+			return false
+		}
+	}
+	return true
 }

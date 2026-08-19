@@ -2,32 +2,29 @@ package tui
 
 import (
 	"morsemanual/internal/tui/components"
-
-	"github.com/rivo/tview"
+	"morsemanual/internal/tui/keybinding"
 )
 
 const (
-	applicationMenuLabel       = "☰"
-	applicationMenuButtonWidth = 5
-	applicationMenuWidth       = 16
+	// Keep this ASCII-only. Some terminals render the Unicode hamburger as two
+	// cells while tcell measures it as one, shifting everything after it.
+	applicationMenuLabel = "[=]"
 )
 
 type applicationMenu struct {
-	*tview.Flex
+	components.MenuBar
 	button components.Menu
 }
 
 func newApplicationMenu(
 	controls components.Factory,
 	items []components.MenuItem,
+	bindings []keybinding.Binding,
 ) *applicationMenu {
 	menuControls := controls.Modal()
-	button := menuControls.Menu(applicationMenuLabel, items)
-	background := menuControls.TextView()
+	bar := menuControls.MenuBar(applicationMenuLabel, items, bindings)
 	return &applicationMenu{
-		Flex: tview.NewFlex().
-			AddItem(button, applicationMenuButtonWidth, 0, false).
-			AddItem(background, 0, 1, false),
-		button: button,
+		MenuBar: bar,
+		button:  bar.Button(),
 	}
 }

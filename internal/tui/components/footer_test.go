@@ -4,20 +4,23 @@ import (
 	"testing"
 
 	"morsemanual/internal/tui/keybinding"
+
+	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 func TestFooterKeepsContextAndKeyHintsSeparate(t *testing.T) {
 	footer := newTestFactory().Footer().(*footer)
 	footer.SetContext("24 QSOs")
-	footer.SetKeyHints([]keybinding.Hint{
-		{Keys: "↑/↓", Description: "move"},
-		{Keys: "q", Description: "quit"},
+	footer.SetKeyBindings([]keybinding.Binding{
+		keybinding.On("move", func() {}, keybinding.Key(tcell.KeyUp), keybinding.Key(tcell.KeyDown)),
+		keybinding.OnRune('q', "quit", func() {}),
 	})
 
 	if got := footer.context.Text(); got != "24 QSOs" {
 		t.Fatalf("context = %q, want %q", got, "24 QSOs")
 	}
-	wantHints := "[::b]↑/↓[-:-:-] move   [::b]q[-:-:-] quit"
+	wantHints := "Up/Down move   q quit"
 	if got := footer.hints.Text(); got != wantHints {
 		t.Fatalf("hints = %q, want %q", got, wantHints)
 	}
@@ -46,14 +49,32 @@ func TestFooterGivesHintsFullWidthWithoutContext(t *testing.T) {
 	}
 }
 
-func TestFooterEscapesKeyHintMarkup(t *testing.T) {
+func TestFooterDisplaysKeyHintMarkupLiterally(t *testing.T) {
 	footer := newTestFactory().Footer().(*footer)
-	footer.SetKeyHints([]keybinding.Hint{
-		{Keys: "[x]", Description: "use [brackets]"},
+	footer.SetKeyBindings([]keybinding.Binding{
+		keybinding.OnRune('[', "use [brackets]", func() {}),
 	})
 
-	want := "[::b][x[][-:-:-] use [brackets[]"
+	want := "[ use [brackets]"
 	if got := footer.hints.Text(); got != want {
 		t.Fatalf("hints = %q, want %q", got, want)
+	}
+}
+
+func TestFooterKeyHintsAreClickable(t *testing.T) {
+	invoked := 0
+	footer := newTestFactory().Footer().(*footer)
+	footer.SetKeyBindings([]keybinding.Binding{
+		keybinding.OnRune('q', "quit", func() { invoked++ }),
+	})
+	footer.SetRect(0, 0, 20, 1)
+
+	consumed, _ := footer.MouseHandler()(
+		tview.MouseLeftClick,
+		tcell.NewEventMouse(7, 0, tcell.ButtonNone, 0),
+		func(tview.Primitive) {},
+	)
+	if !consumed || invoked != 1 {
+		t.Fatalf("click consumed = %v, invocations = %d; want true, 1", consumed, invoked)
 	}
 }

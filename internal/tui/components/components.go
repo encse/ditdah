@@ -2,6 +2,8 @@
 package components
 
 import (
+	"morsemanual/internal/tui/keybinding"
+
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
@@ -52,6 +54,7 @@ type Factory interface {
 	Grid() *tview.Grid
 	Header() Header
 	Footer() Footer
+	MenuBar(label string, items []MenuItem, bindings []keybinding.Binding) MenuBar
 	Menu(label string, items []MenuItem) Menu
 	Button(label string) Button
 	DangerButton(label string) Button
@@ -120,7 +123,15 @@ func (f factory) Header() Header {
 }
 
 func (f factory) Footer() Footer {
-	return newFooter(f)
+	return newFooter(f, f.theme, f.focusChanged)
+}
+
+func (f factory) MenuBar(
+	label string,
+	items []MenuItem,
+	bindings []keybinding.Binding,
+) MenuBar {
+	return newMenuBar(f, f.theme, f.focusChanged, label, items, bindings)
 }
 
 func (f factory) Menu(label string, items []MenuItem) Menu {

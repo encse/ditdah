@@ -87,7 +87,12 @@ func (h *host) Push(primitive tview.Primitive) components.Overlay {
 		previousFocus: h.app.GetFocus(),
 	})
 	h.pages.AddPage(name, primitive, true, true)
-	h.app.SetFocus(primitive)
+	// Pages focuses a newly added visible page itself when it already owns the
+	// focus. Focusing the same primitive again would Blur it first, which closes
+	// dismiss-on-blur popups immediately after they are opened.
+	if h.app.GetFocus() != primitive {
+		h.app.SetFocus(primitive)
+	}
 	h.notifyChanged()
 	return &handle{host: h, name: name}
 }

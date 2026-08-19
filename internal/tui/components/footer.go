@@ -1,9 +1,6 @@
 package components
 
 import (
-	"fmt"
-	"strings"
-
 	"morsemanual/internal/tui/keybinding"
 
 	"github.com/rivo/tview"
@@ -14,23 +11,20 @@ import (
 type Footer interface {
 	tview.Primitive
 	SetContext(context string)
-	SetKeyHints(hints []keybinding.Hint)
+	SetKeyBindings(bindings []keybinding.Binding)
 }
 
 type footer struct {
 	*tview.Flex
 	context TextView
-	hints   TextView
+	hints   *keyHints
 }
 
-func newFooter(controls Factory) Footer {
+func newFooter(controls Factory, theme Theme, changed func()) Footer {
 	context := controls.TextView()
 	context.SetStyle(TextViewMuted)
 
-	hints := controls.TextView()
-	hints.SetDynamicColors(true)
-	hints.SetTextAlign(tview.AlignCenter)
-	hints.SetStyle(TextViewMuted)
+	hints := newKeyHints(theme, tview.AlignCenter, changed)
 
 	footer := &footer{
 		Flex:    tview.NewFlex(),
@@ -52,14 +46,6 @@ func (f *footer) SetContext(context string) {
 	f.AddItem(f.hints, 0, 1, false)
 }
 
-func (f *footer) SetKeyHints(hints []keybinding.Hint) {
-	parts := make([]string, 0, len(hints))
-	for _, hint := range hints {
-		parts = append(parts, fmt.Sprintf(
-			"[::b]%s[-:-:-] %s",
-			tview.Escape(hint.Keys),
-			tview.Escape(hint.Description),
-		))
-	}
-	f.hints.SetText(strings.Join(parts, "   "))
+func (f *footer) SetKeyBindings(bindings []keybinding.Binding) {
+	f.hints.SetBindings(bindings)
 }
