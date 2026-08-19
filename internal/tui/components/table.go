@@ -30,6 +30,7 @@ type Table interface {
 	SetCell(row int, column int, cell TableCell)
 	Select(row int, column int)
 	Selection() (row int, column int)
+	SetFixedRows(rows int)
 	SetSelectionChangedFunc(handler func(row int, column int))
 }
 
@@ -87,6 +88,10 @@ func (t *table) Select(row int, column int) {
 
 func (t *table) Selection() (int, int) {
 	return t.Table.GetSelection()
+}
+
+func (t *table) SetFixedRows(rows int) {
+	t.Table.SetFixed(rows, 0)
 }
 
 func (t *table) SetSelectionChangedFunc(handler func(row int, column int)) {

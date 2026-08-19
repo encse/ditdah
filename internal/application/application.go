@@ -65,6 +65,7 @@ func newTerminalApplication(
 		terminal,
 		deps.audio,
 		deps.stores.Settings,
+		deps.callsignLookup,
 	)
 	for _, page := range []tui.Page{logbook, decoder} {
 		if err := terminal.Register(page); err != nil {

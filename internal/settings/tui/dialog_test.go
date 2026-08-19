@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/settings"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/modal"
@@ -335,6 +336,15 @@ func (s *recordingQRZService) ValidateAPIKey(
 ) error {
 	s.apiKey = apiKey
 	return s.apiKeyErr
+}
+
+func (s *recordingQRZService) LookupCallsign(
+	context.Context,
+	string,
+	string,
+	string,
+) (callsign.Record, error) {
+	return callsign.Record{}, nil
 }
 
 type testHost struct {

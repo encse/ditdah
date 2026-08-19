@@ -11,6 +11,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	domain "morsemanual/internal/callsign"
 )
 
 const (
@@ -20,10 +22,16 @@ const (
 	maxResponseSize = 1 << 20
 )
 
-// Service validates credentials used by the QRZ XML and Logbook APIs.
+// Service provides QRZ XML callsign lookup and credential validation.
 type Service interface {
 	ValidateLogin(ctx context.Context, callsign, password string) error
 	ValidateAPIKey(ctx context.Context, apiKey string) error
+	LookupCallsign(
+		ctx context.Context,
+		username string,
+		password string,
+		callsign string,
+	) (domain.Record, error)
 }
 
 type service struct {
@@ -54,11 +62,20 @@ func (s *service) ValidateLogin(
 	callsign string,
 	password string,
 ) error {
+	_, err := s.login(ctx, callsign, password)
+	return err
+}
+
+func (s *service) login(
+	ctx context.Context,
+	callsign string,
+	password string,
+) (string, error) {
 	if strings.TrimSpace(callsign) == "" {
-		return errors.New("callsign is required")
+		return "", errors.New("callsign is required")
 	}
 	if password == "" {
-		return errors.New("password is required")
+		return "", errors.New("password is required")
 	}
 
 	body, err := s.post(ctx, s.xmlEndpoint, url.Values{
@@ -67,24 +84,25 @@ func (s *service) ValidateLogin(
 		"agent":    {userAgent},
 	})
 	if err != nil {
-		return fmt.Errorf("QRZ.com login: %w", err)
+		return "", fmt.Errorf("QRZ.com login: %w", err)
 	}
 
 	var response xmlResponse
 	if err := xml.Unmarshal(body, &response); err != nil {
-		return fmt.Errorf("QRZ.com login: decode response: %w", err)
+		return "", fmt.Errorf("QRZ.com login: decode response: %w", err)
 	}
 	if message := strings.TrimSpace(response.Session.Error); message != "" {
-		return fmt.Errorf("QRZ.com login: %s", message)
+		return "", fmt.Errorf("QRZ.com login: %s", message)
 	}
-	if strings.TrimSpace(response.Session.Key) == "" {
+	key := strings.TrimSpace(response.Session.Key)
+	if key == "" {
 		message := strings.TrimSpace(response.Session.Message)
 		if message == "" {
 			message = "no session key returned"
 		}
-		return fmt.Errorf("QRZ.com login: %s", message)
+		return "", fmt.Errorf("QRZ.com login: %s", message)
 	}
-	return nil
+	return key, nil
 }
 
 func (s *service) ValidateAPIKey(ctx context.Context, apiKey string) error {
@@ -157,4 +175,5 @@ type xmlResponse struct {
 		Message string `xml:"Message"`
 		Error   string `xml:"Error"`
 	} `xml:"Session"`
+	Callsign xmlCallsign `xml:"Callsign"`
 }

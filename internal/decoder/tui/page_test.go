@@ -2,12 +2,15 @@ package tui
 
 import (
 	"context"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"morsemanual/internal/audio"
+	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/decoder"
+	"morsemanual/internal/optional"
 	"morsemanual/internal/settings"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/modal"
@@ -17,7 +20,7 @@ import (
 )
 
 func TestPageMetadata(t *testing.T) {
-	page := New(newTestHost(), nil, nil)
+	page := New(newTestHost(), nil, nil, nil)
 
 	if page.ID() != "morse-decoder" {
 		t.Fatalf("ID() = %q, want morse-decoder", page.ID())
@@ -28,18 +31,18 @@ func TestPageMetadata(t *testing.T) {
 	if page.Content() == nil {
 		t.Fatal("Content() is nil")
 	}
-	if len(page.Focusables()) != 1 {
-		t.Fatalf("Focusables() = %d items, want decoder output", len(page.Focusables()))
+	if len(page.Focusables()) != 3 {
+		t.Fatalf("Focusables() = %d items, want output, callsigns, details", len(page.Focusables()))
 	}
 }
 
 func TestPageHasEmptyDecoderOutputAndRightPanel(t *testing.T) {
-	page := New(newTestHost(), nil, nil).(*page)
+	page := New(newTestHost(), nil, nil, nil).(*page)
 	if page.output.Text() != "" {
 		t.Fatalf("output text = %q, want empty", page.output.Text())
 	}
-	if page.right.Text() != "" {
-		t.Fatalf("right panel text = %q, want empty", page.right.Text())
+	if page.details.Text() != "" {
+		t.Fatalf("details text = %q, want empty", page.details.Text())
 	}
 	flex := page.content.(*tview.Flex)
 	if flex.GetItemCount() != 2 {
@@ -47,6 +50,11 @@ func TestPageHasEmptyDecoderOutputAndRightPanel(t *testing.T) {
 	}
 	if flex.GetItem(0) != page.output || flex.GetItem(1) != page.right {
 		t.Fatal("split panels are in the wrong order")
+	}
+	right := page.right.(*tview.Flex)
+	if right.GetItemCount() != 2 || right.GetItem(0) != page.callsignList ||
+		right.GetItem(1) != page.details {
+		t.Fatal("right panel must contain callsigns above QRZ details")
 	}
 }
 
@@ -60,6 +68,7 @@ func TestPageWritesStreamingDecoderOutput(t *testing.T) {
 		newTestHost(),
 		source,
 		store,
+		nil,
 		func() (domain.Streaming, error) {
 			return emittingStream{text: "CQ "}, nil
 		},
@@ -90,6 +99,7 @@ func TestPageRestartsCaptureWhenInputChanges(t *testing.T) {
 		newTestHost(),
 		source,
 		store,
+		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
 	)
 	cancel, done := runDecoderPage(t, page)
@@ -116,6 +126,7 @@ func TestHiddenPageDefersChangedInputUntilNextActivation(t *testing.T) {
 		newTestHost(),
 		source,
 		store,
+		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
 	)
 
@@ -140,6 +151,7 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 		newTestHost(),
 		source,
 		store,
+		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
 	)
 	cancel, done := runDecoderPage(t, page)
@@ -154,7 +166,7 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 }
 
 func TestPageOwnsMorseInputMenuItem(t *testing.T) {
-	page := New(newTestHost(), nil, nil)
+	page := New(newTestHost(), nil, nil, nil)
 	items := page.MenuItems(t.Context())
 	if len(items) != 1 {
 		t.Fatalf("MenuItems() = %d items, want 1", len(items))
@@ -162,6 +174,130 @@ func TestPageOwnsMorseInputMenuItem(t *testing.T) {
 	if items[0].Label != "Morse input" {
 		t.Fatalf("menu label = %q, want Morse input", items[0].Label)
 	}
+}
+
+func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
+	host := newTestHost()
+	page := New(host, nil, nil, nil).(*page)
+	bindings := page.KeyBindings()
+	if len(bindings) != 3 || bindings[0].Hint().Keys != "a" ||
+		bindings[1].Hint().Keys != "Enter" ||
+		bindings[2].Hint().Keys != "d" {
+		t.Fatalf("KeyBindings() = %#v, want a/add, Enter/edit and d/delete", bindings)
+	}
+	if err := page.addCallsign(" dl1abc "); err != nil {
+		t.Fatalf("addCallsign() error = %v", err)
+	}
+	if err := page.addCallsign("ha7ncs"); err != nil {
+		t.Fatalf("addCallsign() error = %v", err)
+	}
+	if got := strings.Join(page.callsigns, ","); got != "DL1ABC,HA7NCS" {
+		t.Fatalf("callsigns = %q", got)
+	}
+	if page.selectedCallsign != "HA7NCS" {
+		t.Fatalf("selected callsign = %q, want HA7NCS", page.selectedCallsign)
+	}
+	if row, _ := page.callsignList.Selection(); row != 1 {
+		t.Fatalf("selected table row = %d, want second data row 1", row)
+	}
+	if err := page.addCallsign("DL1ABC"); err == nil {
+		t.Fatal("duplicate callsign was added")
+	}
+	if !bindings[1].Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
+		t.Fatal("Enter edit binding was not handled")
+	}
+	editor, ok := host.opened.(*callsignDialog)
+	if !ok {
+		t.Fatalf("Enter opened %T, want callsign dialog", host.opened)
+	}
+	if editor.input.Value() != "HA7NCS" {
+		t.Fatalf("editor value = %q, want HA7NCS", editor.input.Value())
+	}
+	if err := page.updateCallsign("HA7NCS", " oe1xyz "); err != nil {
+		t.Fatalf("updateCallsign() error = %v", err)
+	}
+	if page.callsigns[1] != "OE1XYZ" || page.selectedCallsign != "OE1XYZ" {
+		t.Fatalf("callsigns = %#v, selected = %q", page.callsigns, page.selectedCallsign)
+	}
+
+	page.deleteSelectedCallsign()
+	if len(page.callsigns) != 1 || page.callsigns[0] != "DL1ABC" ||
+		page.selectedCallsign != "DL1ABC" {
+		t.Fatalf(
+			"callsigns = %#v, selected = %q",
+			page.callsigns,
+			page.selectedCallsign,
+		)
+	}
+	if row, _ := page.callsignList.Selection(); row != 0 {
+		t.Fatalf("selected table row after delete = %d, want first data row 0", row)
+	}
+}
+
+func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
+	host := newTestHost()
+	host.updated = make(chan struct{}, 8)
+	lookup := &decoderLookupService{
+		requests: make(chan string, 1),
+		release:  make(chan struct{}),
+		entry: callsign.Entry{
+			Callsign: "DL1ABC",
+			Status:   callsign.StatusReady,
+			Record: optional.Some(callsign.Record{
+				Callsign: "DL1ABC",
+				Name:     optional.Some("Jane Doe"),
+				Country:  optional.Some("Germany"),
+				Grid:     optional.Some("JO62"),
+			}),
+		},
+	}
+	page := New(host, nil, nil, lookup).(*page)
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		page.runLookups(ctx)
+	}()
+
+	if err := page.addCallsign("dl1abc"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case got := <-lookup.requests:
+		if got != "DL1ABC" {
+			t.Fatalf("lookup callsign = %q, want DL1ABC", got)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("callsign lookup did not start")
+	}
+	close(lookup.release)
+	waitForSignal(t, host.updated, "callsign details update")
+	if details := page.details.Text(); !strings.Contains(details, "Name: Jane Doe") ||
+		!strings.Contains(details, "Country: Germany") ||
+		!strings.Contains(details, "Grid: JO62") {
+		t.Fatalf("details = %q", details)
+	}
+
+	cancel()
+	waitForSignal(t, done, "callsign lookup worker stop")
+}
+
+func TestPageRetriesSelectedCallsignAfterReactivation(t *testing.T) {
+	lookup := &cancelingLookupService{requests: make(chan string, 2)}
+	page := New(newTestHost(), nil, nil, lookup).(*page)
+	if err := page.addCallsign("DL1ABC"); err != nil {
+		t.Fatal(err)
+	}
+
+	cancel, done := runDecoderPage(t, page)
+	waitForLookupRequest(t, lookup.requests, "DL1ABC")
+	cancel()
+	waitForRun(t, done)
+
+	cancel, done = runDecoderPage(t, page)
+	waitForLookupRequest(t, lookup.requests, "DL1ABC")
+	cancel()
+	waitForRun(t, done)
 }
 
 type emittingStream struct {
@@ -294,16 +430,25 @@ func waitForRun(t *testing.T, done <-chan struct{}) {
 
 type testHost struct {
 	controls components.Factory
+	updated  chan struct{}
+	opened   modal.Dialog
 }
 
-func newTestHost() testHost {
+func newTestHost() *testHost {
 	theme := components.Theme{
 		Background:     tcell.ColorBlack,
 		PrimaryText:    tcell.ColorWhite,
 		MutedText:      tcell.ColorGray,
 		FieldTextColor: tcell.ColorWhite,
 	}
-	return testHost{controls: components.New(components.Dependencies{Theme: theme})}
+	modalTheme := theme
+	modalTheme.Background = tcell.NewRGBColor(190, 190, 190)
+	modalTheme.Border = tcell.ColorWhite
+	modalTheme.Accent = tcell.ColorWhite
+	return &testHost{controls: components.New(components.Dependencies{
+		Theme:      theme,
+		ModalTheme: modalTheme,
+	})}
 }
 
 func (h testHost) SetFocus(tview.Primitive) {}
@@ -314,8 +459,58 @@ func (h testHost) Update(update func()) {
 	if update != nil {
 		update()
 	}
+	if h.updated != nil {
+		h.updated <- struct{}{}
+	}
 }
 
 func (h testHost) Components() components.Factory { return h.controls }
 
-func (h testHost) OpenModal(modal.Dialog) modal.Handle { return nil }
+func (h *testHost) OpenModal(dialog modal.Dialog) modal.Handle {
+	h.opened = dialog
+	return nil
+}
+
+type decoderLookupService struct {
+	requests chan string
+	release  chan struct{}
+	entry    callsign.Entry
+}
+
+type cancelingLookupService struct {
+	requests chan string
+}
+
+func (s *cancelingLookupService) Lookup(
+	ctx context.Context,
+	value string,
+) (callsign.Entry, error) {
+	s.requests <- value
+	<-ctx.Done()
+	return callsign.Entry{}, ctx.Err()
+}
+
+func waitForLookupRequest(t *testing.T, requests <-chan string, want string) {
+	t.Helper()
+	select {
+	case got := <-requests:
+		if got != want {
+			t.Fatalf("lookup callsign = %q, want %q", got, want)
+		}
+	case <-time.After(time.Second):
+		t.Fatalf("callsign lookup did not start for %q", want)
+	}
+}
+
+func (s *decoderLookupService) Lookup(
+	ctx context.Context,
+	value string,
+) (callsign.Entry, error) {
+	s.requests <- value
+	select {
+	case <-ctx.Done():
+		return callsign.Entry{}, ctx.Err()
+	case <-s.release:
+		return s.entry, nil
+	}
+}

@@ -17,7 +17,7 @@ type Logbook interface {
 	DeleteQSO(ctx context.Context, apiKey string, logID int64) error
 }
 
-// Client provides both QRZ credential validation and logbook access.
+// Client provides the QRZ XML and Logbook API operations.
 type Client interface {
 	Service
 	Logbook

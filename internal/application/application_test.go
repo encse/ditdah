@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"morsemanual/internal/callsign"
 	"morsemanual/internal/logbook"
 	"morsemanual/internal/settings"
 	"morsemanual/internal/stores"
@@ -44,6 +45,15 @@ func (unusedQRZService) ValidateLogin(context.Context, string, string) error {
 
 func (unusedQRZService) ValidateAPIKey(context.Context, string) error {
 	return nil
+}
+
+func (unusedQRZService) LookupCallsign(
+	context.Context,
+	string,
+	string,
+	string,
+) (callsign.Record, error) {
+	return callsign.Record{}, nil
 }
 
 func (emptyLogbookStore) List(

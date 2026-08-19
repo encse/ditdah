@@ -63,6 +63,7 @@ This document records implementation decisions and future technical work.
 - [x] Store whether and when a QSO was synchronized to QRZ.
 - [x] Persist the station callsign and QRZ credentials in a singleton application settings record.
 - [x] Cache positive and negative lookups by normalized input callsign while retaining the provider query callsign, provider metadata, and optional QRZ station data.
+- [x] Resolve callsigns through a cache-first service; on a miss, query QRZ.com only when XML login credentials are configured, then persist positive and not-found results.
 - [x] Allow arbitrary operating-mode strings so additional modes do not require a closed enum or database constraint.
 - [x] Allow Jet SQL DSL and generated table packages to use dot imports inside SQLite store implementations.
 
@@ -74,4 +75,6 @@ This document records implementation decisions and future technical work.
 - [x] Add the Morse user-interface page shell.
 - [x] Split the Morse page into a large scrollable decoded-text panel and a reserved right-side panel.
 - [x] Connect the selected live audio capture device to the streaming decoder and Morse output panel; coalesce saved input changes through a trigger and restart only the current audio session.
+- [x] Add a decoder-page callsign list with `a`/`Enter`/`d` actions and cached QRZ.com details for the selected entry in the lower-right panel.
+- [x] Run decoder callsign lookups in a context-bound page worker which is always joined by `Run`; retry the selected callsign on page reactivation without detached goroutines.
 - [ ] Add further domain stores and migrations as their features are implemented.

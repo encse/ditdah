@@ -4,15 +4,17 @@ import (
 	"database/sql"
 
 	"morsemanual/internal/audio"
+	"morsemanual/internal/callsign"
 	"morsemanual/internal/qrz"
 	"morsemanual/internal/stores"
 )
 
 type dependencies struct {
-	stores  stores.Stores
-	qrz     qrz.Service
-	qrzSync qrz.Synchronizer
-	audio   audio.Source
+	stores         stores.Stores
+	qrz            qrz.Service
+	qrzSync        qrz.Synchronizer
+	callsignLookup callsign.Service
+	audio          audio.Source
 }
 
 func newDependencies(db *sql.DB) (dependencies, error) {
@@ -29,6 +31,11 @@ func newDependencies(db *sql.DB) (dependencies, error) {
 			client,
 			allStores.Logbook,
 			allStores.Settings,
+		),
+		callsignLookup: callsign.NewService(
+			allStores.Callsign,
+			allStores.Settings,
+			client,
 		),
 		audio: input,
 	}, nil
