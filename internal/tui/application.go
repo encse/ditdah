@@ -36,6 +36,8 @@ type application struct {
 	menuItems      []components.MenuItem
 	exitBinding    keybinding.Binding
 	modals         []*openedModal
+	root           tview.Primitive
+	appFocusables  []tview.Primitive
 }
 
 type openedModal struct {
@@ -85,6 +87,7 @@ func newApplication(theme colorTheme) Application {
 	}
 	app.exitBinding = app.quitBinding()
 	app.rebuildApplicationMenu()
+	app.root = newMouseFocusGuard(overlays.Root(), app.mousePrimitiveAllowed)
 	engine.SetInputCapture(app.captureKey)
 	overlays.SetChangedFunc(app.Refresh)
 	return app
@@ -107,10 +110,9 @@ func (a *application) rebuildApplicationMenu() {
 		Label:   "Exit",
 		Binding: a.exitBinding,
 	})
-	a.layout.Header().SetMenu(
-		newApplicationMenu(a.controls, items),
-		applicationMenuWidth,
-	)
+	menu := newApplicationMenu(a.controls, items)
+	a.layout.Header().SetMenu(menu, applicationMenuWidth)
+	a.appFocusables = []tview.Primitive{menu.button}
 
 	a.globalBindings = a.globalBindings[:0]
 	for _, item := range items {
@@ -239,7 +241,7 @@ func (a *application) Run(ctx context.Context) error {
 	group.Go(func() error {
 		defer cancel()
 		return a.engine.
-			SetRoot(a.overlays.Root(), true).
+			SetRoot(a.root, true).
 			EnableMouse(true).
 			Run()
 	})
@@ -369,7 +371,32 @@ func (a *application) activeFocusables() []tview.Primitive {
 	if len(a.modals) > 0 {
 		return a.modals[len(a.modals)-1].dialog.Focusables()
 	}
+	if a.activePage == nil {
+		return nil
+	}
 	return a.activePage.Focusables()
+}
+
+func (a *application) mousePrimitiveAllowed(primitive tview.Primitive) bool {
+	if primitive == nil {
+		return false
+	}
+	if a.overlays.Active() && primitive == a.overlays.Top() {
+		return true
+	}
+	for _, focusable := range a.activeFocusables() {
+		if primitive == focusable {
+			return true
+		}
+	}
+	if !a.overlays.Active() {
+		for _, focusable := range a.appFocusables {
+			if primitive == focusable {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (a *application) topModal() (*openedModal, bool) {

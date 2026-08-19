@@ -38,6 +38,50 @@ func TestApplicationRegistersAndShowsPage(t *testing.T) {
 	}
 }
 
+func TestHeaderStatusClickCannotStealPageFocusOrMouseCapture(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	content := tview.NewBox()
+	page := applicationTestPage{
+		id:         "logbook",
+		title:      "Logbook",
+		status:     "(28/28)",
+		content:    content,
+		focusables: []tview.Primitive{content},
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Show(page.ID()); err != nil {
+		t.Fatal(err)
+	}
+	app.Refresh()
+
+	screen := tcell.NewSimulationScreen("UTF-8")
+	if err := screen.Init(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(screen.Fini)
+	screen.SetSize(80, 8)
+	app.root.SetRect(0, 0, 80, 8)
+	app.root.Draw(screen)
+
+	before := app.engine.GetFocus()
+	consumed, capture := app.root.MouseHandler()(
+		tview.MouseLeftDown,
+		tcell.NewEventMouse(78, 0, tcell.Button1, 0),
+		func(primitive tview.Primitive) { app.engine.SetFocus(primitive) },
+	)
+	if !consumed {
+		t.Fatal("header status click was not consumed")
+	}
+	if capture != nil {
+		t.Fatalf("header status capture = %T, want nil", capture)
+	}
+	if got := app.engine.GetFocus(); got != before {
+		t.Fatalf("focus after header click = %T, want previous %T", got, before)
+	}
+}
+
 func TestApplicationRejectsDuplicateAndUnknownPages(t *testing.T) {
 	app := newApplication(nordTheme)
 	page := applicationTestPage{
