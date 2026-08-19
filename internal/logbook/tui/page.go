@@ -96,12 +96,7 @@ func (p *page) KeyBindings() []keybinding.Binding {
 }
 
 func (p *page) Status() string {
-	return fmt.Sprintf(
-		"(%d/%d, %d pending QRZ)",
-		len(p.filteredQsos),
-		len(p.qsos),
-		p.pendingQRZCount(),
-	)
+	return fmt.Sprintf("(%d/%d)", len(p.filteredQsos), len(p.qsos))
 }
 
 func (p *page) load() error {

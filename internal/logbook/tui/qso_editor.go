@@ -17,7 +17,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-const qsoEditorLabelWidth = 14
+const qsoEditorLabelWidth = 16
 
 const qsoEditorTimeLayout = "2006-01-02 15:04"
 
@@ -69,7 +69,11 @@ func newQSOEditor(
 		"Date and time",
 		qso.StartedAt.Local().Format(qsoEditorTimeLayout),
 	)
-	editor.frequency = editor.input(controls, "Frequency", formatFrequency(qso))
+	editor.frequency = editor.input(
+		controls,
+		"Frequency (MHz)",
+		formatFrequency(qso),
+	)
 	modes, selectedMode := editorModes(qso.Mode)
 	editor.mode = controls.SelectField(
 		"Mode",

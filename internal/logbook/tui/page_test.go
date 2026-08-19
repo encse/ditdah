@@ -39,3 +39,16 @@ func TestPageRefreshesWholeViewForSelectionChanges(t *testing.T) {
 		t.Fatalf("second refresh = %d, selected %q", host.refreshes, page.selectedID)
 	}
 }
+
+func TestPageStatusShowsVisibleAndTotalQSOCount(t *testing.T) {
+	page, _ := newTestPage(t)
+	page.qsos = []domain.QSO{
+		{ID: "qso-1"},
+		{ID: "qso-2"},
+	}
+	page.applyFilter()
+
+	if got := page.Status(); got != "(2/2)" {
+		t.Fatalf("Status() = %q, want (2/2)", got)
+	}
+}
