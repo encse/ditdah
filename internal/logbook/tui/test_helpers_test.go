@@ -23,7 +23,7 @@ func newTestPage(t *testing.T) (*page, *testHost) {
 	host := &testHost{controls: components.New(components.Dependencies{
 		Theme: testTheme(),
 	})}
-	return newPage(t.Context(), host, nil), host
+	return newPage(t.Context(), host, nil, nil), host
 }
 
 func (h *testHost) SetFocus(primitive tview.Primitive) {

@@ -55,7 +55,7 @@ This document records implementation decisions and future technical work.
 
 ## Future work
 
-- [ ] Implement QRZ synchronization on top of the validated credentials and stored synchronization state.
+- [x] Implement QRZ synchronization on top of the validated credentials and stored synchronization state, retaining remote log IDs so edited records can be replaced without duplicates.
 - [x] Add the initial read-only logbook TUI with table, details, and search.
 - [x] Add QSO creation, editing, and confirmed deletion to the logbook TUI.
 - [ ] Add the Morse user-interface view.

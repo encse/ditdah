@@ -25,4 +25,5 @@ type Qso struct {
 	QrzSyncedAtUnixMs *int64
 	CreatedAtUnixMs   int64
 	UpdatedAtUnixMs   int64
+	QrzLogID          *int64
 }

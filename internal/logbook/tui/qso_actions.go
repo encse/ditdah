@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
@@ -10,6 +12,10 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 )
+
+type qrzSynchronizer interface {
+	Sync(ctx context.Context) (int, error)
+}
 
 func (p *page) createBinding() keybinding.Binding {
 	return keybinding.OnRune('n', "new QSO", p.openCreateQSO)
@@ -21,6 +27,46 @@ func (p *page) editBinding() keybinding.Binding {
 
 func (p *page) deleteBinding() keybinding.Binding {
 	return keybinding.OnRune('d', "delete QSO", p.confirmDeleteQSO)
+}
+
+func (p *page) syncBinding() keybinding.Binding {
+	return keybinding.OnRune('u', "sync QRZ", p.confirmQRZSync)
+}
+
+func (p *page) confirmQRZSync() {
+	pending := p.pendingQRZCount()
+	dialog := newActionDialog(
+		p.host.Components(),
+		" Sync QRZ.com ",
+		fmt.Sprintf("Upload %d pending QSO(s) to QRZ.com?", pending),
+		"Replacement may reset the QRZ confirmation.",
+		"Sync",
+		p.syncQRZ,
+		false,
+	)
+	dialog.setHandle(p.host.OpenModal(dialog))
+}
+
+func (p *page) syncQRZ() error {
+	if p.syncer == nil {
+		return fmt.Errorf("QRZ.com synchronization is unavailable")
+	}
+	_, syncErr := p.syncer.Sync(p.ctx)
+	refreshErr := p.load()
+	if refreshErr != nil {
+		refreshErr = fmt.Errorf("refresh logbook after QRZ.com sync: %w", refreshErr)
+	}
+	return errors.Join(syncErr, refreshErr)
+}
+
+func (p *page) pendingQRZCount() int {
+	pending := 0
+	for _, qso := range p.qsos {
+		if !qso.QRZSyncedAt.IsSome() {
+			pending++
+		}
+	}
+	return pending
 }
 
 func (p *page) openCreateQSO() {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	domain "morsemanual/internal/logbook"
 	"morsemanual/internal/optional"
@@ -36,10 +37,20 @@ func TestColumnWidths(t *testing.T) {
 		}
 	}
 
-	want := "Date        Time   Callsign      Frequency   Mode    Sent   " +
-		"Received  TX exch     RX exch     Name            QTH"
+	want := "Date        Time   Callsign      Frequency   Mode    QRZ      " +
+		"Sent   Received  TX exch     RX exch     Name            QTH"
 	if header.String() != want {
 		t.Fatalf("header = %q, want %q", header.String(), want)
+	}
+}
+
+func TestQRZSyncStatus(t *testing.T) {
+	if got := qrzSyncStatus(domain.QSO{}); got != "Pending" {
+		t.Fatalf("qrzSyncStatus(pending) = %q, want Pending", got)
+	}
+	qso := domain.QSO{QRZSyncedAt: optional.Some(time.Now())}
+	if got := qrzSyncStatus(qso); got != "Synced" {
+		t.Fatalf("qrzSyncStatus(synced) = %q, want Synced", got)
 	}
 }
 

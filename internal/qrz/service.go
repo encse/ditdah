@@ -33,7 +33,7 @@ type service struct {
 }
 
 // New creates a QRZ service using the public QRZ endpoints.
-func New() Service {
+func New() Client {
 	return newService(
 		&http.Client{Timeout: 10 * time.Second},
 		xmlEndpoint,
@@ -41,7 +41,7 @@ func New() Service {
 	)
 }
 
-func newService(client *http.Client, xmlURL, logbookURL string) Service {
+func newService(client *http.Client, xmlURL, logbookURL string) Client {
 	return &service{
 		client:          client,
 		xmlEndpoint:     xmlURL,

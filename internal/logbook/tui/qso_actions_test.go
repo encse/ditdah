@@ -121,11 +121,67 @@ func TestDeleteFailureKeepsConfirmationOpen(t *testing.T) {
 	}
 }
 
+func TestSyncBindingUploadsPendingQSOsAndRefreshesPage(t *testing.T) {
+	page, host := newTestPage(t)
+	store := &listingActionStore{}
+	syncer := &recordingSynchronizer{}
+	page.store = store
+	page.syncer = syncer
+	page.qsos = []domain.QSO{
+		{ID: "qso-1", Callsign: "DL1ABC"},
+		{ID: "qso-2", Callsign: "OE1XYZ"},
+	}
+	page.applyFilter()
+
+	if !page.syncBinding().Handle(tcell.NewEventKey(tcell.KeyRune, 'u', 0)) {
+		t.Fatal("u was not handled")
+	}
+	dialog, ok := host.modal.(*confirmDialog)
+	if !ok {
+		t.Fatalf("opened modal = %T, want *confirmDialog", host.modal)
+	}
+	if !strings.Contains(dialog.message.Text(), "2 pending") {
+		t.Fatalf("confirmation = %q, want pending count", dialog.message.Text())
+	}
+
+	dialog.confirm.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+
+	if syncer.calls != 1 {
+		t.Fatalf("Sync() calls = %d, want 1", syncer.calls)
+	}
+	if len(page.qsos) != 0 {
+		t.Fatalf("page QSOs = %#v, want refreshed empty list", page.qsos)
+	}
+	if host.modalHandle == nil || !host.modalHandle.closed {
+		t.Fatal("successful sync did not close confirmation")
+	}
+}
+
 type recordingActionStore struct {
 	domain.Store
 	added     domain.QSO
 	deleted   string
 	deleteErr error
+}
+
+type listingActionStore struct {
+	domain.Store
+}
+
+func (s *listingActionStore) List(
+	context.Context,
+	domain.Filter,
+) ([]domain.QSO, error) {
+	return nil, nil
+}
+
+type recordingSynchronizer struct {
+	calls int
+}
+
+func (s *recordingSynchronizer) Sync(context.Context) (int, error) {
+	s.calls++
+	return 2, nil
 }
 
 func (s *recordingActionStore) Add(

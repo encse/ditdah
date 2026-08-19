@@ -52,7 +52,12 @@ func newTerminalApplication(
 			)
 		}),
 	)
-	page, err := logbookpage.New(ctx, terminal, deps.stores.Logbook)
+	page, err := logbookpage.New(
+		ctx,
+		terminal,
+		deps.stores.Logbook,
+		deps.qrzSync,
+	)
 	if err != nil {
 		return nil, err
 	}

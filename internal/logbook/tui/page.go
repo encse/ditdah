@@ -16,9 +16,10 @@ import (
 const qsoPageSize = 500
 
 type page struct {
-	ctx   context.Context
-	host  ui.PageHost
-	store domain.Store
+	ctx    context.Context
+	host   ui.PageHost
+	store  domain.Store
+	syncer qrzSynchronizer
 
 	content tview.Primitive
 	search  components.InputField
@@ -35,20 +36,27 @@ func New(
 	ctx context.Context,
 	host ui.PageHost,
 	store domain.Store,
+	syncer qrzSynchronizer,
 ) (ui.Page, error) {
-	page := newPage(ctx, host, store)
+	page := newPage(ctx, host, store, syncer)
 	if err := page.load(); err != nil {
 		return nil, err
 	}
 	return page, nil
 }
 
-func newPage(ctx context.Context, host ui.PageHost, store domain.Store) *page {
+func newPage(
+	ctx context.Context,
+	host ui.PageHost,
+	store domain.Store,
+	syncer qrzSynchronizer,
+) *page {
 	controls := host.Components()
 	page := &page{
-		ctx:   ctx,
-		host:  host,
-		store: store,
+		ctx:    ctx,
+		host:   host,
+		store:  store,
+		syncer: syncer,
 	}
 	page.search = page.newSearch(controls)
 	page.table = page.newTable(controls)
@@ -83,11 +91,17 @@ func (p *page) KeyBindings() []keybinding.Binding {
 		p.createBinding(),
 		p.editBinding(),
 		p.deleteBinding(),
+		p.syncBinding(),
 	)
 }
 
 func (p *page) Status() string {
-	return fmt.Sprintf("(%d/%d)", len(p.filteredQsos), len(p.qsos))
+	return fmt.Sprintf(
+		"(%d/%d, %d pending QRZ)",
+		len(p.filteredQsos),
+		len(p.qsos),
+		p.pendingQRZCount(),
+	)
 }
 
 func (p *page) load() error {

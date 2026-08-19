@@ -61,13 +61,28 @@ func TestSQLiteStoreLifecycle(t *testing.T) {
 	}
 
 	syncedAt := time.Date(2026, 8, 14, 12, 30, 0, 0, time.UTC)
-	synced, err := store.MarkQRZSynced(ctx, created.ID, syncedAt)
+	synced, err := store.MarkQRZSynced(ctx, created.ID, 12345, syncedAt)
 	if err != nil {
 		t.Fatalf("MarkQRZSynced() error = %v", err)
 	}
 	storedSyncedAt, present := synced.QRZSyncedAt.Get()
 	if !present || !storedSyncedAt.Equal(syncedAt) {
 		t.Fatalf("MarkQRZSynced() time = %v, %v; want %v, true", storedSyncedAt, present, syncedAt)
+	}
+	if logID, present := synced.QRZLogID.Get(); !present || logID != 12345 {
+		t.Fatalf("MarkQRZSynced() log id = %v, %v; want 12345, true", logID, present)
+	}
+
+	synced.Notes = "edited after upload"
+	edited, err := store.Update(ctx, synced)
+	if err != nil {
+		t.Fatalf("Update() after sync error = %v", err)
+	}
+	if edited.QRZSyncedAt.IsSome() {
+		t.Fatalf("Update() after sync QRZSyncedAt = %v, want none", edited.QRZSyncedAt)
+	}
+	if logID, present := edited.QRZLogID.Get(); !present || logID != 12345 {
+		t.Fatalf("Update() after sync log id = %v, %v; want 12345, true", logID, present)
 	}
 
 	if err := store.Delete(ctx, created.ID); err != nil {

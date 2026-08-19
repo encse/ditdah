@@ -26,6 +26,20 @@ func newConfirmDialog(
 	confirmLabel string,
 	action func() error,
 ) *confirmDialog {
+	return newActionDialog(
+		controls, title, message, detail, confirmLabel, action, true,
+	)
+}
+
+func newActionDialog(
+	controls components.Factory,
+	title string,
+	message string,
+	detail string,
+	confirmLabel string,
+	action func() error,
+	danger bool,
+) *confirmDialog {
 	controls = controls.Modal()
 	dialog := &confirmDialog{action: action}
 	dialog.message = controls.TextView()
@@ -37,7 +51,11 @@ func newConfirmDialog(
 	dialog.detail.SetText(detail)
 	dialog.detail.SetStyle(components.TextViewMuted)
 	dialog.detail.SetTextAlign(tview.AlignCenter)
-	dialog.confirm = controls.DangerButton(confirmLabel)
+	if danger {
+		dialog.confirm = controls.DangerButton(confirmLabel)
+	} else {
+		dialog.confirm = controls.Button(confirmLabel)
+	}
 	dialog.cancel = controls.Button("Cancel")
 	dialog.confirm.SetSelectedFunc(dialog.submit)
 	dialog.cancel.SetSelectedFunc(dialog.close)

@@ -34,6 +34,7 @@ type qsoTable struct {
 	QrzSyncedAtUnixMs sqlite.ColumnInteger
 	CreatedAtUnixMs   sqlite.ColumnInteger
 	UpdatedAtUnixMs   sqlite.ColumnInteger
+	QrzLogID          sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -92,8 +93,9 @@ func newQsoTableImpl(schemaName, tableName, alias string) qsoTable {
 		QrzSyncedAtUnixMsColumn = sqlite.IntegerColumn("qrz_synced_at_unix_ms")
 		CreatedAtUnixMsColumn   = sqlite.IntegerColumn("created_at_unix_ms")
 		UpdatedAtUnixMsColumn   = sqlite.IntegerColumn("updated_at_unix_ms")
-		allColumns              = sqlite.ColumnList{IDColumn, StationCallsignColumn, CallsignColumn, StartedAtUnixMsColumn, FrequencyHzColumn, ModeColumn, SubmodeColumn, RstSentColumn, RstReceivedColumn, ExchangeSentColumn, ExchangeReceivedColumn, NameColumn, QthColumn, NotesColumn, QrzSyncedAtUnixMsColumn, CreatedAtUnixMsColumn, UpdatedAtUnixMsColumn}
-		mutableColumns          = sqlite.ColumnList{StationCallsignColumn, CallsignColumn, StartedAtUnixMsColumn, FrequencyHzColumn, ModeColumn, SubmodeColumn, RstSentColumn, RstReceivedColumn, ExchangeSentColumn, ExchangeReceivedColumn, NameColumn, QthColumn, NotesColumn, QrzSyncedAtUnixMsColumn, CreatedAtUnixMsColumn, UpdatedAtUnixMsColumn}
+		QrzLogIDColumn          = sqlite.IntegerColumn("qrz_log_id")
+		allColumns              = sqlite.ColumnList{IDColumn, StationCallsignColumn, CallsignColumn, StartedAtUnixMsColumn, FrequencyHzColumn, ModeColumn, SubmodeColumn, RstSentColumn, RstReceivedColumn, ExchangeSentColumn, ExchangeReceivedColumn, NameColumn, QthColumn, NotesColumn, QrzSyncedAtUnixMsColumn, CreatedAtUnixMsColumn, UpdatedAtUnixMsColumn, QrzLogIDColumn}
+		mutableColumns          = sqlite.ColumnList{StationCallsignColumn, CallsignColumn, StartedAtUnixMsColumn, FrequencyHzColumn, ModeColumn, SubmodeColumn, RstSentColumn, RstReceivedColumn, ExchangeSentColumn, ExchangeReceivedColumn, NameColumn, QthColumn, NotesColumn, QrzSyncedAtUnixMsColumn, CreatedAtUnixMsColumn, UpdatedAtUnixMsColumn, QrzLogIDColumn}
 		defaultColumns          = sqlite.ColumnList{SubmodeColumn, RstSentColumn, RstReceivedColumn, ExchangeSentColumn, ExchangeReceivedColumn, NameColumn, QthColumn, NotesColumn}
 	)
 
@@ -118,6 +120,7 @@ func newQsoTableImpl(schemaName, tableName, alias string) qsoTable {
 		QrzSyncedAtUnixMs: QrzSyncedAtUnixMsColumn,
 		CreatedAtUnixMs:   CreatedAtUnixMsColumn,
 		UpdatedAtUnixMs:   UpdatedAtUnixMsColumn,
+		QrzLogID:          QrzLogIDColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

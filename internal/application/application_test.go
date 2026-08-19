@@ -5,13 +5,17 @@ import (
 	"testing"
 
 	"morsemanual/internal/logbook"
+	"morsemanual/internal/settings"
 	"morsemanual/internal/stores"
 )
 
 func TestTerminalApplicationRegistersOnlyLogbookPage(t *testing.T) {
 	terminal, err := newTerminalApplication(t.Context(), dependencies{
-		stores: stores.Stores{Logbook: emptyLogbookStore{}},
-		qrz:    unusedQRZService{},
+		stores: stores.Stores{
+			Logbook:  emptyLogbookStore{},
+			Settings: emptySettingsStore{},
+		},
+		qrz: unusedQRZService{},
 	})
 	if err != nil {
 		t.Fatalf("newTerminalApplication() error = %v", err)
@@ -26,6 +30,10 @@ type emptyLogbookStore struct {
 }
 
 type unusedQRZService struct{}
+
+type emptySettingsStore struct {
+	settings.Store
+}
 
 func (unusedQRZService) ValidateLogin(context.Context, string, string) error {
 	return nil

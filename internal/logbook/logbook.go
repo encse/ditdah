@@ -29,6 +29,7 @@ type QSO struct {
 	QTH              string
 	Notes            string
 	QRZSyncedAt      optional.Value[time.Time]
+	QRZLogID         optional.Value[int64]
 	CreatedAt        time.Time
 	UpdatedAt        time.Time
 }
@@ -49,7 +50,12 @@ type Store interface {
 	List(ctx context.Context, filter Filter) ([]QSO, error)
 	Update(ctx context.Context, qso QSO) (QSO, error)
 	Delete(ctx context.Context, id string) error
-	MarkQRZSynced(ctx context.Context, id string, syncedAt time.Time) (QSO, error)
+	MarkQRZSynced(
+		ctx context.Context,
+		id string,
+		logID int64,
+		syncedAt time.Time,
+	) (QSO, error)
 }
 
 func normalizeQSO(qso QSO) QSO {

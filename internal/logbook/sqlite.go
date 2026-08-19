@@ -182,6 +182,7 @@ func (s *sqliteStore) Delete(ctx context.Context, id string) error {
 func (s *sqliteStore) MarkQRZSynced(
 	ctx context.Context,
 	id string,
+	logID int64,
 	syncedAt time.Time,
 ) (QSO, error) {
 	id = strings.TrimSpace(id)
@@ -191,14 +192,19 @@ func (s *sqliteStore) MarkQRZSynced(
 	if syncedAt.IsZero() {
 		return QSO{}, errors.New("QRZ sync time is required")
 	}
+	if logID <= 0 {
+		return QSO{}, errors.New("QRZ log id must be positive")
+	}
 
 	syncedAt = persistedTime(syncedAt)
 	updatedAt := currentTime()
 	statement := Qso.UPDATE(
 		Qso.QrzSyncedAtUnixMs,
+		Qso.QrzLogID,
 		Qso.UpdatedAtUnixMs,
 	).MODEL(dbmodel.Qso{
 		QrzSyncedAtUnixMs: optionalTime(optional.Some(syncedAt)),
+		QrzLogID:          &logID,
 		UpdatedAtUnixMs:   updatedAt.UnixMilli(),
 	}).WHERE(Qso.ID.EQ(String(id)))
 
@@ -245,6 +251,9 @@ func qsoFromModel(stored dbmodel.Qso) QSO {
 			time.UnixMilli(*stored.QrzSyncedAtUnixMs).UTC(),
 		)
 	}
+	if stored.QrzLogID != nil {
+		qso.QRZLogID = optional.Some(*stored.QrzLogID)
+	}
 
 	return qso
 }
@@ -266,6 +275,7 @@ func qsoToModel(qso QSO) dbmodel.Qso {
 		Qth:               qso.QTH,
 		Notes:             qso.Notes,
 		QrzSyncedAtUnixMs: optionalTime(qso.QRZSyncedAt),
+		QrzLogID:          optionalPointer(qso.QRZLogID),
 		CreatedAtUnixMs:   qso.CreatedAt.UnixMilli(),
 		UpdatedAtUnixMs:   qso.UpdatedAt.UnixMilli(),
 	}

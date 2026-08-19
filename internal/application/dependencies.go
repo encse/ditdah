@@ -8,13 +8,21 @@ import (
 )
 
 type dependencies struct {
-	stores stores.Stores
-	qrz    qrz.Service
+	stores  stores.Stores
+	qrz     qrz.Service
+	qrzSync qrz.Synchronizer
 }
 
 func newDependencies(db *sql.DB) dependencies {
+	allStores := stores.New(db)
+	client := qrz.New()
 	return dependencies{
-		stores: stores.New(db),
-		qrz:    qrz.New(),
+		stores: allStores,
+		qrz:    client,
+		qrzSync: qrz.NewSynchronizer(
+			client,
+			allStores.Logbook,
+			allStores.Settings,
+		),
 	}
 }

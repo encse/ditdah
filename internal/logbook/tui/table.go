@@ -20,6 +20,7 @@ var columns = []column{
 	{heading: "Callsign", width: 13},
 	{heading: "Frequency", width: 11},
 	{heading: "Mode", width: 7},
+	{heading: "QRZ", width: 8},
 	{heading: "Sent", width: 6},
 	{heading: "Received", width: 9},
 	{heading: "TX exch", width: 11},
@@ -94,6 +95,7 @@ func (p *page) renderTableRow(row int, qso domain.QSO) {
 		qso.Callsign,
 		formatFrequency(qso),
 		modeName(qso),
+		qrzSyncStatus(qso),
 		qso.RSTSent,
 		qso.RSTReceived,
 		qso.ExchangeSent,
@@ -109,6 +111,13 @@ func (p *page) renderTableRow(row int, qso domain.QSO) {
 		}
 		p.table.SetCell(row, index, cell)
 	}
+}
+
+func qrzSyncStatus(qso domain.QSO) string {
+	if qso.QRZSyncedAt.IsSome() {
+		return "Synced"
+	}
+	return "Pending"
 }
 
 func formatFrequency(qso domain.QSO) string {
