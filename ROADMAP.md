@@ -35,7 +35,7 @@ This document records implementation decisions and future technical work.
 - [x] Make the header and footer keybinding hints clickable through the same binding handlers used by keyboard input, and retain function-key navigation while the application menu is open.
 - [x] Let the overlay host focus each new layer exactly once; avoid re-focusing layers already selected by `tview.Pages`, because `tview.Application.SetFocus` blurs even when the target is unchanged.
 - [x] Add a settings modal for the station callsign and validated QRZ credentials, opened from the application menu.
-- [x] Select and persist the Morse decoder audio input by device ID in the main Settings dialog; notify the active decoder session after a changed selection is saved.
+- [x] Own the Settings menu action at application composition level, persist the decoder audio input in the main Settings dialog, and notify the active page after any settings change so interested pages can react through their run-loop signal.
 - [x] Draw a settings progress state before synchronously validating saved QRZ credentials, then reveal the interactive form without fire-and-forget goroutines.
 - [x] Edit QRZ login and Logbook API credentials in nested modal dialogs and persist staged changes only when the main settings dialog is confirmed.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.

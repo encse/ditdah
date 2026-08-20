@@ -95,14 +95,14 @@ func TestSettingsSelectsSavedMorseInput(t *testing.T) {
 	}
 }
 
-func TestSettingsSavesDefaultMorseInputAndNotifiesDecoder(t *testing.T) {
+func TestSettingsSavesDefaultMorseInputAndNotifiesApplication(t *testing.T) {
 	values := domain.Settings{
 		StationCallsign: "HA7NCS",
 		QRZAPIKey:       "qrz-key",
 	}
 	store := &recordingStore{loaded: values}
 	host := newTestHost()
-	reloads := 0
+	changes := 0
 	Open(
 		t.Context(),
 		host,
@@ -112,7 +112,7 @@ func TestSettingsSavesDefaultMorseInputAndNotifiesDecoder(t *testing.T) {
 			{ID: "first", Name: "Line input"},
 			{ID: "default", Name: "USB radio", IsDefault: true},
 		}},
-		func() { reloads++ },
+		func() { changes++ },
 	)
 	dialog := host.lastDialog().(*dialog)
 
@@ -123,19 +123,19 @@ func TestSettingsSavesDefaultMorseInputAndNotifiesDecoder(t *testing.T) {
 	if store.saved != want {
 		t.Fatalf("saved settings = %#v, want %#v", store.saved, want)
 	}
-	if reloads != 1 {
-		t.Fatalf("decoder reloads = %d, want 1", reloads)
+	if changes != 1 {
+		t.Fatalf("settings change notifications = %d, want 1", changes)
 	}
 	if !host.lastHandle().closed {
 		t.Fatal("successful Settings save did not close dialog")
 	}
 }
 
-func TestSettingsNotifiesDecoderAfterInputWasStagedByAnotherEdit(t *testing.T) {
+func TestSettingsNotifiesApplicationAfterChangedValuesWereStaged(t *testing.T) {
 	values := domain.Settings{MorseInputDeviceID: "built-in"}
 	store := &recordingStore{loaded: values}
 	host := newTestHost()
-	reloads := 0
+	changes := 0
 	dialog := newDialog(
 		t.Context(),
 		host,
@@ -143,17 +143,17 @@ func TestSettingsNotifiesDecoderAfterInputWasStagedByAnotherEdit(t *testing.T) {
 		&recordingQRZService{},
 		values,
 		[]audio.Device{{ID: "usb", Name: "USB radio"}},
-		func() { reloads++ },
+		func() { changes++ },
 	)
 	staged := values
-	staged.MorseInputDeviceID = "usb"
+	staged.StationCallsign = "HA7NCS"
 	dialog.stage(staged)
 
 	if err := dialog.save(staged); err != nil {
 		t.Fatalf("save staged settings: %v", err)
 	}
-	if reloads != 1 {
-		t.Fatalf("decoder reloads = %d, want 1", reloads)
+	if changes != 1 {
+		t.Fatalf("settings change notifications = %d, want 1", changes)
 	}
 }
 

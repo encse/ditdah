@@ -37,6 +37,32 @@ func TestApplicationRegistersAndShowsPage(t *testing.T) {
 	}
 }
 
+func TestApplicationNotifiesOnlyActivePageAboutSettingsChanges(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	active := &settingsAwareApplicationTestPage{applicationTestPage: applicationTestPage{
+		id: "logbook", title: "Logbook", content: tview.NewBox(),
+	}}
+	inactive := &settingsAwareApplicationTestPage{applicationTestPage: applicationTestPage{
+		id: "decoder", title: "Decoder", content: tview.NewBox(),
+	}}
+	if err := app.Register(active); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Register(inactive); err != nil {
+		t.Fatal(err)
+	}
+	app.showPage(active)
+
+	app.NotifySettingsChanged()
+
+	if active.settingsChanges != 1 {
+		t.Fatalf("active page notifications = %d, want 1", active.settingsChanges)
+	}
+	if inactive.settingsChanges != 0 {
+		t.Fatalf("inactive page notifications = %d, want 0", inactive.settingsChanges)
+	}
+}
+
 func TestHeaderStatusClickCannotStealPageFocusOrMouseCapture(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	content := tview.NewBox()
@@ -977,6 +1003,15 @@ type lifecycleApplicationTestPage struct {
 	stopped chan struct{}
 }
 
+type settingsAwareApplicationTestPage struct {
+	applicationTestPage
+	settingsChanges int
+}
+
+func (p *settingsAwareApplicationTestPage) SettingsChanged() {
+	p.settingsChanges++
+}
+
 func (p *lifecycleApplicationTestPage) Run(ctx context.Context) {
 	p.started <- struct{}{}
 	<-ctx.Done()
@@ -1025,6 +1060,8 @@ func (p applicationTestPage) KeyBindings() []keybinding.Binding {
 func (p applicationTestPage) MenuItems(context.Context) []components.MenuItem {
 	return p.menuItems
 }
+
+func (p applicationTestPage) SettingsChanged() {}
 
 func (p applicationTestPage) Run(ctx context.Context) { <-ctx.Done() }
 

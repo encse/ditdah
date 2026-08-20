@@ -23,7 +23,7 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-var errInputChanged = errors.New("Morse input changed")
+var errSettingsChanged = errors.New("settings changed")
 var errAudioStopped = errors.New("audio input stopped")
 
 type streamFactory func() (domain.Streaming, error)
@@ -34,31 +34,26 @@ type lookupRequest struct {
 }
 
 type page struct {
-	ctx          context.Context
-	host         ui.PageHost
-	source       audio.Source
-	settings     settings.Store
-	lookup       callsign.Service
-	newStream    streamFactory
-	content      tview.Primitive
-	output       components.TextView
-	right        tview.Primitive
-	callsignList components.Table
-	details      components.TextView
-	statusText   string
-	inputChanged trigger.Trigger
-	lookups      mailbox.Mailbox[lookupRequest]
-	createQSO    func(string)
+	ctx             context.Context
+	host            ui.PageHost
+	source          audio.Source
+	settings        settings.Store
+	lookup          callsign.Service
+	newStream       streamFactory
+	content         tview.Primitive
+	output          components.TextView
+	right           tview.Primitive
+	callsignList    components.Table
+	details         components.TextView
+	statusText      string
+	settingsChanged trigger.Trigger
+	lookups         mailbox.Mailbox[lookupRequest]
+	createQSO       func(string)
 
 	callsigns        []string
 	selectedCallsign string
 	lookupGeneration uint64
 	decodedText      strings.Builder
-}
-
-type Page interface {
-	ui.Page
-	MorseInputChanged()
 }
 
 // New creates the page for live Morse decoder output.
@@ -69,7 +64,7 @@ func New(
 	settingsStore settings.Store,
 	lookup callsign.Service,
 	createQSO func(string),
-) Page {
+) ui.Page {
 	return newPage(
 		ctx,
 		host,
@@ -92,16 +87,16 @@ func newPage(
 ) *page {
 	controls := host.Components()
 	page := &page{
-		ctx:          ctx,
-		host:         host,
-		source:       source,
-		settings:     settingsStore,
-		lookup:       lookup,
-		newStream:    newStream,
-		inputChanged: trigger.New(),
-		lookups:      mailbox.New(lookupRequest{}),
-		createQSO:    createQSO,
-		statusText:   "Paused",
+		ctx:             ctx,
+		host:            host,
+		source:          source,
+		settings:        settingsStore,
+		lookup:          lookup,
+		newStream:       newStream,
+		settingsChanged: trigger.New(),
+		lookups:         mailbox.New(lookupRequest{}),
+		createQSO:       createQSO,
+		statusText:      "Paused",
 	}
 	output := controls.TextView()
 	output.SetStyle(components.TextViewPrimary)
@@ -156,7 +151,7 @@ func (p *page) KeyBindings() []keybinding.Binding {
 
 func (p *page) MenuItems(context.Context) []components.MenuItem { return nil }
 
-func (p *page) MorseInputChanged() { p.inputChanged.Activate() }
+func (p *page) SettingsChanged() { p.settingsChanged.Activate() }
 
 func (p *page) Status() string { return p.statusText }
 
@@ -186,14 +181,14 @@ func (p *page) runDecoder(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		if errors.Is(err, errInputChanged) {
+		if errors.Is(err, errSettingsChanged) {
 			continue
 		}
 		if err == nil {
 			err = errAudioStopped
 		}
 		p.setStatus("Error: " + err.Error())
-		if err := p.inputChanged.Wait(ctx); err != nil {
+		if err := p.settingsChanged.Wait(ctx); err != nil {
 			return
 		}
 	}
@@ -324,10 +319,10 @@ func (p *page) runSession(ctx context.Context) error {
 		return err
 	})
 	group.Go(func() error {
-		if err := p.inputChanged.Wait(sessionCtx); err != nil {
+		if err := p.settingsChanged.Wait(sessionCtx); err != nil {
 			return err
 		}
-		return errInputChanged
+		return errSettingsChanged
 	})
 	return group.Wait()
 }

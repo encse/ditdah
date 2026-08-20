@@ -22,17 +22,17 @@ const settingsLabelWidth = 20
 
 type dialog struct {
 	modal.Layout
-	ctx                   context.Context
-	host                  ui.PageHost
-	store                 domain.Store
-	qrz                   qrz.Service
-	pages                 components.PageStack
-	values                domain.Settings
-	handle                modal.Handle
-	checking              bool
-	devices               []audio.Device
-	onSaved               func()
-	persistedMorseInputID string
+	ctx             context.Context
+	host            ui.PageHost
+	store           domain.Store
+	qrz             qrz.Service
+	pages           components.PageStack
+	values          domain.Settings
+	handle          modal.Handle
+	checking        bool
+	devices         []audio.Device
+	onChanged       func()
+	persistedValues domain.Settings
 
 	stationCallsign components.InputField
 	morseInput      components.SelectField
@@ -55,7 +55,7 @@ func Open(
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
-	onSaved func(),
+	onChanged func(),
 ) {
 	values, loadErr := store.Load(ctx)
 	var devices []audio.Device
@@ -66,7 +66,7 @@ func Open(
 		devices, devicesErr = inputs.Devices()
 	}
 	dialog := newDialog(
-		ctx, host, store, qrzService, values, devices, onSaved,
+		ctx, host, store, qrzService, values, devices, onChanged,
 	)
 	dialog.handle = host.OpenModal(dialog)
 	dialog.finishValidation(loadErr)
@@ -89,19 +89,19 @@ func newDialog(
 	qrzService qrz.Service,
 	values domain.Settings,
 	devices []audio.Device,
-	onSaved func(),
+	onChanged func(),
 ) *dialog {
 	controls := host.Components().Modal()
 	dialog := &dialog{
-		ctx:                   ctx,
-		host:                  host,
-		store:                 store,
-		qrz:                   qrzService,
-		values:                values,
-		checking:              true,
-		devices:               append([]audio.Device(nil), devices...),
-		onSaved:               onSaved,
-		persistedMorseInputID: values.MorseInputDeviceID,
+		ctx:             ctx,
+		host:            host,
+		store:           store,
+		qrz:             qrzService,
+		values:          values,
+		checking:        true,
+		devices:         append([]audio.Device(nil), devices...),
+		onChanged:       onChanged,
+		persistedValues: values,
 	}
 	dialog.stationCallsign = dialog.input(
 		controls,
@@ -289,10 +289,10 @@ func (d *dialog) save(values domain.Settings) error {
 	}
 	d.values = saved
 	d.message.SetText("")
-	if saved.MorseInputDeviceID != d.persistedMorseInputID && d.onSaved != nil {
-		d.onSaved()
+	if saved != d.persistedValues && d.onChanged != nil {
+		d.onChanged()
 	}
-	d.persistedMorseInputID = saved.MorseInputDeviceID
+	d.persistedValues = saved
 	return nil
 }
 

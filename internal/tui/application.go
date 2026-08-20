@@ -23,6 +23,7 @@ type Application interface {
 	AddKeyBinding(binding keybinding.Binding)
 	Register(page Page) error
 	Show(pageID string) error
+	NotifySettingsChanged()
 	Run(ctx context.Context, initialPageID string) error
 }
 
@@ -168,6 +169,14 @@ func (a *application) Show(pageID string) error {
 	}
 	a.pageChanges.Send(page)
 	return nil
+}
+
+// NotifySettingsChanged forwards a settings change to the currently visible
+// page.
+func (a *application) NotifySettingsChanged() {
+	if a.activePage != nil {
+		a.activePage.SettingsChanged()
+	}
 }
 
 func (a *application) showPage(page Page) {

@@ -90,7 +90,7 @@ func TestPageWritesStreamingDecoderOutput(t *testing.T) {
 	waitForRun(t, done)
 }
 
-func TestPageRestartsCaptureWhenInputChanges(t *testing.T) {
+func TestPageRestartsCaptureWhenSettingsChange(t *testing.T) {
 	first := audio.Device{ID: "first", Name: "First input"}
 	second := audio.Device{ID: "second", Name: "Second input"}
 	source := newRecordingAudioSource(first, second)
@@ -110,7 +110,7 @@ func TestPageRestartsCaptureWhenInputChanges(t *testing.T) {
 
 	waitForAudioStart(t, source.starts, first.ID)
 	store.setInput(second.ID)
-	page.inputChanged.Activate()
+	page.SettingsChanged()
 	waitForAudioStart(t, source.starts, second.ID)
 	if page.Status() != "Listening: Second input" {
 		t.Fatalf("Status() = %q", page.Status())
@@ -120,7 +120,7 @@ func TestPageRestartsCaptureWhenInputChanges(t *testing.T) {
 	waitForRun(t, done)
 }
 
-func TestHiddenPageDefersChangedInputUntilNextActivation(t *testing.T) {
+func TestHiddenPageDoesNotReactToSettingsUntilNextActivation(t *testing.T) {
 	device := audio.Device{ID: "second", Name: "Second input"}
 	source := newRecordingAudioSource(device)
 	store := &decoderSettingsStore{values: settings.Settings{
@@ -166,7 +166,7 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 
 	waitForSignal(t, store.loads, "missing input settings load")
 	store.setInput(device.ID)
-	page.inputChanged.Activate()
+	page.SettingsChanged()
 	waitForAudioStart(t, source.starts, device.ID)
 
 	cancel()
