@@ -199,10 +199,10 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 		func(callsign string) { contactedCallsign = callsign },
 	).(*page)
 	bindings := page.KeyBindings()
-	if len(bindings) != 3 || bindings[0].Hint().Keys != "a" ||
+	if len(bindings) != 4 || bindings[0].Hint().Keys != "a" ||
 		bindings[1].Hint().Keys != "Enter" ||
-		bindings[2].Hint().Keys != "d" {
-		t.Fatalf("KeyBindings() = %#v, want a/add, Enter/new QSO and d/delete", bindings)
+		bindings[2].Hint().Keys != "d" || bindings[3].Hint().Keys != "c" {
+		t.Fatalf("KeyBindings() = %#v, want a/add, Enter/new QSO, d/delete and c/clear", bindings)
 	}
 	if err := page.addCallsign(" dl1abc "); err != nil {
 		t.Fatalf("addCallsign() error = %v", err)

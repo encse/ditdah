@@ -18,6 +18,7 @@ type InputField interface {
 	SetMaskCharacter(mask rune)
 	SetPlaceholder(placeholder string)
 	SetChangedFunc(handler func(value string))
+	SetBlurFunc(handler func())
 	SetBindings(bindings ...keybinding.Binding)
 }
 
@@ -120,6 +121,15 @@ func (i *inputField) SetPlaceholder(placeholder string) {
 
 func (i *inputField) SetChangedFunc(handler func(value string)) {
 	i.InputField.SetChangedFunc(handler)
+}
+
+func (i *inputField) SetBlurFunc(handler func()) {
+	i.InputField.SetBlurFunc(func() {
+		i.showIdle()
+		if handler != nil {
+			handler()
+		}
+	})
 }
 
 func (i *inputField) SetBindings(bindings ...keybinding.Binding) {

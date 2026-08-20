@@ -80,6 +80,7 @@ func (p *page) openCreateQSO() {
 func (p *page) OpenCreateQSO(callsign string) {
 	qso, err := p.newQSODraft(callsign)
 	editor := newQSOEditor(p.host.Components(), qso, p.addQSO)
+	editor.setCallsignLookup(p.ctx, p.lookup)
 	if err != nil {
 		editor.showError(err)
 	}
@@ -132,6 +133,7 @@ func (p *page) openSelectedQSO() {
 		return
 	}
 	editor := newQSOEditor(p.host.Components(), qso, p.updateQSO)
+	editor.setCallsignLookup(p.ctx, p.lookup)
 	editor.setHandle(p.host.OpenModal(editor))
 }
 

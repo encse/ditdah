@@ -96,6 +96,7 @@ func TestInputFieldCallbacks(t *testing.T) {
 	field := newTestFactory().InputField("Search", "")
 	var changed string
 	done := 0
+	blurred := 0
 	field.SetPlaceholder("callsign...")
 	field.SetChangedFunc(func(value string) {
 		changed = value
@@ -105,17 +106,23 @@ func TestInputFieldCallbacks(t *testing.T) {
 		"done",
 		func() { done++ },
 	))
+	field.SetBlurFunc(func() { blurred++ })
 
+	field.Focus(nil)
 	field.SetValue("HA7NCS")
 	field.InputHandler()(
 		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
 		nil,
 	)
+	field.Blur()
 
 	if changed != "HA7NCS" {
 		t.Fatalf("changed value = %q, want %q", changed, "HA7NCS")
 	}
 	if done != 1 {
 		t.Fatalf("done calls = %d, want 1", done)
+	}
+	if blurred != 1 {
+		t.Fatalf("blur calls = %d, want 1", blurred)
 	}
 }

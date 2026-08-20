@@ -54,6 +54,7 @@ type page struct {
 	callsigns        []string
 	selectedCallsign string
 	lookupGeneration uint64
+	decodedText      strings.Builder
 }
 
 // New creates the page for live Morse decoder output.
@@ -104,6 +105,9 @@ func newPage(
 	output.SetScrollable(true)
 	output.SetWrap(true)
 	output.SetWordWrap(true)
+	output.SetRegions(true)
+	output.Highlight(decodedCallsignRegion)
+	output.ScrollToEnd()
 
 	page.output = output
 	page.callsignList = page.newCallsignList(controls)
@@ -142,6 +146,7 @@ func (p *page) KeyBindings() []keybinding.Binding {
 		keybinding.OnRune('a', "add callsign", p.openAddCallsign),
 		keybinding.OnKey(tcell.KeyEnter, "new QSO", p.openCreateQSO),
 		keybinding.OnRune('d', "delete callsign", p.deleteSelectedCallsign),
+		keybinding.OnRune('c', "clear log", p.confirmClearLog),
 	}
 }
 
@@ -339,8 +344,17 @@ func (p *page) appendDecoded(ctx context.Context, text string) error {
 		return err
 	}
 	p.host.Update(func() {
-		_, _ = p.output.Write([]byte(text))
-		p.output.ScrollToEnd()
+		wasAtEnd := p.output.AtEnd()
+		previousLength := p.decodedText.Len()
+		_, _ = p.decodedText.WriteString(text)
+		if p.newDecodedMatch(previousLength) {
+			p.renderDecodedText()
+		} else {
+			_, _ = p.output.Write([]byte(tview.Escape(text)))
+		}
+		if wasAtEnd {
+			p.output.ScrollToEnd()
+		}
 	})
 	return nil
 }

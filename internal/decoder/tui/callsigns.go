@@ -61,6 +61,7 @@ func (p *page) selectCallsign(index int) {
 }
 
 func (p *page) requestSelectedCallsign() {
+	p.renderDecodedText()
 	p.lookupGeneration++
 	request := lookupRequest{
 		generation: p.lookupGeneration,

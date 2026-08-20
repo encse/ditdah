@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"slices"
@@ -8,12 +9,14 @@ import (
 	"strings"
 	"time"
 
+	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/logbook"
 	"morsemanual/internal/optional"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
 	"morsemanual/internal/tui/modal"
 
+	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
 )
 
@@ -49,6 +52,9 @@ type qsoEditor struct {
 	cancel           components.Button
 	focusables       []tview.Primitive
 	handle           modal.Handle
+	lookup           callsign.Service
+	lookupContext    context.Context
+	lookedUpCallsign string
 }
 
 func newQSOEditor(
@@ -64,6 +70,12 @@ func newQSOEditor(
 		qso.StationCallsign,
 	)
 	editor.callsign = editor.input(controls, "Callsign", qso.Callsign)
+	editor.callsign.SetBindings(keybinding.OnKey(
+		tcell.KeyEnter,
+		"lookup callsign",
+		editor.refreshCallsign,
+	))
+	editor.callsign.SetBlurFunc(editor.refreshCallsign)
 	editor.startedAt = editor.input(
 		controls,
 		"Date and time",
@@ -117,6 +129,48 @@ func newQSOEditor(
 	}
 	editor.content = editor.layout(controls)
 	return editor
+}
+
+func (e *qsoEditor) setCallsignLookup(
+	ctx context.Context,
+	lookup callsign.Service,
+) {
+	e.lookupContext = ctx
+	e.lookup = lookup
+	e.lookedUpCallsign = normalizeEditorCallsign(e.callsign.Value())
+}
+
+func (e *qsoEditor) refreshCallsign() {
+	callsignValue := normalizeEditorCallsign(e.callsign.Value())
+	if callsignValue == e.lookedUpCallsign {
+		return
+	}
+	e.lookedUpCallsign = callsignValue
+	e.name.SetValue("")
+	e.qth.SetValue("")
+	if callsignValue == "" || e.lookup == nil {
+		return
+	}
+
+	entry, err := e.lookup.Lookup(e.lookupContext, callsignValue)
+	if err != nil {
+		e.showError(fmt.Errorf("look up %s: %w", callsignValue, err))
+		return
+	}
+	e.message.SetText("")
+	if record, present := entry.Record.Get(); present {
+		name, _ := record.Name.Get()
+		if name == "" {
+			name, _ = record.Nickname.Get()
+		}
+		e.name.SetValue(name)
+		qth, _ := record.QTH.Get()
+		e.qth.SetValue(qth)
+	}
+}
+
+func normalizeEditorCallsign(value string) string {
+	return strings.ToUpper(strings.TrimSpace(value))
 }
 
 func (e *qsoEditor) Content() tview.Primitive {

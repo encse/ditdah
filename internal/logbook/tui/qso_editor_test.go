@@ -5,8 +5,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/gdamore/tcell/v2"
+	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/logbook"
+	"morsemanual/internal/optional"
+
+	"github.com/gdamore/tcell/v2"
 )
 
 func TestEditBindingOpensSelectedQSOEditor(t *testing.T) {
@@ -176,7 +179,7 @@ func TestQSOEditorKeepsOpenAndShowsInvalidInput(t *testing.T) {
 	}
 }
 
-func TestQSOEditorInputDoesNotOwnModalEscape(t *testing.T) {
+func TestQSOEditorCallsignInputOnlyOwnsLookupEnter(t *testing.T) {
 	_, host := newTestPage(t)
 	editor := newQSOEditor(host.Components(), domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
@@ -184,8 +187,9 @@ func TestQSOEditorInputDoesNotOwnModalEscape(t *testing.T) {
 	}, nil)
 	handle := &testModalHandle{}
 	editor.setHandle(handle)
-	if bindings := editor.callsign.KeyBindings(); len(bindings) != 0 {
-		t.Fatalf("input bindings = %#v, want none", bindings)
+	bindings := editor.callsign.KeyBindings()
+	if len(bindings) != 1 || bindings[0].Hint().Keys != "Enter" {
+		t.Fatalf("input bindings = %#v, want lookup Enter", bindings)
 	}
 
 	editor.callsign.InputHandler()(
@@ -195,6 +199,62 @@ func TestQSOEditorInputDoesNotOwnModalEscape(t *testing.T) {
 
 	if handle.closed {
 		t.Fatal("focused editor input handled application-owned modal Escape")
+	}
+}
+
+func TestQSOEditorRefreshesCallsignDataOnEnterAndBlur(t *testing.T) {
+	_, host := newTestPage(t)
+	lookup := &editorCallsignLookup{entries: map[string]callsign.Entry{
+		"OE1ABC": {
+			Record: optional.Some(callsign.Record{
+				Name: optional.Some("Alice"),
+				QTH:  optional.Some("Vienna"),
+			}),
+		},
+		"DL1XYZ": {
+			Record: optional.Some(callsign.Record{
+				Nickname: optional.Some("Bob"),
+				QTH:      optional.Some("Berlin"),
+			}),
+		},
+	}}
+	editor := newQSOEditor(host.Components(), domain.QSO{
+		Callsign:  "OLD",
+		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
+		Mode:      "CW",
+		Name:      "Old name",
+		QTH:       "Old QTH",
+	}, nil)
+	editor.setCallsignLookup(t.Context(), lookup)
+
+	editor.callsign.SetValue(" oe1abc ")
+	editor.callsign.InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		nil,
+	)
+	if editor.name.Value() != "Alice" || editor.qth.Value() != "Vienna" {
+		t.Fatalf("Enter lookup fields = %q, %q", editor.name.Value(), editor.qth.Value())
+	}
+	if len(lookup.calls) != 1 || lookup.calls[0] != "OE1ABC" {
+		t.Fatalf("Enter lookup calls = %#v, want OE1ABC", lookup.calls)
+	}
+
+	editor.callsign.InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		nil,
+	)
+	if len(lookup.calls) != 1 {
+		t.Fatalf("unchanged callsign lookup calls = %#v", lookup.calls)
+	}
+
+	editor.callsign.SetValue("dl1xyz")
+	editor.callsign.Focus(nil)
+	editor.callsign.Blur()
+	if editor.name.Value() != "Bob" || editor.qth.Value() != "Berlin" {
+		t.Fatalf("blur lookup fields = %q, %q", editor.name.Value(), editor.qth.Value())
+	}
+	if len(lookup.calls) != 2 || lookup.calls[1] != "DL1XYZ" {
+		t.Fatalf("blur lookup calls = %#v, want DL1XYZ", lookup.calls)
 	}
 }
 
@@ -259,6 +319,19 @@ func TestPageUpdatesStoreAndDisplayedModel(t *testing.T) {
 type recordingUpdateStore struct {
 	domain.Store
 	received domain.QSO
+}
+
+type editorCallsignLookup struct {
+	entries map[string]callsign.Entry
+	calls   []string
+}
+
+func (s *editorCallsignLookup) Lookup(
+	_ context.Context,
+	value string,
+) (callsign.Entry, error) {
+	s.calls = append(s.calls, value)
+	return s.entries[value], nil
 }
 
 func (s *recordingUpdateStore) Update(

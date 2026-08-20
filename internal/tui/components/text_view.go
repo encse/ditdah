@@ -23,6 +23,7 @@ type TextView interface {
 	tview.Primitive
 	io.Writer
 	Clear()
+	AtEnd() bool
 	InnerRect() (x int, y int, width int, height int)
 	ScrollOffset() (row int, column int)
 	ScrollToStart()
@@ -33,6 +34,8 @@ type TextView interface {
 	SetTextColor(color tcell.Color)
 	SetTextAlign(alignment int)
 	SetDynamicColors(enabled bool)
+	SetRegions(enabled bool)
+	Highlight(regionIDs ...string)
 	SetScrollable(enabled bool)
 	SetWrap(enabled bool)
 	SetWordWrap(enabled bool)
@@ -60,6 +63,15 @@ func newTextView(theme Theme, focusChanged func()) TextView {
 
 func (v *textView) Clear() {
 	v.TextView.Clear()
+}
+
+func (v *textView) AtEnd() bool {
+	row, _ := v.GetScrollOffset()
+	_, _, _, height := v.GetInnerRect()
+	if height <= 0 {
+		return true
+	}
+	return row+height >= v.GetWrappedLineCount()
 }
 
 func (v *textView) InnerRect() (int, int, int, int) {
@@ -113,6 +125,14 @@ func (v *textView) SetTextAlign(alignment int) {
 
 func (v *textView) SetDynamicColors(enabled bool) {
 	v.TextView.SetDynamicColors(enabled)
+}
+
+func (v *textView) SetRegions(enabled bool) {
+	v.TextView.SetRegions(enabled)
+}
+
+func (v *textView) Highlight(regionIDs ...string) {
+	v.TextView.Highlight(regionIDs...)
 }
 
 func (v *textView) SetScrollable(enabled bool) {
