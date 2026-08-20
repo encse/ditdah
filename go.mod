@@ -1,6 +1,6 @@
 module morsemanual
 
-go 1.27rc2
+go 1.27
 
 require (
 	github.com/gdamore/tcell/v2 v2.8.1
