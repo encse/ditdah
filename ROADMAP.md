@@ -77,4 +77,5 @@ This document records implementation decisions and future technical work.
 - [x] Connect the selected live audio capture device to the streaming decoder and Morse output panel; coalesce saved input changes through a trigger and restart only the current audio session.
 - [x] Add a decoder-page callsign list with `a`/`Enter`/`d` actions and cached QRZ.com details for the selected entry in the lower-right panel.
 - [x] Run decoder callsign lookups in a context-bound page worker which is always joined by `Run`; retry the selected callsign on page reactivation without detached goroutines.
+- [x] Open a prefilled CW QSO editor from Enter on a selected Morse-decoder callsign; keep the cross-page API limited to that callsign and let the logbook dialog resolve the station callsign, timestamp, and available QRZ name and QTH.
 - [ ] Add further domain stores and migrations as their features are implemented.

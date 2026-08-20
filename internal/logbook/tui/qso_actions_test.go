@@ -6,7 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/logbook"
+	"morsemanual/internal/optional"
+	"morsemanual/internal/settings"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -37,6 +40,36 @@ func TestCreateBindingOpensNewQSOEditor(t *testing.T) {
 	}
 	if editor.title() != " New QSO " {
 		t.Fatalf("editor title = %q", editor.title())
+	}
+}
+
+func TestOpenCreateQSOResolvesDraftFromCallsign(t *testing.T) {
+	page, host := newTestPage(t)
+	page.settings = staticSettingsStore{values: settings.Settings{
+		StationCallsign: "HA7NCS",
+	}}
+	page.lookup = staticCallsignLookup{entry: callsign.Entry{
+		Callsign: "DL1ABC",
+		Record: optional.Some(callsign.Record{
+			Name: optional.Some("Jane Doe"),
+			QTH:  optional.Some("Berlin"),
+		}),
+	}}
+
+	page.OpenCreateQSO(" dl1abc ")
+
+	editor, ok := host.modal.(*qsoEditor)
+	if !ok {
+		t.Fatalf("opened modal = %T, want *qsoEditor", host.modal)
+	}
+	if editor.qso.StationCallsign != "HA7NCS" ||
+		editor.qso.Callsign != "DL1ABC" || editor.qso.Mode != "CW" ||
+		editor.qso.Name != "Jane Doe" || editor.qso.QTH != "Berlin" ||
+		editor.qso.StartedAt.IsZero() {
+		t.Fatalf("new QSO = %#v", editor.qso)
+	}
+	if editor.message.Text() != "" {
+		t.Fatalf("editor message = %q, want empty", editor.message.Text())
 	}
 }
 
@@ -177,6 +210,26 @@ func (s *listingActionStore) List(
 
 type recordingSynchronizer struct {
 	calls int
+}
+
+type staticSettingsStore struct {
+	settings.Store
+	values settings.Settings
+}
+
+func (s staticSettingsStore) Load(context.Context) (settings.Settings, error) {
+	return s.values, nil
+}
+
+type staticCallsignLookup struct {
+	entry callsign.Entry
+}
+
+func (s staticCallsignLookup) Lookup(
+	context.Context,
+	string,
+) (callsign.Entry, error) {
+	return s.entry, nil
 }
 
 func (s *recordingSynchronizer) Sync(context.Context) (int, error) {

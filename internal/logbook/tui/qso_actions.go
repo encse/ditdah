@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	domain "morsemanual/internal/logbook"
@@ -70,15 +71,59 @@ func (p *page) pendingQRZCount() int {
 }
 
 func (p *page) openCreateQSO() {
+	p.OpenCreateQSO("")
+}
+
+// OpenCreateQSO opens the editor for a new QSO with the contacted station.
+// Creation defaults and available station data are resolved here so callers do
+// not need to construct a partially populated domain model.
+func (p *page) OpenCreateQSO(callsign string) {
+	qso, err := p.newQSODraft(callsign)
+	editor := newQSOEditor(p.host.Components(), qso, p.addQSO)
+	if err != nil {
+		editor.showError(err)
+	}
+	editor.setHandle(p.host.OpenModal(editor))
+}
+
+func (p *page) newQSODraft(contactedCallsign string) (domain.QSO, error) {
 	qso := domain.QSO{
+		Callsign:  strings.ToUpper(strings.TrimSpace(contactedCallsign)),
 		StartedAt: time.Now(),
 		Mode:      "CW",
 	}
 	if selected, ok := p.selectedQSO(); ok {
 		qso.StationCallsign = selected.StationCallsign
 	}
-	editor := newQSOEditor(p.host.Components(), qso, p.addQSO)
-	editor.setHandle(p.host.OpenModal(editor))
+
+	var resultErr error
+	if p.settings != nil {
+		configured, err := p.settings.Load(p.ctx)
+		if err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("load settings: %w", err))
+		} else {
+			qso.StationCallsign = configured.StationCallsign
+		}
+	}
+	if qso.Callsign == "" || p.lookup == nil {
+		return qso, resultErr
+	}
+
+	entry, err := p.lookup.Lookup(p.ctx, qso.Callsign)
+	if err != nil {
+		return qso, errors.Join(
+			resultErr,
+			fmt.Errorf("look up %s: %w", qso.Callsign, err),
+		)
+	}
+	if record, present := entry.Record.Get(); present {
+		qso.Name, _ = record.Name.Get()
+		if qso.Name == "" {
+			qso.Name, _ = record.Nickname.Get()
+		}
+		qso.QTH, _ = record.QTH.Get()
+	}
+	return qso, resultErr
 }
 
 func (p *page) openSelectedQSO() {

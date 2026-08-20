@@ -35,6 +35,7 @@ type lookupRequest struct {
 }
 
 type page struct {
+	ctx          context.Context
 	host         ui.PageHost
 	source       audio.Source
 	settings     settings.Store
@@ -48,6 +49,7 @@ type page struct {
 	statusText   string
 	inputChanged trigger.Trigger
 	lookups      mailbox.Mailbox[lookupRequest]
+	createQSO    func(string)
 
 	callsigns        []string
 	selectedCallsign string
@@ -56,23 +58,36 @@ type page struct {
 
 // New creates the page for live Morse decoder output.
 func New(
+	ctx context.Context,
 	host ui.PageHost,
 	source audio.Source,
 	settingsStore settings.Store,
 	lookup callsign.Service,
+	createQSO func(string),
 ) ui.Page {
-	return newPage(host, source, settingsStore, lookup, domain.NewStreaming)
+	return newPage(
+		ctx,
+		host,
+		source,
+		settingsStore,
+		lookup,
+		createQSO,
+		domain.NewStreaming,
+	)
 }
 
 func newPage(
+	ctx context.Context,
 	host ui.PageHost,
 	source audio.Source,
 	settingsStore settings.Store,
 	lookup callsign.Service,
+	createQSO func(string),
 	newStream streamFactory,
 ) *page {
 	controls := host.Components()
 	page := &page{
+		ctx:          ctx,
 		host:         host,
 		source:       source,
 		settings:     settingsStore,
@@ -80,6 +95,7 @@ func newPage(
 		newStream:    newStream,
 		inputChanged: trigger.New(),
 		lookups:      mailbox.New(lookupRequest{}),
+		createQSO:    createQSO,
 		statusText:   "Paused",
 	}
 	output := controls.TextView()
@@ -124,7 +140,7 @@ func (p *page) Focusables() []tview.Primitive {
 func (p *page) KeyBindings() []keybinding.Binding {
 	return []keybinding.Binding{
 		keybinding.OnRune('a', "add callsign", p.openAddCallsign),
-		keybinding.OnKey(tcell.KeyEnter, "edit callsign", p.openEditCallsign),
+		keybinding.OnKey(tcell.KeyEnter, "new QSO", p.openCreateQSO),
 		keybinding.OnRune('d', "delete callsign", p.deleteSelectedCallsign),
 	}
 }
@@ -226,6 +242,13 @@ func (p *page) showLookupResult(
 		p.details.SetStyle(components.TextViewPrimary)
 		p.details.SetText(formatCallsignDetails(entry))
 	})
+}
+
+func (p *page) openCreateQSO() {
+	if p.selectedCallsign == "" || p.createQSO == nil {
+		return
+	}
+	p.createQSO(p.selectedCallsign)
 }
 
 func formatCallsignDetails(entry callsign.Entry) string {

@@ -57,15 +57,19 @@ func newTerminalApplication(
 		terminal,
 		deps.stores.Logbook,
 		deps.qrzSync,
+		deps.stores.Settings,
+		deps.callsignLookup,
 	)
 	if err != nil {
 		return nil, "", err
 	}
 	decoder := decoderpage.New(
+		ctx,
 		terminal,
 		deps.audio,
 		deps.stores.Settings,
 		deps.callsignLookup,
+		logbook.OpenCreateQSO,
 	)
 	for _, page := range []tui.Page{logbook, decoder} {
 		if err := terminal.Register(page); err != nil {
