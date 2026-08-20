@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 
 	"morsemanual/internal/audio"
+	"morsemanual/internal/mailbox"
 	"morsemanual/internal/qrz"
 	domain "morsemanual/internal/settings"
 	ui "morsemanual/internal/tui"
@@ -16,6 +18,7 @@ import (
 	"morsemanual/internal/tui/modal"
 
 	"github.com/rivo/tview"
+	"golang.org/x/sync/errgroup"
 )
 
 const settingsLabelWidth = 20
@@ -26,28 +29,36 @@ type dialog struct {
 	host            ui.PageHost
 	store           domain.Store
 	qrz             qrz.Service
-	pages           components.PageStack
 	values          domain.Settings
 	handle          modal.Handle
-	checking        bool
 	devices         []audio.Device
 	loadErr         error
 	devicesErr      error
 	onChanged       func()
 	persistedValues domain.Settings
+	initialAPIKey   string
 
-	stationCallsign components.InputField
-	morseInput      components.SelectField
-	loginStatus     components.TextView
-	apiKeyStatus    components.TextView
-	message         components.TextView
-	login           components.Button
-	clearLogin      components.Button
-	updateAPIKey    components.Button
-	clearAPIKey     components.Button
-	ok              components.Button
-	cancel          components.Button
-	focusables      []tview.Primitive
+	stationCallsign  components.InputField
+	morseInput       components.SelectField
+	loginStatus      components.TextView
+	apiKeyStatus     components.TextView
+	message          components.TextView
+	login            components.Button
+	clearLogin       components.Button
+	updateAPIKey     components.Button
+	clearAPIKey      components.Button
+	ok               components.Button
+	cancel           components.Button
+	focusables       []tview.Primitive
+	loginChecks      mailbox.Mailbox[loginValidationRequest]
+	loginGeneration  atomic.Uint64
+	apiKeyGeneration atomic.Uint64
+}
+
+type loginValidationRequest struct {
+	generation uint64
+	callsign   string
+	password   string
 }
 
 type applicationHost interface {
@@ -55,7 +66,8 @@ type applicationHost interface {
 	OpenModalForCurrentLayer(dialog modal.Dialog) modal.Handle
 }
 
-// Open loads and verifies the current settings, then displays their editor.
+// Open loads the current settings and displays their editor. Credential
+// validation belongs to the dialog's Run lifecycle.
 func Open(
 	ctx context.Context,
 	host applicationHost,
@@ -96,16 +108,24 @@ func newDialog(
 		store:           store,
 		qrz:             qrzService,
 		values:          values,
-		checking:        true,
 		devices:         append([]audio.Device(nil), devices...),
 		onChanged:       onChanged,
 		persistedValues: values,
+		initialAPIKey:   values.QRZAPIKey,
 	}
 	dialog.stationCallsign = dialog.input(
 		controls,
 		"My callsign",
 		values.StationCallsign,
 	)
+	dialog.loginGeneration.Store(1)
+	dialog.apiKeyGeneration.Store(1)
+	dialog.loginChecks = mailbox.New(loginValidationRequest{
+		generation: 1,
+		callsign:   strings.TrimSpace(values.StationCallsign),
+		password:   values.QRZPassword,
+	})
+	dialog.stationCallsign.SetChangedFunc(dialog.callsignChanged)
 	options := make([]string, len(devices))
 	for index, device := range devices {
 		options[index] = device.Name
@@ -148,15 +168,11 @@ func newDialog(
 		dialog.cancel,
 	}
 	dialog.Layout = dialog.layout(controls)
-	dialog.showLoginStatus(nil)
-	dialog.showAPIKeyStatus(nil)
+	dialog.showInitialCredentialStatuses()
 	return dialog
 }
 
 func (d *dialog) Focusables() []tview.Primitive {
-	if d.checking {
-		return nil
-	}
 	return d.focusables
 }
 
@@ -165,23 +181,25 @@ func (d *dialog) KeyBindings() []keybinding.Binding {
 }
 
 func (d *dialog) Run(ctx context.Context) {
-	d.initialize(ctx)
-	<-ctx.Done()
-}
-
-func (d *dialog) initialize(ctx context.Context) {
 	d.ctx = ctx
-	var loginErr, apiKeyErr error
-	if d.loadErr == nil {
-		loginErr, apiKeyErr = d.validateStoredCredentials(ctx)
-	}
-	if ctx.Err() != nil {
-		return
-	}
 	d.host.Update(func() {
-		d.finishValidation(d.loadErr, loginErr, apiKeyErr)
+		if d.loadErr != nil {
+			d.showError(fmt.Errorf("load settings: %w", d.loadErr))
+		}
 		d.showInitialDeviceError()
 	})
+	if d.loadErr != nil {
+		<-ctx.Done()
+		return
+	}
+
+	group, runCtx := errgroup.WithContext(ctx)
+	group.Go(func() error { return d.runLoginChecks(runCtx) })
+	group.Go(func() error {
+		d.validateStoredAPIKey(runCtx)
+		return nil
+	})
+	_ = group.Wait()
 }
 
 func (d *dialog) input(
@@ -194,33 +212,50 @@ func (d *dialog) input(
 	return input
 }
 
-func (d *dialog) finishValidation(loadErr, loginErr, apiKeyErr error) {
-	if loadErr != nil {
-		d.showError(fmt.Errorf("load settings: %w", loadErr))
-	} else {
-		d.showLoginStatus(loginErr)
-		d.showAPIKeyStatus(apiKeyErr)
+func (d *dialog) runLoginChecks(ctx context.Context) error {
+	for {
+		request, err := d.loginChecks.Receive(ctx)
+		if err != nil {
+			return nil
+		}
+		var validationErr error
+		switch {
+		case request.password == "":
+		case request.callsign == "":
+			validationErr = errors.New("callsign is required")
+		default:
+			validationErr = d.qrz.ValidateLogin(
+				ctx,
+				request.callsign,
+				request.password,
+			)
+		}
+		if ctx.Err() != nil {
+			return nil
+		}
+		d.host.Update(func() {
+			if d.loginGeneration.Load() == request.generation {
+				d.showLoginStatusFor(request.password, validationErr)
+			}
+		})
 	}
-	d.checking = false
-	d.pages.Show("settings")
-	d.host.SetFocus(d.stationCallsign)
 }
 
-func (d *dialog) validateStoredCredentials(
-	ctx context.Context,
-) (error, error) {
-	var loginErr, apiKeyErr error
-	if d.values.QRZPassword != "" {
-		loginErr = d.qrz.ValidateLogin(
-			ctx,
-			d.values.StationCallsign,
-			d.values.QRZPassword,
-		)
+func (d *dialog) validateStoredAPIKey(ctx context.Context) {
+	apiKey := d.initialAPIKey
+	generation := d.apiKeyGeneration.Load()
+	if apiKey == "" {
+		return
 	}
-	if d.values.QRZAPIKey != "" {
-		apiKeyErr = d.qrz.ValidateAPIKey(ctx, d.values.QRZAPIKey)
+	validationErr := d.qrz.ValidateAPIKey(ctx, apiKey)
+	if ctx.Err() != nil {
+		return
 	}
-	return loginErr, apiKeyErr
+	d.host.Update(func() {
+		if d.apiKeyGeneration.Load() == generation {
+			d.showAPIKeyStatus(validationErr)
+		}
+	})
 }
 
 func (d *dialog) showInitialDeviceError() {
@@ -263,6 +298,7 @@ func (d *dialog) openLogin() {
 			values.StationCallsign = callsign
 			values.QRZPassword = password
 			d.stage(values)
+			d.loginGeneration.Add(1)
 			d.stationCallsign.SetValue(callsign)
 			d.showLoginStatus(nil)
 			return nil
@@ -281,6 +317,7 @@ func (d *dialog) openAPIKey() {
 			values := d.currentValues()
 			values.QRZAPIKey = apiKey
 			d.stage(values)
+			d.apiKeyGeneration.Add(1)
 			d.showAPIKeyStatus(nil)
 			return nil
 		},
@@ -292,6 +329,7 @@ func (d *dialog) clearQRZLogin() {
 	values := d.currentValues()
 	values.QRZPassword = ""
 	d.stage(values)
+	d.loginGeneration.Add(1)
 	d.showLoginStatus(nil)
 }
 
@@ -299,6 +337,7 @@ func (d *dialog) clearQRZAPIKey() {
 	values := d.currentValues()
 	values.QRZAPIKey = ""
 	d.stage(values)
+	d.apiKeyGeneration.Add(1)
 	d.showAPIKeyStatus(nil)
 }
 
@@ -331,9 +370,50 @@ func (d *dialog) stage(values domain.Settings) {
 	d.message.SetText("")
 }
 
+func (d *dialog) callsignChanged(value string) {
+	password := d.values.QRZPassword
+	generation := d.loginGeneration.Add(1)
+	if password == "" {
+		d.showLoginStatusFor("", nil)
+	} else {
+		d.showLoginChecking()
+	}
+	d.loginChecks.Send(loginValidationRequest{
+		generation: generation,
+		callsign:   strings.TrimSpace(value),
+		password:   password,
+	})
+}
+
+func (d *dialog) showInitialCredentialStatuses() {
+	if d.values.QRZPassword == "" {
+		d.showLoginStatus(nil)
+	} else {
+		d.showLoginChecking()
+	}
+	if d.values.QRZAPIKey == "" {
+		d.showAPIKeyStatus(nil)
+	} else {
+		d.apiKeyStatus.SetStyle(components.TextViewMuted)
+		d.apiKeyStatus.SetText("Checking...")
+	}
+}
+
+func (d *dialog) showLoginChecking() {
+	d.loginStatus.SetStyle(components.TextViewMuted)
+	d.loginStatus.SetText("Checking...")
+}
+
 func (d *dialog) showLoginStatus(validationErr error) {
+	d.showLoginStatusFor(d.values.QRZPassword, validationErr)
+}
+
+func (d *dialog) showLoginStatusFor(
+	password string,
+	validationErr error,
+) {
 	switch {
-	case d.values.QRZPassword == "":
+	case password == "":
 		d.loginStatus.SetStyle(components.TextViewMuted)
 		d.loginStatus.SetText("Not connected")
 	case validationErr != nil:
@@ -392,29 +472,11 @@ func (d *dialog) layout(controls components.Factory) modal.Layout {
 		AddItem(loginRow, 4, 0, 1, 1, 0, 0, false).
 		AddItem(apiKeyRow, 6, 0, 1, 1, 0, 0, false)
 	buttons := centeredButtons(controls, d.ok, d.cancel)
-	progress := controls.TextView()
-	progress.SetStyle(components.TextViewAccent)
-	progress.SetTextAlign(tview.AlignCenter)
-	progress.SetText("Checking QRZ.com credentials...")
-	checking := modal.NewRows(controls).
-		Row(progress, 1).
-		Build()
-	settings := modal.NewRows(controls).
+	return modal.NewLayout(controls, " Settings ", 72).
 		Row(fields, 7).
 		Spacer().
 		Row(d.message, 1).
 		Actions(buttons)
-	layout, pages := modal.NewPagedLayout(
-		controls,
-		" Settings ",
-		72,
-		modal.Page{
-			Name: "checking", Rows: checking, Visible: true, Centered: true,
-		},
-		modal.Page{Name: "settings", Rows: settings},
-	)
-	d.pages = pages
-	return layout
 }
 
 func selectedMorseInput(id string, devices []audio.Device) int {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"morsemanual/internal/audio"
 	"morsemanual/internal/callsign"
@@ -16,27 +17,29 @@ import (
 	"github.com/rivo/tview"
 )
 
-func TestOpenShowsProgressUntilCredentialValidationFinishes(t *testing.T) {
+func TestSettingsIsUsableWhileCredentialValidationRuns(t *testing.T) {
 	store := &recordingStore{loaded: domain.Settings{
 		StationCallsign: "HA7NCS",
 		QRZPassword:     "password",
 	}}
-	service := &recordingQRZService{}
+	service := newControlledQRZService()
 	host := newTestHost()
 
 	dialog := newDialog(
 		t.Context(), host, store, service, store.loaded, nil, nil,
 	)
-	if len(dialog.Focusables()) != 0 {
-		t.Fatal("settings controls are focusable while validation is running")
+	if len(dialog.Focusables()) == 0 {
+		t.Fatal("settings controls are not immediately focusable")
 	}
-	if page := dialog.pages.Active(); page != "checking" {
-		t.Fatalf("front page = %q, want checking", page)
+	if dialog.loginStatus.Text() != "Checking..." {
+		t.Fatalf("login status = %q, want Checking...", dialog.loginStatus.Text())
 	}
 
-	dialog.finishValidation(nil, nil, nil)
-	if page := dialog.pages.Active(); page != "settings" {
-		t.Fatalf("front page = %q, want settings", page)
+	cancel, done := runSettingsDialog(t, dialog)
+	defer stopSettingsDialog(t, cancel, done)
+	request := <-service.loginRequests
+	if request.callsign != "HA7NCS" || request.password != "password" {
+		t.Fatalf("login request = %#v", request)
 	}
 }
 
@@ -46,21 +49,28 @@ func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 		QRZPassword:     "wrong-password",
 		QRZAPIKey:       "wrong-key",
 	}}
-	service := &recordingQRZService{
-		loginErr:  errors.New("password incorrect"),
-		apiKeyErr: errors.New("invalid key"),
-	}
+	service := newControlledQRZService()
 	host := newTestHost()
+	host.updated = make(chan struct{}, 3)
 
 	Open(t.Context(), host, store, service, nil, nil)
 	dialog := host.lastDialog().(*dialog)
-	dialog.initialize(t.Context())
+	cancel, done := runSettingsDialog(t, dialog)
+	defer stopSettingsDialog(t, cancel, done)
+	<-host.updated
+	loginRequest := <-service.loginRequests
+	apiKey := <-service.apiKeyRequests
+	service.loginResults <- errors.New("password incorrect")
+	service.apiKeyResults <- errors.New("invalid key")
+	<-host.updated
+	<-host.updated
 
-	if service.callsign != "HA7NCS" || service.password != "wrong-password" {
-		t.Fatalf("validated login = %q, %q", service.callsign, service.password)
+	if loginRequest.callsign != "HA7NCS" ||
+		loginRequest.password != "wrong-password" {
+		t.Fatalf("validated login = %#v", loginRequest)
 	}
-	if service.apiKey != "wrong-key" {
-		t.Fatalf("validated API key = %q", service.apiKey)
+	if apiKey != "wrong-key" {
+		t.Fatalf("validated API key = %q", apiKey)
 	}
 	if !strings.Contains(dialog.loginStatus.Text(), "Check failed") ||
 		!strings.Contains(dialog.apiKeyStatus.Text(), "Check failed") {
@@ -69,6 +79,46 @@ func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 			dialog.loginStatus.Text(),
 			dialog.apiKeyStatus.Text(),
 		)
+	}
+}
+
+func TestSettingsRevalidatesQRZLoginWhenCallsignChanges(t *testing.T) {
+	values := domain.Settings{
+		StationCallsign: "HA7NCS",
+		QRZPassword:     "password",
+	}
+	service := newControlledQRZService()
+	host := newTestHost()
+	host.updated = make(chan struct{}, 3)
+	dialog := newDialog(
+		t.Context(), host, &recordingStore{}, service, values, nil, nil,
+	)
+	cancel, done := runSettingsDialog(t, dialog)
+	defer stopSettingsDialog(t, cancel, done)
+	<-host.updated
+
+	initial := <-service.loginRequests
+	if initial.callsign != "HA7NCS" {
+		t.Fatalf("initial callsign = %q", initial.callsign)
+	}
+
+	dialog.stationCallsign.SetValue("OE1ABC")
+	if dialog.loginStatus.Text() != "Checking..." {
+		t.Fatalf("changed login status = %q", dialog.loginStatus.Text())
+	}
+	service.loginResults <- errors.New("old callsign failed")
+	<-host.updated
+	if dialog.loginStatus.Text() != "Checking..." {
+		t.Fatalf("stale result changed login status to %q", dialog.loginStatus.Text())
+	}
+	changed := <-service.loginRequests
+	if changed.callsign != "OE1ABC" || changed.password != "password" {
+		t.Fatalf("changed login request = %#v", changed)
+	}
+	service.loginResults <- nil
+	<-host.updated
+	if dialog.loginStatus.Text() != "Connected" {
+		t.Fatalf("validated login status = %q", dialog.loginStatus.Text())
 	}
 }
 
@@ -160,6 +210,7 @@ func TestSettingsNotifiesApplicationAfterChangedValuesWereStaged(t *testing.T) {
 
 func TestSettingsShowsMorseInputEnumerationError(t *testing.T) {
 	host := newTestHost()
+	host.updated = make(chan struct{}, 1)
 	Open(
 		t.Context(),
 		host,
@@ -169,7 +220,9 @@ func TestSettingsShowsMorseInputEnumerationError(t *testing.T) {
 		nil,
 	)
 	dialog := host.lastDialog().(*dialog)
-	dialog.initialize(t.Context())
+	cancel, done := runSettingsDialog(t, dialog)
+	defer stopSettingsDialog(t, cancel, done)
+	<-host.updated
 	if !strings.Contains(dialog.message.Text(), "capture backend failed") {
 		t.Fatalf("message = %q, want device enumeration error", dialog.message.Text())
 	}
@@ -189,7 +242,6 @@ func TestSettingsButtonsReceiveMouseClicks(t *testing.T) {
 	)
 	handle := &testHandle{}
 	dialog.handle = handle
-	dialog.finishValidation(nil, nil, nil)
 	size := dialog.Size()
 	dialog.Content().SetRect(0, 0, size.Width, size.Height)
 
@@ -396,6 +448,34 @@ func TestCancelDiscardsStagedCredentialChanges(t *testing.T) {
 	}
 }
 
+func runSettingsDialog(
+	t *testing.T,
+	dialog *dialog,
+) (context.CancelFunc, <-chan struct{}) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		dialog.Run(ctx)
+		close(done)
+	}()
+	return cancel, done
+}
+
+func stopSettingsDialog(
+	t *testing.T,
+	cancel context.CancelFunc,
+	done <-chan struct{},
+) {
+	t.Helper()
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("settings dialog Run did not stop")
+	}
+}
+
 type recordingStore struct {
 	loaded    domain.Settings
 	saved     domain.Settings
@@ -427,6 +507,71 @@ type recordingQRZService struct {
 	apiKey    string
 	loginErr  error
 	apiKeyErr error
+}
+
+type loginValidation struct {
+	callsign string
+	password string
+}
+
+type controlledQRZService struct {
+	loginRequests  chan loginValidation
+	loginResults   chan error
+	apiKeyRequests chan string
+	apiKeyResults  chan error
+}
+
+func newControlledQRZService() *controlledQRZService {
+	return &controlledQRZService{
+		loginRequests:  make(chan loginValidation, 1),
+		loginResults:   make(chan error, 1),
+		apiKeyRequests: make(chan string, 1),
+		apiKeyResults:  make(chan error, 1),
+	}
+}
+
+func (s *controlledQRZService) ValidateLogin(
+	ctx context.Context,
+	callsign string,
+	password string,
+) error {
+	select {
+	case s.loginRequests <- loginValidation{callsign, password}:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	select {
+	case result := <-s.loginResults:
+		return result
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (s *controlledQRZService) ValidateAPIKey(
+	ctx context.Context,
+	apiKey string,
+) error {
+	select {
+	case s.apiKeyRequests <- apiKey:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+	select {
+	case result := <-s.apiKeyResults:
+		return result
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (s *controlledQRZService) LookupCallsign(
+	context.Context,
+	string,
+	string,
+	string,
+) (callsign.Record, error) {
+	return callsign.Record{}, nil
 }
 
 type recordingDeviceLister struct {
@@ -469,6 +614,7 @@ type testHost struct {
 	controls components.Factory
 	dialogs  []modal.Dialog
 	handles  []*testHandle
+	updated  chan struct{}
 }
 
 func newTestHost() *testHost {
@@ -505,6 +651,9 @@ func (h *testHost) Refresh() {}
 func (h *testHost) Update(update func()) {
 	if update != nil {
 		update()
+	}
+	if h.updated != nil {
+		h.updated <- struct{}{}
 	}
 }
 
