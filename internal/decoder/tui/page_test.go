@@ -173,14 +173,11 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 	waitForRun(t, done)
 }
 
-func TestPageOwnsMorseInputMenuItem(t *testing.T) {
+func TestPageDoesNotContributeMenuItems(t *testing.T) {
 	page := New(t.Context(), newTestHost(), nil, nil, nil, nil)
 	items := page.MenuItems(t.Context())
-	if len(items) != 1 {
-		t.Fatalf("MenuItems() = %d items, want 1", len(items))
-	}
-	if items[0].Label != "Morse input" {
-		t.Fatalf("menu label = %q, want Morse input", items[0].Label)
+	if len(items) != 0 {
+		t.Fatalf("MenuItems() = %#v, want none", items)
 	}
 }
 

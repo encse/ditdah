@@ -95,6 +95,8 @@ func newTerminalApplication(
 				terminal,
 				deps.stores.Settings,
 				deps.qrz,
+				deps.audio,
+				decoder.MorseInputChanged,
 			)
 		}),
 	)

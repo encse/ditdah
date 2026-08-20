@@ -13,7 +13,6 @@ import (
 	"morsemanual/internal/mailbox"
 	"morsemanual/internal/optional"
 	"morsemanual/internal/settings"
-	settingspage "morsemanual/internal/settings/tui"
 	"morsemanual/internal/trigger"
 	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
@@ -57,6 +56,11 @@ type page struct {
 	decodedText      strings.Builder
 }
 
+type Page interface {
+	ui.Page
+	MorseInputChanged()
+}
+
 // New creates the page for live Morse decoder output.
 func New(
 	ctx context.Context,
@@ -65,7 +69,7 @@ func New(
 	settingsStore settings.Store,
 	lookup callsign.Service,
 	createQSO func(string),
-) ui.Page {
+) Page {
 	return newPage(
 		ctx,
 		host,
@@ -150,20 +154,9 @@ func (p *page) KeyBindings() []keybinding.Binding {
 	}
 }
 
-func (p *page) MenuItems(ctx context.Context) []components.MenuItem {
-	return []components.MenuItem{{
-		Label: "Morse input",
-		Binding: keybinding.OnRune('i', "Morse input", func() {
-			settingspage.OpenMorseInput(
-				ctx,
-				p.host,
-				p.source,
-				p.settings,
-				p.inputChanged.Activate,
-			)
-		}),
-	}}
-}
+func (p *page) MenuItems(context.Context) []components.MenuItem { return nil }
+
+func (p *page) MorseInputChanged() { p.inputChanged.Activate() }
 
 func (p *page) Status() string { return p.statusText }
 
@@ -295,7 +288,7 @@ func (p *page) runSession(ctx context.Context) error {
 		return fmt.Errorf("load Morse input setting: %w", err)
 	}
 	if configured.MorseInputDeviceID == "" {
-		return errors.New("select a Morse input from the application menu")
+		return errors.New("select a Morse input in Settings")
 	}
 
 	devices, err := p.source.Devices()

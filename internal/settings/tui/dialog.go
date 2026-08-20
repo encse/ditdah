@@ -3,9 +3,11 @@ package tui
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
+	"morsemanual/internal/audio"
 	"morsemanual/internal/qrz"
 	domain "morsemanual/internal/settings"
 	ui "morsemanual/internal/tui"
@@ -20,16 +22,20 @@ const settingsLabelWidth = 20
 
 type dialog struct {
 	modal.Layout
-	ctx      context.Context
-	host     ui.PageHost
-	store    domain.Store
-	qrz      qrz.Service
-	pages    components.PageStack
-	values   domain.Settings
-	handle   modal.Handle
-	checking bool
+	ctx                   context.Context
+	host                  ui.PageHost
+	store                 domain.Store
+	qrz                   qrz.Service
+	pages                 components.PageStack
+	values                domain.Settings
+	handle                modal.Handle
+	checking              bool
+	devices               []audio.Device
+	onSaved               func()
+	persistedMorseInputID string
 
 	stationCallsign components.InputField
+	morseInput      components.SelectField
 	loginStatus     components.TextView
 	apiKeyStatus    components.TextView
 	message         components.TextView
@@ -48,11 +54,32 @@ func Open(
 	host ui.PageHost,
 	store domain.Store,
 	qrzService qrz.Service,
+	inputs audio.DeviceLister,
+	onSaved func(),
 ) {
 	values, loadErr := store.Load(ctx)
-	dialog := newDialog(ctx, host, store, qrzService, values)
+	var devices []audio.Device
+	var devicesErr error
+	if inputs == nil {
+		devicesErr = errors.New("audio input is unavailable")
+	} else {
+		devices, devicesErr = inputs.Devices()
+	}
+	dialog := newDialog(
+		ctx, host, store, qrzService, values, devices, onSaved,
+	)
 	dialog.handle = host.OpenModal(dialog)
 	dialog.finishValidation(loadErr)
+	if devicesErr != nil {
+		dialog.showError(errors.Join(loadErr, devicesErr))
+	} else if len(devices) == 0 {
+		dialog.showError(errors.New("no audio input devices found"))
+	} else if values.MorseInputDeviceID != "" {
+		index, _ := dialog.morseInput.CurrentOption()
+		if index < 0 {
+			dialog.showError(errors.New("the selected audio input is unavailable"))
+		}
+	}
 }
 
 func newDialog(
@@ -61,20 +88,39 @@ func newDialog(
 	store domain.Store,
 	qrzService qrz.Service,
 	values domain.Settings,
+	devices []audio.Device,
+	onSaved func(),
 ) *dialog {
 	controls := host.Components().Modal()
 	dialog := &dialog{
-		ctx:      ctx,
-		host:     host,
-		store:    store,
-		qrz:      qrzService,
-		values:   values,
-		checking: true,
+		ctx:                   ctx,
+		host:                  host,
+		store:                 store,
+		qrz:                   qrzService,
+		values:                values,
+		checking:              true,
+		devices:               append([]audio.Device(nil), devices...),
+		onSaved:               onSaved,
+		persistedMorseInputID: values.MorseInputDeviceID,
 	}
 	dialog.stationCallsign = dialog.input(
 		controls,
 		"My callsign",
 		values.StationCallsign,
+	)
+	options := make([]string, len(devices))
+	for index, device := range devices {
+		options[index] = device.Name
+		if device.IsDefault {
+			options[index] += " (default)"
+		}
+	}
+	dialog.morseInput = controls.SelectField(
+		"Audio input",
+		options,
+		selectedMorseInput(values.MorseInputDeviceID, devices),
+		settingsLabelWidth,
+		0,
 	)
 	dialog.loginStatus = controls.TextView()
 	dialog.apiKeyStatus = controls.TextView()
@@ -95,6 +141,7 @@ func newDialog(
 	dialog.cancel.SetSelectedFunc(dialog.close)
 	dialog.focusables = []tview.Primitive{
 		dialog.stationCallsign,
+		dialog.morseInput,
 		dialog.login,
 		dialog.clearLogin,
 		dialog.updateAPIKey,
@@ -228,6 +275,10 @@ func (d *dialog) clearQRZAPIKey() {
 func (d *dialog) currentValues() domain.Settings {
 	values := d.values
 	values.StationCallsign = strings.TrimSpace(d.stationCallsign.Value())
+	index, _ := d.morseInput.CurrentOption()
+	if index >= 0 && index < len(d.devices) {
+		values.MorseInputDeviceID = d.devices[index].ID
+	}
 	return values
 }
 
@@ -238,6 +289,10 @@ func (d *dialog) save(values domain.Settings) error {
 	}
 	d.values = saved
 	d.message.SetText("")
+	if saved.MorseInputDeviceID != d.persistedMorseInputID && d.onSaved != nil {
+		d.onSaved()
+	}
+	d.persistedMorseInputID = saved.MorseInputDeviceID
 	return nil
 }
 
@@ -300,11 +355,12 @@ func (d *dialog) layout(controls components.Factory) modal.Layout {
 		d.clearAPIKey,
 	)
 	fields := controls.Grid().
-		SetRows(1, 1, 1, 1, 1).
+		SetRows(1, 1, 1, 1, 1, 1, 1).
 		SetColumns(0).
 		AddItem(d.stationCallsign, 0, 0, 1, 1, 0, 0, false).
-		AddItem(loginRow, 2, 0, 1, 1, 0, 0, false).
-		AddItem(apiKeyRow, 4, 0, 1, 1, 0, 0, false)
+		AddItem(d.morseInput, 2, 0, 1, 1, 0, 0, false).
+		AddItem(loginRow, 4, 0, 1, 1, 0, 0, false).
+		AddItem(apiKeyRow, 6, 0, 1, 1, 0, 0, false)
 	buttons := centeredButtons(controls, d.ok, d.cancel)
 	progress := controls.TextView()
 	progress.SetStyle(components.TextViewAccent)
@@ -314,7 +370,7 @@ func (d *dialog) layout(controls components.Factory) modal.Layout {
 		Row(progress, 1).
 		Build()
 	settings := modal.NewRows(controls).
-		Row(fields, 5).
+		Row(fields, 7).
 		Spacer().
 		Row(d.message, 1).
 		Actions(buttons)
@@ -329,6 +385,26 @@ func (d *dialog) layout(controls components.Factory) modal.Layout {
 	)
 	d.pages = pages
 	return layout
+}
+
+func selectedMorseInput(id string, devices []audio.Device) int {
+	if id != "" {
+		for index, device := range devices {
+			if device.ID == id {
+				return index
+			}
+		}
+		return -1
+	}
+	for index, device := range devices {
+		if device.IsDefault {
+			return index
+		}
+	}
+	if len(devices) > 0 {
+		return 0
+	}
+	return -1
 }
 
 func credentialRow(

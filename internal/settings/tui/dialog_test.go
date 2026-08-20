@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"morsemanual/internal/audio"
 	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/settings"
 	"morsemanual/internal/tui/components"
@@ -23,7 +24,9 @@ func TestOpenShowsProgressUntilCredentialValidationFinishes(t *testing.T) {
 	service := &recordingQRZService{}
 	host := newTestHost()
 
-	dialog := newDialog(t.Context(), host, store, service, store.loaded)
+	dialog := newDialog(
+		t.Context(), host, store, service, store.loaded, nil, nil,
+	)
 	if len(dialog.Focusables()) != 0 {
 		t.Fatal("settings controls are focusable while validation is running")
 	}
@@ -49,7 +52,7 @@ func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 	}
 	host := newTestHost()
 
-	Open(t.Context(), host, store, service)
+	Open(t.Context(), host, store, service, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 
 	if service.callsign != "HA7NCS" || service.password != "wrong-password" {
@@ -68,6 +71,108 @@ func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 	}
 }
 
+func TestSettingsSelectsSavedMorseInput(t *testing.T) {
+	store := &recordingStore{loaded: domain.Settings{
+		MorseInputDeviceID: "usb",
+	}}
+	host := newTestHost()
+	Open(
+		t.Context(),
+		host,
+		store,
+		&recordingQRZService{},
+		recordingDeviceLister{devices: []audio.Device{
+			{ID: "built-in", Name: "Built-in input", IsDefault: true},
+			{ID: "usb", Name: "USB radio"},
+		}},
+		nil,
+	)
+	dialog := host.lastDialog().(*dialog)
+
+	index, label := dialog.morseInput.CurrentOption()
+	if index != 1 || label != "USB radio" {
+		t.Fatalf("selected input = %d, %q, want saved USB device", index, label)
+	}
+}
+
+func TestSettingsSavesDefaultMorseInputAndNotifiesDecoder(t *testing.T) {
+	values := domain.Settings{
+		StationCallsign: "HA7NCS",
+		QRZAPIKey:       "qrz-key",
+	}
+	store := &recordingStore{loaded: values}
+	host := newTestHost()
+	reloads := 0
+	Open(
+		t.Context(),
+		host,
+		store,
+		&recordingQRZService{},
+		recordingDeviceLister{devices: []audio.Device{
+			{ID: "first", Name: "Line input"},
+			{ID: "default", Name: "USB radio", IsDefault: true},
+		}},
+		func() { reloads++ },
+	)
+	dialog := host.lastDialog().(*dialog)
+
+	dialog.submit()
+
+	want := values
+	want.MorseInputDeviceID = "default"
+	if store.saved != want {
+		t.Fatalf("saved settings = %#v, want %#v", store.saved, want)
+	}
+	if reloads != 1 {
+		t.Fatalf("decoder reloads = %d, want 1", reloads)
+	}
+	if !host.lastHandle().closed {
+		t.Fatal("successful Settings save did not close dialog")
+	}
+}
+
+func TestSettingsNotifiesDecoderAfterInputWasStagedByAnotherEdit(t *testing.T) {
+	values := domain.Settings{MorseInputDeviceID: "built-in"}
+	store := &recordingStore{loaded: values}
+	host := newTestHost()
+	reloads := 0
+	dialog := newDialog(
+		t.Context(),
+		host,
+		store,
+		&recordingQRZService{},
+		values,
+		[]audio.Device{{ID: "usb", Name: "USB radio"}},
+		func() { reloads++ },
+	)
+	staged := values
+	staged.MorseInputDeviceID = "usb"
+	dialog.stage(staged)
+
+	if err := dialog.save(staged); err != nil {
+		t.Fatalf("save staged settings: %v", err)
+	}
+	if reloads != 1 {
+		t.Fatalf("decoder reloads = %d, want 1", reloads)
+	}
+}
+
+func TestSettingsShowsMorseInputEnumerationError(t *testing.T) {
+	host := newTestHost()
+	Open(
+		t.Context(),
+		host,
+		&recordingStore{},
+		&recordingQRZService{},
+		recordingDeviceLister{err: errors.New("capture backend failed")},
+		nil,
+	)
+	dialog := host.lastDialog().(*dialog)
+	if !strings.Contains(dialog.message.Text(), "capture backend failed") {
+		t.Fatalf("message = %q, want device enumeration error", dialog.message.Text())
+	}
+}
+
 func TestSettingsButtonsReceiveMouseClicks(t *testing.T) {
 	store := &recordingStore{}
 	host := newTestHost()
@@ -77,6 +182,8 @@ func TestSettingsButtonsReceiveMouseClicks(t *testing.T) {
 		store,
 		&recordingQRZService{},
 		domain.Settings{},
+		nil,
+		nil,
 	)
 	handle := &testHandle{}
 	dialog.handle = handle
@@ -128,7 +235,7 @@ func TestLoginValidatesAndStagesPasswordUntilSettingsAreSaved(t *testing.T) {
 	}}
 	service := &recordingQRZService{}
 	host := newTestHost()
-	Open(t.Context(), host, store, service)
+	Open(t.Context(), host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
 
 	settings.openLogin()
@@ -167,7 +274,7 @@ func TestFailedLoginRemainsOpenAndIsNotSaved(t *testing.T) {
 	store := &recordingStore{loaded: domain.Settings{StationCallsign: "HA7NCS"}}
 	service := &recordingQRZService{loginErr: errors.New("password incorrect")}
 	host := newTestHost()
-	Open(t.Context(), host, store, service)
+	Open(t.Context(), host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
 
 	settings.openLogin()
@@ -190,7 +297,7 @@ func TestAPIKeyUpdateValidatesAndStagesKeyUntilSettingsAreSaved(t *testing.T) {
 	store := &recordingStore{loaded: domain.Settings{StationCallsign: "HA7NCS"}}
 	service := &recordingQRZService{}
 	host := newTestHost()
-	Open(t.Context(), host, store, service)
+	Open(t.Context(), host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
 
 	settings.openAPIKey()
@@ -224,7 +331,7 @@ func TestClearActionsStageEmptyCredentialsUntilSettingsAreSaved(t *testing.T) {
 		QRZAPIKey:       "key",
 	}}
 	host := newTestHost()
-	Open(t.Context(), host, store, &recordingQRZService{})
+	Open(t.Context(), host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 
 	dialog.clearQRZLogin()
@@ -251,7 +358,7 @@ func TestClearActionsStageEmptyCredentialsUntilSettingsAreSaved(t *testing.T) {
 func TestSubmitSavesCallsignAndClosesSettings(t *testing.T) {
 	store := &recordingStore{}
 	host := newTestHost()
-	Open(t.Context(), host, store, &recordingQRZService{})
+	Open(t.Context(), host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 
 	dialog.stationCallsign.SetValue("OE1ABC")
@@ -272,7 +379,7 @@ func TestCancelDiscardsStagedCredentialChanges(t *testing.T) {
 		QRZAPIKey:       "key",
 	}}
 	host := newTestHost()
-	Open(t.Context(), host, store, &recordingQRZService{})
+	Open(t.Context(), host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 
 	dialog.clearQRZLogin()
@@ -318,6 +425,15 @@ type recordingQRZService struct {
 	apiKey    string
 	loginErr  error
 	apiKeyErr error
+}
+
+type recordingDeviceLister struct {
+	devices []audio.Device
+	err     error
+}
+
+func (l recordingDeviceLister) Devices() ([]audio.Device, error) {
+	return l.devices, l.err
 }
 
 func (s *recordingQRZService) ValidateLogin(
