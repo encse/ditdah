@@ -81,8 +81,6 @@ func (d *loginDialog) layout(controls components.Factory) modal.Layout {
 		" Login to QRZ.com as %s ",
 		d.callsign.Value(),
 	), 58).
-		Padding(3).
-		Gap(1).
 		Row(fields, 3).
 		Row(d.message, 1).
 		Actions(centeredButtons(controls, d.login, d.cancel))

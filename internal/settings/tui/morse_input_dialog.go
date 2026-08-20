@@ -149,12 +149,10 @@ func (d *morseInputDialog) close() {
 func (d *morseInputDialog) layout(controls components.Factory) modal.Layout {
 	buttons := centeredButtons(controls, d.ok, d.cancel)
 	return modal.NewLayout(controls, " Morse input ", 72).
-		Padding(3).
-		Gap(1).
 		Row(d.input, 1).
-		Gap(1).
+		Spacer().
 		Row(d.message, 1).
-		Gap(1).
+		Spacer().
 		Actions(buttons)
 }
 

@@ -309,10 +309,8 @@ func (e *qsoEditor) layout(controls components.Factory) modal.Layout {
 		AddItem(e.cancel, 12, 0, false).
 		AddItem(nil, 0, 1, false)
 	return modal.NewLayout(controls, e.title(), 84).
-		Padding(1).
-		Gap(1).
 		Row(fields, 11).
-		Gap(1).
+		Spacer().
 		Row(notesLabel, 1).
 		Row(e.notes, 4).
 		Row(e.message, 1).

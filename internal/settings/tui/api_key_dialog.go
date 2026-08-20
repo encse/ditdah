@@ -66,8 +66,6 @@ func (d *apiKeyDialog) close() {
 
 func (d *apiKeyDialog) layout(controls components.Factory) modal.Layout {
 	return modal.NewLayout(controls, " QRZ.com API key ", 58).
-		Padding(3).
-		Gap(1).
 		Row(d.apiKey, 1).
 		Row(d.message, 1).
 		Actions(centeredButtons(controls, d.update, d.cancel))

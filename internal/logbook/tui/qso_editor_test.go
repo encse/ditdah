@@ -60,21 +60,21 @@ func TestQSOEditorUsesTwoAlignedColumnsAndFullWidthNotes(t *testing.T) {
 		t.Fatalf("frequency label = %q, want Frequency (MHz)", label)
 	}
 
-	assertRune(t, screen, 2, 2, 'M')
+	assertRune(t, screen, 3, 2, 'M')
 	assertRune(t, screen, 43, 2, 'C')
-	assertRune(t, screen, 2, 4, 'D')
+	assertRune(t, screen, 3, 4, 'D')
 	assertRune(t, screen, 43, 4, 'F')
-	assertRune(t, screen, 2, 6, 'M')
-	assertRune(t, screen, 2, 12, 'N')
+	assertRune(t, screen, 3, 6, 'M')
+	assertRune(t, screen, 3, 12, 'N')
 	assertRune(t, screen, 34, 20, 'O')
 	assertRune(t, screen, 46, 20, 'C')
 	assertRune(t, screen, 3, 21, tview.Borders.Horizontal)
-	assertBackground(t, screen, 18, 2, testTheme().FieldBackground)
+	assertBackground(t, screen, 19, 2, testTheme().FieldBackground)
 	assertBackground(t, screen, 59, 2, testTheme().FieldBackground)
-	assertBackground(t, screen, 18, 6, testTheme().FieldBackground)
+	assertBackground(t, screen, 19, 6, testTheme().FieldBackground)
 	assertBackground(t, screen, 40, 6, testTheme().FieldBackground)
-	assertBackground(t, screen, 2, 15, testTheme().FieldBackground)
-	assertBackground(t, screen, 81, 15, testTheme().FieldBackground)
+	assertBackground(t, screen, 3, 15, testTheme().FieldBackground)
+	assertBackground(t, screen, 80, 15, testTheme().FieldBackground)
 }
 
 func TestQSOEditorShowsCursorInFocusedInput(t *testing.T) {
@@ -93,10 +93,10 @@ func TestQSOEditorShowsCursorInFocusedInput(t *testing.T) {
 	if !visible {
 		t.Fatal("focused modal input cursor is hidden")
 	}
-	if x < 18 || x > 40 || y != 2 {
+	if x < 19 || x > 40 || y != 2 {
 		t.Fatalf("focused modal input cursor = (%d, %d), want first field", x, y)
 	}
-	assertBackground(t, screen, 18, 2, testTheme().ActiveFieldBackground)
+	assertBackground(t, screen, 19, 2, testTheme().ActiveFieldBackground)
 }
 
 func TestQSOEditorSubmitsEditedValue(t *testing.T) {

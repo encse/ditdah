@@ -28,8 +28,6 @@ func TestLayoutDerivesHeightAndEndsAtActions(t *testing.T) {
 		AddItem(controls.Button("Cancel"), 10, 0, false).
 		AddItem(controls.Button("OK"), 10, 0, false)
 	layout := NewLayout(controls, " Confirm ", 32).
-		Padding(2).
-		Gap(1).
 		Row(message, 1).
 		Actions(actions)
 

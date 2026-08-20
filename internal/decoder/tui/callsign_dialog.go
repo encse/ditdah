@@ -55,8 +55,6 @@ func newCallsignDialog(
 		" "+title+" ",
 		48,
 	).
-		Padding(2).
-		Gap(1).
 		Row(dialog.input, 1).
 		Row(dialog.message, 1).
 		Actions(buttons)

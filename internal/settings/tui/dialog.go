@@ -311,22 +311,20 @@ func (d *dialog) layout(controls components.Factory) modal.Layout {
 	progress.SetTextAlign(tview.AlignCenter)
 	progress.SetText("Checking QRZ.com credentials...")
 	checking := modal.NewRows(controls).
-		Gap(4).
 		Row(progress, 1).
-		Gap(4).
 		Build()
 	settings := modal.NewRows(controls).
-		Gap(1).
 		Row(fields, 5).
-		Gap(1).
+		Spacer().
 		Row(d.message, 1).
 		Actions(buttons)
 	layout, pages := modal.NewPagedLayout(
 		controls,
 		" Settings ",
 		72,
-		3,
-		modal.Page{Name: "checking", Rows: checking, Visible: true},
+		modal.Page{
+			Name: "checking", Rows: checking, Visible: true, Centered: true,
+		},
 		modal.Page{Name: "settings", Rows: settings},
 	)
 	d.pages = pages

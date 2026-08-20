@@ -6,7 +6,11 @@ import (
 	"github.com/rivo/tview"
 )
 
-const frameHeight = 2
+const (
+	frameHeight              = 2
+	defaultHorizontalPadding = 2
+	defaultTopGap            = 1
+)
 
 type layoutRow struct {
 	primitive tview.Primitive
@@ -30,6 +34,10 @@ func NewRows(controls components.Factory) *RowsBuilder {
 
 func (b *RowsBuilder) Gap(height int) *RowsBuilder {
 	return b.Row(nil, height)
+}
+
+func (b *RowsBuilder) Spacer() *RowsBuilder {
+	return b.Gap(1)
 }
 
 func (b *RowsBuilder) Row(
@@ -58,9 +66,10 @@ func (b *RowsBuilder) Build() Rows {
 }
 
 type Page struct {
-	Name    string
-	Rows    Rows
-	Visible bool
+	Name     string
+	Rows     Rows
+	Visible  bool
+	Centered bool
 }
 
 // Layout is a modal surface whose size is derived from its declared rows.
@@ -91,22 +100,20 @@ func NewLayout(
 	width int,
 ) *LayoutBuilder {
 	return &LayoutBuilder{
-		controls: controls.Modal(),
-		title:    title,
-		width:    width,
+		controls:          controls.Modal(),
+		title:             title,
+		width:             width,
+		horizontalPadding: defaultHorizontalPadding,
+		rows:              []layoutRow{{height: defaultTopGap}},
 	}
-}
-
-func (b *LayoutBuilder) Padding(columns int) *LayoutBuilder {
-	if columns < 0 {
-		columns = 0
-	}
-	b.horizontalPadding = columns
-	return b
 }
 
 func (b *LayoutBuilder) Gap(height int) *LayoutBuilder {
 	return b.Row(nil, height)
+}
+
+func (b *LayoutBuilder) Spacer() *LayoutBuilder {
+	return b.Gap(1)
 }
 
 func (b *LayoutBuilder) Row(
@@ -160,24 +167,37 @@ func NewPagedLayout(
 	controls components.Factory,
 	title string,
 	width int,
-	horizontalPadding int,
 	pageDefinitions ...Page,
 ) (Layout, components.PageStack) {
 	controls = controls.Modal()
 	pages := controls.PageStack(title)
 	maxHeight := 0
 	for _, definition := range pageDefinitions {
-		content := definition.Rows.content
-		if horizontalPadding > 0 {
-			content = controls.Flex(tview.FlexColumn).
-				AddItem(nil, horizontalPadding, 0, false).
-				AddItem(content, 0, 1, false).
-				AddItem(nil, horizontalPadding, 0, false)
+		height := definition.Rows.height
+		if !definition.Centered {
+			height += defaultTopGap
 		}
+		if height > maxHeight {
+			maxHeight = height
+		}
+	}
+	for _, definition := range pageDefinitions {
+		var vertical tview.Primitive
+		if definition.Centered {
+			vertical = controls.Flex(tview.FlexRow).
+				AddItem(nil, 0, 1, false).
+				AddItem(definition.Rows.content, definition.Rows.height, 0, false).
+				AddItem(nil, 0, 1, false)
+		} else {
+			vertical = controls.Flex(tview.FlexRow).
+				AddItem(nil, defaultTopGap, 0, false).
+				AddItem(definition.Rows.content, 0, 1, false)
+		}
+		content := controls.Flex(tview.FlexColumn).
+			AddItem(nil, defaultHorizontalPadding, 0, false).
+			AddItem(vertical, 0, 1, false).
+			AddItem(nil, defaultHorizontalPadding, 0, false)
 		pages.Add(definition.Name, content, definition.Visible)
-		if definition.Rows.height > maxHeight {
-			maxHeight = definition.Rows.height
-		}
 	}
 	return Layout{
 		content: pages,

@@ -146,8 +146,27 @@ func normalizeListCallsign(value string) (string, error) {
 	return value, nil
 }
 
+func (p *page) confirmDeleteSelectedCallsign() {
+	value := p.selectedCallsign
+	if !slices.Contains(p.callsigns, value) {
+		return
+	}
+	dialog := newConfirmDialog(
+		p.host.Components(),
+		" Delete callsign ",
+		fmt.Sprintf("Delete %s from the callsign list?", value),
+		"Delete",
+		func() { p.deleteCallsign(value) },
+	)
+	dialog.setHandle(p.host.OpenModal(dialog))
+}
+
 func (p *page) deleteSelectedCallsign() {
-	index := slices.Index(p.callsigns, p.selectedCallsign)
+	p.deleteCallsign(p.selectedCallsign)
+}
+
+func (p *page) deleteCallsign(value string) {
+	index := slices.Index(p.callsigns, value)
 	if index < 0 {
 		return
 	}

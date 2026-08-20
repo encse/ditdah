@@ -16,7 +16,7 @@ This document records implementation decisions and future technical work.
 - [x] Use the Nord color scheme to match the original Python application.
 - [x] Keep reusable terminal controls in their own `internal/tui/components` package, with unexported implementations behind small interfaces and a shared themed factory.
 - [x] Display modal dialogs and control popups through one stackable overlay host, allowing controls inside overlays to open further overlays.
-- [x] Derive every modal dialog's height from declared rows in one themed layout abstraction; make the actions row terminal so no content or accidental slack can appear below the buttons.
+- [x] Derive every modal dialog's height from declared rows in one themed layout abstraction; use a uniform two-column inset and one-row top gap, center loading pages explicitly, and make the actions row terminal so no content or accidental slack can appear below the buttons.
 - [ ] Introduce a consistent wrapper component layer over tview/tcell instead of styling raw widgets ad hoc.
 
 ## TUI layout and navigation
@@ -79,6 +79,7 @@ This document records implementation decisions and future technical work.
 - [x] Add a decoder-page callsign list with `a`/`Enter`/`d` actions and cached QRZ.com details for the selected entry in the lower-right panel.
 - [x] Run decoder callsign lookups in a context-bound page worker which is always joined by `Run`; retry the selected callsign on page reactivation without detached goroutines.
 - [x] Highlight every substring occurrence of the selected decoder callsign in the decoded log, add a confirmed clear-log action, and follow new output only while the view is already scrolled to the end.
+- [x] Require confirmation before deleting a callsign from the decoder list.
 - [x] Open a prefilled CW QSO editor from Enter on a selected Morse-decoder callsign; keep the cross-page API limited to that callsign and let the logbook dialog resolve the station callsign, timestamp, and available QRZ name and QTH.
 - [x] Refresh the QSO editor's QRZ-derived name and QTH when its contacted callsign changes and the field is confirmed or loses focus, without repeating lookups for an unchanged callsign.
 - [ ] Add further domain stores and migrations as their features are implemented.

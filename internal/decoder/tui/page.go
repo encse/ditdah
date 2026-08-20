@@ -145,7 +145,7 @@ func (p *page) KeyBindings() []keybinding.Binding {
 	return []keybinding.Binding{
 		keybinding.OnRune('a', "add callsign", p.openAddCallsign),
 		keybinding.OnKey(tcell.KeyEnter, "new QSO", p.openCreateQSO),
-		keybinding.OnRune('d', "delete callsign", p.deleteSelectedCallsign),
+		keybinding.OnRune('d', "delete callsign", p.confirmDeleteSelectedCallsign),
 		keybinding.OnRune('c', "clear log", p.confirmClearLog),
 	}
 }

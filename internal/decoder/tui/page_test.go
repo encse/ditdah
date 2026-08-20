@@ -249,6 +249,37 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 	}
 }
 
+func TestDeleteCallsignBindingRequiresConfirmation(t *testing.T) {
+	host := newTestHost()
+	page := New(t.Context(), host, nil, nil, nil, nil).(*page)
+	if err := page.addCallsign("DL1ABC"); err != nil {
+		t.Fatal(err)
+	}
+
+	if !page.KeyBindings()[2].Handle(
+		tcell.NewEventKey(tcell.KeyRune, 'd', 0),
+	) {
+		t.Fatal("d delete binding was not handled")
+	}
+	dialog, ok := host.opened.(*confirmDialog)
+	if !ok {
+		t.Fatalf("d opened %T, want *confirmDialog", host.opened)
+	}
+	if len(page.callsigns) != 1 {
+		t.Fatal("opening delete confirmation changed the callsign list")
+	}
+	if !strings.Contains(dialog.message.Text(), "DL1ABC") {
+		t.Fatalf("confirmation message = %q, want callsign", dialog.message.Text())
+	}
+	dialog.confirm.InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		nil,
+	)
+	if len(page.callsigns) != 0 || page.selectedCallsign != "" {
+		t.Fatalf("callsigns after delete = %#v, selected = %q", page.callsigns, page.selectedCallsign)
+	}
+}
+
 func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
 	host := newTestHost()
 	host.updated = make(chan struct{}, 8)

@@ -65,16 +65,16 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 	if !binding.Handle(tcell.NewEventKey(tcell.KeyRune, 'c', 0)) {
 		t.Fatal("c clear binding was not handled")
 	}
-	dialog, ok := host.opened.(*clearLogDialog)
+	dialog, ok := host.opened.(*confirmDialog)
 	if !ok {
-		t.Fatalf("c opened %T, want *clearLogDialog", host.opened)
+		t.Fatalf("c opened %T, want *confirmDialog", host.opened)
 	}
 	if page.decodedText.String() == "" {
 		t.Fatal("opening confirmation cleared the log")
 	}
 	size := dialog.Size()
-	if size.Height != 4 {
-		t.Fatalf("clear dialog height = %d, want 4", size.Height)
+	if size.Height != 6 {
+		t.Fatalf("clear dialog height = %d, want 6", size.Height)
 	}
 	screen := tcell.NewSimulationScreen("UTF-8")
 	if err := screen.Init(); err != nil {
@@ -84,8 +84,11 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 	screen.SetSize(size.Width, size.Height)
 	dialog.Content().SetRect(0, 0, size.Width, size.Height)
 	dialog.Content().Draw(screen)
-	if _, y, _, _ := dialog.clear.GetRect(); y != size.Height-2 {
+	if _, y, _, _ := dialog.confirm.GetRect(); y != size.Height-2 {
 		t.Fatalf("Clear button row = %d, want %d", y, size.Height-2)
+	}
+	if character, _, _, _ := screen.GetContent(3, size.Height-3); character != ' ' {
+		t.Fatalf("row before Clear = %q, want spacer", character)
 	}
 	if character, _, _, _ := screen.GetContent(3, size.Height-1); character != tview.Borders.Horizontal {
 		t.Fatalf("row below Clear = %q, want bottom border", character)
@@ -95,7 +98,7 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 	if want := tcell.NewRGBColor(190, 190, 190); background != want {
 		t.Fatalf("modal background = %v, want %v", background, want)
 	}
-	dialog.clear.InputHandler()(
+	dialog.confirm.InputHandler()(
 		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
 		nil,
 	)
