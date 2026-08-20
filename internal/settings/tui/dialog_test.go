@@ -34,7 +34,7 @@ func TestOpenShowsProgressUntilCredentialValidationFinishes(t *testing.T) {
 		t.Fatalf("front page = %q, want checking", page)
 	}
 
-	dialog.finishValidation(nil)
+	dialog.finishValidation(nil, nil, nil)
 	if page := dialog.pages.Active(); page != "settings" {
 		t.Fatalf("front page = %q, want settings", page)
 	}
@@ -54,6 +54,7 @@ func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 
 	Open(t.Context(), host, store, service, nil, nil)
 	dialog := host.lastDialog().(*dialog)
+	dialog.initialize(t.Context())
 
 	if service.callsign != "HA7NCS" || service.password != "wrong-password" {
 		t.Fatalf("validated login = %q, %q", service.callsign, service.password)
@@ -168,6 +169,7 @@ func TestSettingsShowsMorseInputEnumerationError(t *testing.T) {
 		nil,
 	)
 	dialog := host.lastDialog().(*dialog)
+	dialog.initialize(t.Context())
 	if !strings.Contains(dialog.message.Text(), "capture backend failed") {
 		t.Fatalf("message = %q, want device enumeration error", dialog.message.Text())
 	}
@@ -187,7 +189,7 @@ func TestSettingsButtonsReceiveMouseClicks(t *testing.T) {
 	)
 	handle := &testHandle{}
 	dialog.handle = handle
-	dialog.finishValidation(nil)
+	dialog.finishValidation(nil, nil, nil)
 	size := dialog.Size()
 	dialog.Content().SetRect(0, 0, size.Width, size.Height)
 
@@ -508,11 +510,20 @@ func (h *testHost) Update(update func()) {
 
 func (h *testHost) Components() components.Factory { return h.controls }
 
-func (h *testHost) OpenModal(dialog modal.Dialog) modal.Handle {
+func (h *testHost) OpenModal(
+	_ tview.Primitive,
+	dialog modal.Dialog,
+) modal.Handle {
 	handle := &testHandle{}
 	h.dialogs = append(h.dialogs, dialog)
 	h.handles = append(h.handles, handle)
 	return handle
+}
+
+func (h *testHost) OpenModalForCurrentLayer(
+	dialog modal.Dialog,
+) modal.Handle {
+	return h.OpenModal(nil, dialog)
 }
 
 func (h *testHost) lastDialog() modal.Dialog {

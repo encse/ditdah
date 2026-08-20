@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 
 	"morsemanual/internal/mailbox"
 	"morsemanual/internal/tui/components"
@@ -19,6 +20,7 @@ import (
 // Application owns the shared TUI infrastructure and registered pages.
 type Application interface {
 	PageHost
+	OpenModalForCurrentLayer(dialog modal.Dialog) modal.Handle
 	AddMenuItem(label string, binding keybinding.Binding)
 	AddKeyBinding(binding keybinding.Binding)
 	Register(page Page) error
@@ -44,12 +46,38 @@ type application struct {
 	modals              []*openedModal
 	root                tview.Primitive
 	appFocusables       []tview.Primitive
-	menuContext         context.Context
-	pageChanges         mailbox.Mailbox[Page]
+	runtimeContext      context.Context
+	layerChanges        mailbox.Mailbox[layerState]
+	layerMu             sync.Mutex
+	requestedLayers     []requestedLayer
 }
 
-var errPageChanged = errors.New("active page changed")
 var errPageStopped = errors.New("active page stopped while visible")
+
+type requestedLayer struct {
+	instance *layerInstance
+	owner    *layerInstance
+	page     Page
+	modal    *openedModal
+}
+
+// layerInstance is deliberately non-zero-sized so distinct allocations always
+// have distinct pointer identity.
+type layerInstance struct {
+	identity byte
+}
+
+type layerState struct {
+	layers        []requestedLayer
+	stoppedPageID string
+}
+
+type runningLayer struct {
+	requestedLayer
+	ctx    context.Context
+	cancel context.CancelFunc
+	group  *errgroup.Group
+}
 
 type openedModal struct {
 	dialog       modal.Dialog
@@ -57,7 +85,6 @@ type openedModal struct {
 	overlay      components.Overlay
 	closeBinding keybinding.Binding
 	bindings     []keybinding.Binding
-	closed       bool
 }
 
 type modalHandle struct {
@@ -117,9 +144,9 @@ func (a *application) AddKeyBinding(binding keybinding.Binding) {
 
 func (a *application) buildApplicationMenu() {
 	items := append([]components.MenuItem(nil), a.menuItems...)
-	if a.menuContext != nil {
+	if a.runtimeContext != nil {
 		for _, page := range a.pageOrder {
-			items = append(items, page.MenuItems(a.menuContext)...)
+			items = append(items, page.MenuItems(a.runtimeContext)...)
 		}
 	}
 	if a.exitBindingSet {
@@ -164,10 +191,10 @@ func (a *application) Show(pageID string) error {
 	if !exists {
 		return fmt.Errorf("show page %q: not registered", pageID)
 	}
-	if a.pageChanges == nil {
+	if a.runtimeContext == nil {
 		return errors.New("show page: application is not running")
 	}
-	a.pageChanges.Send(page)
+	a.requestPage(page)
 	return nil
 }
 
@@ -190,7 +217,27 @@ func (a *application) SetFocus(primitive tview.Primitive) {
 	a.Refresh()
 }
 
-func (a *application) OpenModal(dialog modal.Dialog) modal.Handle {
+func (a *application) OpenModal(
+	owner tview.Primitive,
+	dialog modal.Dialog,
+) modal.Handle {
+	return a.openModal(owner, true, dialog)
+}
+
+// OpenModalForCurrentLayer opens an application-owned modal above whichever
+// layer is currently on top. Page and dialog callbacks must use OpenModal so a
+// stale callback cannot attach a modal to an unrelated layer.
+func (a *application) OpenModalForCurrentLayer(
+	dialog modal.Dialog,
+) modal.Handle {
+	return a.openModal(nil, false, dialog)
+}
+
+func (a *application) openModal(
+	owner tview.Primitive,
+	requireOwner bool,
+	dialog modal.Dialog,
+) modal.Handle {
 	size := dialog.Size()
 	layer := newModalLayer(
 		dialog.Content(),
@@ -204,22 +251,24 @@ func (a *application) OpenModal(dialog modal.Dialog) modal.Handle {
 		layer:    layer,
 		bindings: dialog.KeyBindings(),
 	}
+	handle := &modalHandle{app: a, modal: opened}
 	opened.closeBinding = keybinding.OnKey(
 		tcell.KeyEscape,
 		"close",
-		func() { a.closeModal(opened) },
+		handle.Close,
 	)
+	a.requestModal(owner, requireOwner, opened)
+	return handle
+}
+
+func (a *application) showModal(opened *openedModal) {
 	a.modals = append(a.modals, opened)
-	opened.overlay = a.overlays.Push(layer)
-	focus := dialog.Content()
-	if focusables := dialog.Focusables(); len(focusables) > 0 {
+	opened.overlay = a.overlays.Push(opened.layer)
+	focus := opened.dialog.Content()
+	if focusables := opened.dialog.Focusables(); len(focusables) > 0 {
 		focus = focusables[0]
 	}
 	a.SetFocus(focus)
-	// Modals are opened from direct event handling. Drawing here makes the
-	// modal visible before the caller starts any following synchronous work.
-	a.engine.ForceDraw()
-	return &modalHandle{app: a, modal: opened}
 }
 
 func (a *application) Refresh() {
@@ -292,7 +341,13 @@ func (a *application) Run(ctx context.Context, initialPageID string) error {
 	if ctx.Err() != nil {
 		return nil
 	}
-	a.pageChanges = mailbox.New[Page](initialPage)
+	initialLayer := newPageLayer(initialPage)
+	a.layerChanges = mailbox.New(layerState{
+		layers: []requestedLayer{initialLayer},
+	})
+	a.layerMu.Lock()
+	a.requestedLayers = []requestedLayer{initialLayer}
+	a.layerMu.Unlock()
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -307,17 +362,17 @@ func (a *application) Run(ctx context.Context, initialPageID string) error {
 			Run()
 	})
 
-	pageErr := a.runPages(runCtx)
+	layerErr := a.runLayers(runCtx)
 	cancel()
 	a.engine.Stop()
-	return errors.Join(pageErr, group.Wait())
+	return errors.Join(layerErr, group.Wait())
 }
 
 func (a *application) initializeRuntime(
 	ctx context.Context,
 	cancel context.CancelFunc,
 ) {
-	a.menuContext = ctx
+	a.runtimeContext = ctx
 	a.exitBinding = keybinding.OnRune('q', "quit", cancel)
 	a.exitBindingSet = true
 	a.buildApplicationMenu()
@@ -336,42 +391,145 @@ func (a *application) runtimeInputCapture(
 	}
 }
 
-func (a *application) runPages(ctx context.Context) error {
-	page, err := a.pageChanges.Receive(ctx)
-	if err != nil {
-		return err
-	}
-	for ctx.Err() == nil {
-		a.Update(func() {
-			a.showPage(page)
-		})
-
-		var nextPage Page
-		group, pageCtx := errgroup.WithContext(ctx)
-		group.Go(func() error {
-			page.Run(pageCtx)
-			return errPageStopped
-		})
-		group.Go(func() error {
-			var err error
-			nextPage, err = a.pageChanges.Receive(pageCtx)
-			if err != nil {
-				return err
-			}
-			return errPageChanged
-		})
-
-		err = group.Wait()
-		if ctx.Err() != nil {
+func (a *application) runLayers(ctx context.Context) error {
+	// The requested stack always starts with its page. Every following modal
+	// runs under a context derived from the layer immediately below it.
+	var running []*runningLayer
+	for {
+		state, err := a.layerChanges.Receive(ctx)
+		if err != nil {
+			a.stopLayers(running, 0)
 			return nil
 		}
-		if !errors.Is(err, errPageChanged) {
-			return fmt.Errorf("run page %q: %w", page.ID(), err)
-		}
 
-		page = nextPage
+		common := commonLayerPrefix(running, state.layers)
+		a.stopLayers(running, common)
+		running = running[:common]
+		running = a.startLayers(ctx, running, state.layers[common:])
+
+		if state.stoppedPageID != "" {
+			a.stopLayers(running, 0)
+			return fmt.Errorf(
+				"run page %q: %w",
+				state.stoppedPageID,
+				errPageStopped,
+			)
+		}
 	}
-	return nil
+}
+
+func (a *application) startLayers(
+	rootCtx context.Context,
+	running []*runningLayer,
+	requested []requestedLayer,
+) []*runningLayer {
+	parentCtx := rootCtx
+	if len(running) > 0 {
+		parentCtx = running[len(running)-1].ctx
+	}
+	for _, request := range requested {
+		if !a.layerRequestIsCurrent(request) {
+			break
+		}
+		if request.owner != nil &&
+			(len(running) == 0 ||
+				running[len(running)-1].instance != request.owner) {
+			break
+		}
+		layerCtx, cancel := context.WithCancel(parentCtx)
+		group, runCtx := errgroup.WithContext(layerCtx)
+		layer := &runningLayer{
+			requestedLayer: request,
+			ctx:            runCtx,
+			cancel:         cancel,
+			group:          group,
+		}
+		a.Update(func() { a.showLayer(request) })
+		group.Go(func() error {
+			request.run(runCtx)
+			if runCtx.Err() == nil {
+				a.layerReturned(request)
+			}
+			return nil
+		})
+		running = append(running, layer)
+		parentCtx = runCtx
+	}
+	return running
+}
+
+func (a *application) stopLayers(running []*runningLayer, from int) {
+	if from >= len(running) {
+		return
+	}
+	for _, layer := range running[from:] {
+		layer.cancel()
+	}
+	for index := len(running) - 1; index >= from; index-- {
+		_ = running[index].group.Wait()
+	}
+	a.Update(func() {
+		for index := len(running) - 1; index >= from; index-- {
+			a.hideLayer(running[index].requestedLayer)
+		}
+	})
+}
+
+func (a *application) showLayer(layer requestedLayer) {
+	if layer.modal != nil {
+		a.showModal(layer.modal)
+		return
+	}
+	a.showPage(layer.page)
+}
+
+func (a *application) hideLayer(layer requestedLayer) {
+	if layer.modal == nil {
+		return
+	}
+	for index := len(a.modals) - 1; index >= 0; index-- {
+		if a.modals[index] != layer.modal {
+			continue
+		}
+		if layer.modal.overlay != nil {
+			layer.modal.overlay.Close()
+		}
+		a.modals = append(a.modals[:index], a.modals[index+1:]...)
+		return
+	}
+}
+
+func (a *application) layerReturned(layer requestedLayer) {
+	if layer.modal != nil {
+		a.requestModalClose(layer.modal)
+		return
+	}
+	a.requestLayerStopped(layer)
+}
+
+func (r requestedLayer) run(ctx context.Context) {
+	if r.modal != nil {
+		r.modal.dialog.Run(ctx)
+		return
+	}
+	r.page.Run(ctx)
+}
+
+func commonLayerPrefix(
+	running []*runningLayer,
+	requested []requestedLayer,
+) int {
+	limit := min(len(running), len(requested))
+	for index := 0; index < limit; index++ {
+		if !sameLayer(running[index].requestedLayer, requested[index]) {
+			return index
+		}
+	}
+	return limit
+}
+
+func sameLayer(left, right requestedLayer) bool {
+	return left.instance == right.instance
 }
 
 func (a *application) captureKey(event *tcell.EventKey) *tcell.EventKey {
@@ -513,26 +671,106 @@ func (a *application) topModal() (*openedModal, bool) {
 	return opened, a.overlays.Top() == opened.layer
 }
 
-func (a *application) closeModal(target *openedModal) {
+func (h *modalHandle) Close() {
+	h.app.requestModalClose(h.modal)
+}
+
+func (a *application) requestPage(page Page) {
+	a.layerMu.Lock()
+	a.requestedLayers = []requestedLayer{newPageLayer(page)}
+	state := a.layerStateLocked("")
+	a.layerMu.Unlock()
+	a.layerChanges.Send(state)
+}
+
+func (a *application) requestModal(
+	owner tview.Primitive,
+	requireOwner bool,
+	opened *openedModal,
+) {
+	a.layerMu.Lock()
+	if len(a.requestedLayers) == 0 {
+		a.layerMu.Unlock()
+		return
+	}
+	parent := a.requestedLayers[len(a.requestedLayers)-1]
+	if requireOwner && parent.content() != owner {
+		a.layerMu.Unlock()
+		return
+	}
+	a.requestedLayers = append(
+		a.requestedLayers,
+		requestedLayer{
+			instance: &layerInstance{},
+			owner:    parent.instance,
+			modal:    opened,
+		},
+	)
+	state := a.layerStateLocked("")
+	a.layerMu.Unlock()
+	a.layerChanges.Send(state)
+}
+
+func (a *application) requestModalClose(target *openedModal) {
+	a.layerMu.Lock()
 	index := -1
-	for modalIndex, opened := range a.modals {
-		if opened == target {
-			index = modalIndex
+	for layerIndex, layer := range a.requestedLayers {
+		if layer.modal == target {
+			index = layerIndex
 			break
 		}
 	}
-	if index < 0 || target.closed {
+	if index < 0 {
+		a.layerMu.Unlock()
 		return
 	}
-	for _, opened := range a.modals[index:] {
-		opened.closed = true
-	}
-	a.modals = a.modals[:index]
-	target.overlay.Close()
+	a.requestedLayers = a.requestedLayers[:index]
+	state := a.layerStateLocked("")
+	a.layerMu.Unlock()
+	a.layerChanges.Send(state)
 }
 
-func (h *modalHandle) Close() {
-	h.app.closeModal(h.modal)
+func (a *application) requestLayerStopped(stopped requestedLayer) {
+	a.layerMu.Lock()
+	if len(a.requestedLayers) == 0 ||
+		a.requestedLayers[0].page == nil ||
+		a.requestedLayers[0].instance != stopped.instance {
+		a.layerMu.Unlock()
+		return
+	}
+	a.requestedLayers = nil
+	state := a.layerStateLocked(stopped.page.ID())
+	a.layerMu.Unlock()
+	a.layerChanges.Send(state)
+}
+
+func newPageLayer(page Page) requestedLayer {
+	return requestedLayer{instance: &layerInstance{}, page: page}
+}
+
+func (r requestedLayer) content() tview.Primitive {
+	if r.modal != nil {
+		return r.modal.dialog.Content()
+	}
+	return r.page.Content()
+}
+
+func (a *application) layerRequestIsCurrent(target requestedLayer) bool {
+	a.layerMu.Lock()
+	defer a.layerMu.Unlock()
+	for _, layer := range a.requestedLayers {
+		if layer.instance == target.instance {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *application) layerStateLocked(stoppedPageID string) layerState {
+	return layerState{
+		layers:        append([]requestedLayer(nil), a.requestedLayers...),
+		stoppedPageID: stoppedPageID,
+	}
 }
 
 func (a *application) focusedBindings() []keybinding.Binding {

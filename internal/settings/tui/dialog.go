@@ -31,6 +31,8 @@ type dialog struct {
 	handle          modal.Handle
 	checking        bool
 	devices         []audio.Device
+	loadErr         error
+	devicesErr      error
 	onChanged       func()
 	persistedValues domain.Settings
 
@@ -48,10 +50,15 @@ type dialog struct {
 	focusables      []tview.Primitive
 }
 
+type applicationHost interface {
+	ui.PageHost
+	OpenModalForCurrentLayer(dialog modal.Dialog) modal.Handle
+}
+
 // Open loads and verifies the current settings, then displays their editor.
 func Open(
 	ctx context.Context,
-	host ui.PageHost,
+	host applicationHost,
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
@@ -68,18 +75,9 @@ func Open(
 	dialog := newDialog(
 		ctx, host, store, qrzService, values, devices, onChanged,
 	)
-	dialog.handle = host.OpenModal(dialog)
-	dialog.finishValidation(loadErr)
-	if devicesErr != nil {
-		dialog.showError(errors.Join(loadErr, devicesErr))
-	} else if len(devices) == 0 {
-		dialog.showError(errors.New("no audio input devices found"))
-	} else if values.MorseInputDeviceID != "" {
-		index, _ := dialog.morseInput.CurrentOption()
-		if index < 0 {
-			dialog.showError(errors.New("the selected audio input is unavailable"))
-		}
-	}
+	dialog.loadErr = loadErr
+	dialog.devicesErr = devicesErr
+	dialog.handle = host.OpenModalForCurrentLayer(dialog)
 }
 
 func newDialog(
@@ -166,6 +164,26 @@ func (d *dialog) KeyBindings() []keybinding.Binding {
 	return nil
 }
 
+func (d *dialog) Run(ctx context.Context) {
+	d.initialize(ctx)
+	<-ctx.Done()
+}
+
+func (d *dialog) initialize(ctx context.Context) {
+	d.ctx = ctx
+	var loginErr, apiKeyErr error
+	if d.loadErr == nil {
+		loginErr, apiKeyErr = d.validateStoredCredentials(ctx)
+	}
+	if ctx.Err() != nil {
+		return
+	}
+	d.host.Update(func() {
+		d.finishValidation(d.loadErr, loginErr, apiKeyErr)
+		d.showInitialDeviceError()
+	})
+}
+
 func (d *dialog) input(
 	controls components.Factory,
 	label string,
@@ -176,11 +194,7 @@ func (d *dialog) input(
 	return input
 }
 
-func (d *dialog) finishValidation(loadErr error) {
-	var loginErr, apiKeyErr error
-	if loadErr == nil {
-		loginErr, apiKeyErr = d.validateStoredCredentials()
-	}
+func (d *dialog) finishValidation(loadErr, loginErr, apiKeyErr error) {
 	if loadErr != nil {
 		d.showError(fmt.Errorf("load settings: %w", loadErr))
 	} else {
@@ -192,19 +206,35 @@ func (d *dialog) finishValidation(loadErr error) {
 	d.host.SetFocus(d.stationCallsign)
 }
 
-func (d *dialog) validateStoredCredentials() (error, error) {
+func (d *dialog) validateStoredCredentials(
+	ctx context.Context,
+) (error, error) {
 	var loginErr, apiKeyErr error
 	if d.values.QRZPassword != "" {
 		loginErr = d.qrz.ValidateLogin(
-			d.ctx,
+			ctx,
 			d.values.StationCallsign,
 			d.values.QRZPassword,
 		)
 	}
 	if d.values.QRZAPIKey != "" {
-		apiKeyErr = d.qrz.ValidateAPIKey(d.ctx, d.values.QRZAPIKey)
+		apiKeyErr = d.qrz.ValidateAPIKey(ctx, d.values.QRZAPIKey)
 	}
 	return loginErr, apiKeyErr
+}
+
+func (d *dialog) showInitialDeviceError() {
+	switch {
+	case d.devicesErr != nil:
+		d.showError(errors.Join(d.loadErr, d.devicesErr))
+	case len(d.devices) == 0:
+		d.showError(errors.New("no audio input devices found"))
+	case d.values.MorseInputDeviceID != "":
+		index, _ := d.morseInput.CurrentOption()
+		if index < 0 {
+			d.showError(errors.New("the selected audio input is unavailable"))
+		}
+	}
 }
 
 func (d *dialog) submit() {
@@ -238,7 +268,7 @@ func (d *dialog) openLogin() {
 			return nil
 		},
 	)
-	login.handle = d.host.OpenModal(login)
+	login.handle = d.host.OpenModal(d.Content(), login)
 }
 
 func (d *dialog) openAPIKey() {
@@ -255,7 +285,7 @@ func (d *dialog) openAPIKey() {
 			return nil
 		},
 	)
-	editor.handle = d.host.OpenModal(editor)
+	editor.handle = d.host.OpenModal(d.Content(), editor)
 }
 
 func (d *dialog) clearQRZLogin() {

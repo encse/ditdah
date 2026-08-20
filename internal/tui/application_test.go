@@ -27,7 +27,8 @@ func TestApplicationRegistersAndShowsPage(t *testing.T) {
 	if err := app.Register(page); err != nil {
 		t.Fatalf("register page: %v", err)
 	}
-	app.showPage(page)
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
 
 	if app.activePage.ID() != page.ID() {
 		t.Fatalf("active page = %q, want %q", app.activePage.ID(), page.ID())
@@ -270,7 +271,7 @@ func TestRegisteredPageContributesApplicationMenuItems(t *testing.T) {
 	if err := app.Register(page); err != nil {
 		t.Fatal(err)
 	}
-	app.menuContext = t.Context()
+	app.runtimeContext = t.Context()
 	app.buildApplicationMenu()
 	if len(app.globalBindings) != 1 {
 		t.Fatalf("global bindings = %d, want 1", len(app.globalBindings))
@@ -449,7 +450,8 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 	if err := app.Register(page); err != nil {
 		t.Fatalf("register page: %v", err)
 	}
-	app.showPage(page)
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
 
 	first := tview.NewBox()
 	second := tview.NewBox()
@@ -461,34 +463,45 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 			bindingForRune("modal", 'm', &modalHandled),
 		},
 	}
-	app.OpenModal(dialog)
+	app.OpenModalForCurrentLayer(dialog)
+	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
 
 	if got := app.engine.GetFocus(); got != first {
 		t.Fatalf("modal focus = %T, want first control", got)
 	}
-	app.captureKey(tcell.NewEventKey(tcell.KeyBacktab, 0, 0))
-	if got := app.engine.GetFocus(); got != second {
+	onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(tcell.NewEventKey(tcell.KeyBacktab, 0, 0))
+	})
+	if got := onApplication(app, app.engine.GetFocus); got != second {
 		t.Fatalf("focus after modal Backtab = %T, want second control", got)
 	}
 	pageEvent := tcell.NewEventKey(tcell.KeyRune, 'p', 0)
-	if got := app.captureKey(pageEvent); got != pageEvent {
+	if got := onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(pageEvent)
+	}); got != pageEvent {
 		t.Fatal("unhandled modal event was not forwarded to modal content")
 	}
 	if pageHandled != 0 {
 		t.Fatalf("page binding handled %d modal events, want 0", pageHandled)
 	}
-	if got := app.captureKey(tcell.NewEventKey(tcell.KeyRune, 'm', 0)); got != nil {
+	if got := onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(tcell.NewEventKey(tcell.KeyRune, 'm', 0))
+	}); got != nil {
 		t.Fatal("handled modal binding was forwarded")
 	}
 	if modalHandled != 1 {
 		t.Fatalf("modal binding handled %d events, want 1", modalHandled)
 	}
 
-	app.captureKey(tcell.NewEventKey(tcell.KeyTab, 0, 0))
-	if got := app.engine.GetFocus(); got != first {
+	onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(tcell.NewEventKey(tcell.KeyTab, 0, 0))
+	})
+	if got := onApplication(app, app.engine.GetFocus); got != first {
 		t.Fatalf("focus after modal Tab = %T, want first control", got)
 	}
-	footer := drawApplicationFooter(t, app)
+	footer := onApplication(app, func() string {
+		return drawApplicationFooter(t, app)
+	})
 	for _, expected := range []string{"m modal"} {
 		if !strings.Contains(footer, expected) {
 			t.Errorf("modal footer = %q, want %q", footer, expected)
@@ -503,13 +516,18 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 		}
 	}
 
-	if got := app.captureKey(tcell.NewEventKey(tcell.KeyEscape, 0, 0)); got != nil {
+	if got := onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(tcell.NewEventKey(tcell.KeyEscape, 0, 0))
+	}); got != nil {
 		t.Fatal("Escape was forwarded")
 	}
-	if app.overlays.Active() {
+	waitForApplicationCondition(t, app, "modal close", func() bool {
+		return !app.overlays.Active()
+	})
+	if onApplication(app, app.overlays.Active) {
 		t.Fatal("overlay remains active after closing modal")
 	}
-	if got := app.engine.GetFocus(); got != pageContent {
+	if got := onApplication(app, app.engine.GetFocus); got != pageContent {
 		t.Fatalf("restored focus = %T, want page content", got)
 	}
 }
@@ -524,12 +542,203 @@ func TestApplicationFocusesModalContentWithoutFocusableControls(t *testing.T) {
 	if err := app.Register(page); err != nil {
 		t.Fatalf("register page: %v", err)
 	}
-	app.showPage(page)
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
 
 	content := tview.NewBox()
-	app.OpenModal(applicationTestModal{content: content})
-	if got := app.engine.GetFocus(); got != content {
+	app.OpenModalForCurrentLayer(applicationTestModal{content: content})
+	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
+	if got := onApplication(app, app.engine.GetFocus); got != content {
 		t.Fatalf("modal focus = %T, want modal content", got)
+	}
+}
+
+func TestApplicationCancelsModalRunWhenModalCloses(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	cancel, runDone := startApplicationWithDefaultPage(t, app)
+	defer finishTestApplication(t, cancel, runDone)
+	started := make(chan struct{}, 1)
+	stopped := make(chan struct{}, 1)
+	handle := app.OpenModalForCurrentLayer(applicationTestModal{
+		content: tview.NewBox(),
+		run: func(ctx context.Context) {
+			started <- struct{}{}
+			<-ctx.Done()
+			stopped <- struct{}{}
+		},
+	})
+	waitForApplicationSignal(t, started, "modal Run start")
+	select {
+	case <-stopped:
+		t.Fatal("modal Run stopped before the modal closed")
+	default:
+	}
+
+	handle.Close()
+
+	waitForApplicationSignal(t, stopped, "modal Run cancellation")
+}
+
+func TestModalVisibilityFollowsRunLifecycle(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	cancel, runDone := startApplicationWithDefaultPage(t, app)
+	defer finishTestApplication(t, cancel, runDone)
+	started := make(chan struct{}, 1)
+	release := make(chan struct{})
+	released := false
+	defer func() {
+		if !released {
+			close(release)
+		}
+	}()
+	app.OpenModalForCurrentLayer(applicationTestModal{
+		content: tview.NewBox(),
+		run: func(context.Context) {
+			started <- struct{}{}
+			<-release
+		},
+	})
+	waitForApplicationSignal(t, started, "modal Run start")
+	if !app.overlays.Active() {
+		t.Fatal("modal was not visible while Run was active")
+	}
+
+	close(release)
+	released = true
+	waitForApplicationCondition(t, app, "modal hide after Run", func() bool {
+		return !app.overlays.Active()
+	})
+}
+
+func TestApplicationWaitsForModalRunBeforeHidingItAndKeepsPageRunning(
+	t *testing.T,
+) {
+	app := newApplication(nordTheme).(*application)
+	page := &lifecycleApplicationTestPage{
+		applicationTestPage: applicationTestPage{
+			id: "decoder", title: "Decoder", content: tview.NewBox(),
+		},
+		started: make(chan struct{}, 1),
+		stopped: make(chan struct{}, 1),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatal(err)
+	}
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
+	waitForApplicationSignal(t, page.started, "decoder page start")
+
+	modalStopping := make(chan struct{}, 1)
+	releaseModal := make(chan struct{})
+	released := false
+	defer func() {
+		if !released {
+			close(releaseModal)
+		}
+	}()
+	handle := app.OpenModalForCurrentLayer(applicationTestModal{
+		content: tview.NewBox(),
+		run: func(ctx context.Context) {
+			<-ctx.Done()
+			modalStopping <- struct{}{}
+			<-releaseModal
+		},
+	})
+	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
+
+	handle.Close()
+	waitForApplicationSignal(t, modalStopping, "modal cancellation")
+	if !app.overlays.Active() {
+		t.Fatal("modal was hidden before Run returned")
+	}
+	if len(page.stopped) != 0 {
+		t.Fatal("decoder page stopped while modal was open")
+	}
+
+	close(releaseModal)
+	released = true
+	waitForApplicationCondition(t, app, "modal hide after Run", func() bool {
+		return !app.overlays.Active()
+	})
+	if len(page.stopped) != 0 {
+		t.Fatal("decoder page stopped after modal closed")
+	}
+}
+
+func TestApplicationCancelsDescendantModalRunsWhenParentCloses(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	cancel, runDone := startApplicationWithDefaultPage(t, app)
+	defer finishTestApplication(t, cancel, runDone)
+	parentStarted := make(chan struct{}, 1)
+	parentStopped := make(chan struct{}, 1)
+	childStarted := make(chan struct{}, 1)
+	childStopped := make(chan struct{}, 1)
+	parent := app.OpenModalForCurrentLayer(applicationTestModal{
+		content: tview.NewBox(),
+		run: func(ctx context.Context) {
+			parentStarted <- struct{}{}
+			<-ctx.Done()
+			parentStopped <- struct{}{}
+		},
+	})
+	app.OpenModalForCurrentLayer(applicationTestModal{
+		content: tview.NewBox(),
+		run: func(ctx context.Context) {
+			childStarted <- struct{}{}
+			<-ctx.Done()
+			childStopped <- struct{}{}
+		},
+	})
+	waitForApplicationSignal(t, parentStarted, "parent modal Run start")
+	waitForApplicationSignal(t, childStarted, "child modal Run start")
+
+	parent.Close()
+
+	waitForApplicationSignal(t, parentStopped, "parent modal Run cancellation")
+	waitForApplicationSignal(t, childStopped, "child modal Run cancellation")
+	waitForApplicationCondition(t, app, "modal stack close", func() bool {
+		return !app.overlays.Active()
+	})
+	if app.overlays.Active() {
+		t.Fatal("descendant overlay remains after parent modal closed")
+	}
+}
+
+func TestApplicationRejectsModalRequestedByNonTopLayer(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	logbook := applicationTestPage{
+		id: "logbook", title: "Logbook", content: tview.NewBox(),
+	}
+	decoder := applicationTestPage{
+		id: "decoder", title: "Decoder", content: tview.NewBox(),
+	}
+	if err := app.Register(logbook); err != nil {
+		t.Fatal(err)
+	}
+	if err := app.Register(decoder); err != nil {
+		t.Fatal(err)
+	}
+	cancel, runDone := startTestApplication(t, app, logbook.ID())
+	defer finishTestApplication(t, cancel, runDone)
+	if err := app.Show(decoder.ID()); err != nil {
+		t.Fatal(err)
+	}
+	waitForApplicationCondition(t, app, "decoder page", func() bool {
+		return app.activePage != nil && app.activePage.ID() == decoder.ID()
+	})
+
+	app.OpenModal(logbook.Content(), applicationTestModal{
+		content: tview.NewBox(),
+	})
+	app.layerMu.Lock()
+	requestedCount := len(app.requestedLayers)
+	app.layerMu.Unlock()
+
+	if requestedCount != 1 {
+		t.Fatalf("requested layer count = %d, want page only", requestedCount)
+	}
+	if app.overlays.Active() {
+		t.Fatal("modal requested by hidden page became visible")
 	}
 }
 
@@ -543,33 +752,47 @@ func TestApplicationForwardsTypedRunesToFocusedModalInput(t *testing.T) {
 	if err := app.Register(page); err != nil {
 		t.Fatalf("register page: %v", err)
 	}
-	app.showPage(page)
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
 
 	input := app.controls.Modal().InputField("Callsign", "")
-	app.OpenModal(applicationTestModal{
+	app.OpenModalForCurrentLayer(applicationTestModal{
 		content:    input,
 		focusables: []tview.Primitive{input},
 	})
+	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
 	event := tcell.NewEventKey(tcell.KeyRune, 'x', 0)
-	forwarded := app.captureKey(event)
+	forwarded := onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(event)
+	})
 	if forwarded == nil {
 		t.Fatal("typed rune was consumed by application input capture")
 	}
-	app.overlays.Root().InputHandler()(forwarded, app.SetFocus)
+	onApplication(app, func() bool {
+		app.overlays.Root().InputHandler()(forwarded, app.SetFocus)
+		return true
+	})
 
-	if got := input.Value(); got != "x" {
+	if got := onApplication(app, input.Value); got != "x" {
 		t.Fatalf("modal input value = %q, want x", got)
 	}
-	footer := drawApplicationFooter(t, app)
+	footer := onApplication(app, func() string {
+		return drawApplicationFooter(t, app)
+	})
 	if strings.Contains(footer, "Esc cancel") {
 		t.Fatalf("modal input footer = %q, contains hidden Esc hint", footer)
 	}
 	escape := tcell.NewEventKey(tcell.KeyEscape, 0, 0)
-	forwarded = app.captureKey(escape)
+	forwarded = onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(escape)
+	})
 	if forwarded != nil {
 		t.Fatal("modal input Escape was forwarded")
 	}
-	if app.overlays.Active() {
+	waitForApplicationCondition(t, app, "modal close", func() bool {
+		return !app.overlays.Active()
+	})
+	if onApplication(app, app.overlays.Active) {
 		t.Fatal("application modal Escape binding did not close modal")
 	}
 }
@@ -584,7 +807,8 @@ func TestApplicationModalEscapePrecedesDialogBindings(t *testing.T) {
 	if err := app.Register(page); err != nil {
 		t.Fatalf("register page: %v", err)
 	}
-	app.showPage(page)
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
 
 	handled := 0
 	dialog := applicationTestModal{
@@ -595,18 +819,26 @@ func TestApplicationModalEscapePrecedesDialogBindings(t *testing.T) {
 			func() { handled++ },
 		)},
 	}
-	app.OpenModal(dialog)
+	app.OpenModalForCurrentLayer(dialog)
+	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
 
-	if got := app.captureKey(tcell.NewEventKey(tcell.KeyEscape, 0, 0)); got != nil {
+	if got := onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(tcell.NewEventKey(tcell.KeyEscape, 0, 0))
+	}); got != nil {
 		t.Fatal("modal Escape binding was forwarded")
 	}
 	if handled != 0 {
 		t.Fatalf("dialog Escape binding handled %d events, want 0", handled)
 	}
-	if app.overlays.Active() {
+	waitForApplicationCondition(t, app, "modal close", func() bool {
+		return !app.overlays.Active()
+	})
+	if onApplication(app, app.overlays.Active) {
 		t.Fatal("application Escape binding did not close modal")
 	}
-	footer := drawApplicationFooter(t, app)
+	footer := onApplication(app, func() string {
+		return drawApplicationFooter(t, app)
+	})
 	if strings.Contains(footer, "Esc custom") {
 		t.Fatalf("modal footer = %q, contains hidden Esc hint", footer)
 	}
@@ -622,7 +854,8 @@ func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
 	if err := app.Register(page); err != nil {
 		t.Fatalf("register page: %v", err)
 	}
-	app.showPage(page)
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
 
 	modalHandled := 0
 	dialog := applicationTestModal{
@@ -631,20 +864,30 @@ func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
 			bindingForRune("modal", 'm', &modalHandled),
 		},
 	}
-	app.OpenModal(dialog)
+	app.OpenModalForCurrentLayer(dialog)
+	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
 	popup := &bindingPrimitive{Box: tview.NewBox()}
-	popupHandle := app.overlays.Push(popup)
+	popupHandle := onApplication(app, func() components.Overlay {
+		return app.overlays.Push(popup)
+	})
 
 	event := tcell.NewEventKey(tcell.KeyRune, 'm', 0)
-	if got := app.captureKey(event); got != event {
+	if got := onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(event)
+	}); got != event {
 		t.Fatal("popup event reached modal dispatcher")
 	}
 	if modalHandled != 0 {
 		t.Fatalf("modal handled %d popup events, want 0", modalHandled)
 	}
 
-	popupHandle.Close()
-	if got := app.captureKey(event); got != nil {
+	onApplication(app, func() bool {
+		popupHandle.Close()
+		return true
+	})
+	if got := onApplication(app, func() *tcell.EventKey {
+		return app.captureKey(event)
+	}); got != nil {
 		t.Fatal("modal binding was forwarded after popup closed")
 	}
 	if modalHandled != 1 {
@@ -845,6 +1088,22 @@ func TestApplicationWaitsForPageRunBeforeShowingNextPage(t *testing.T) {
 	}
 }
 
+func startApplicationWithDefaultPage(
+	t *testing.T,
+	app *application,
+) (context.CancelFunc, <-chan error) {
+	t.Helper()
+	page := applicationTestPage{
+		id:      "logbook",
+		title:   "Logbook",
+		content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatal(err)
+	}
+	return startTestApplication(t, app, page.ID())
+}
+
 func startTestApplication(
 	t *testing.T,
 	app *application,
@@ -865,7 +1124,35 @@ func startTestApplication(
 	done := make(chan error, 1)
 	go func() { done <- app.Run(ctx, initialPageID) }()
 	waitForApplicationSignal(t, drawn, "application draw")
+	waitForApplicationCondition(t, app, "initial page", func() bool {
+		return app.activePage != nil && app.activePage.ID() == initialPageID
+	})
 	return cancel, done
+}
+
+func waitForApplicationCondition(
+	t *testing.T,
+	app *application,
+	description string,
+	condition func() bool,
+) {
+	t.Helper()
+	deadline := time.Now().Add(time.Second)
+	for time.Now().Before(deadline) {
+		matched := false
+		app.Update(func() { matched = condition() })
+		if matched {
+			return
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("timed out waiting for %s", description)
+}
+
+func onApplication[T any](app *application, operation func() T) T {
+	var result T
+	app.Update(func() { result = operation() })
+	return result
 }
 
 func finishTestApplication(
@@ -1074,6 +1361,7 @@ type applicationTestModal struct {
 	content    tview.Primitive
 	focusables []tview.Primitive
 	bindings   []keybinding.Binding
+	run        func(context.Context)
 }
 
 func (m applicationTestModal) Content() tview.Primitive {
@@ -1090,6 +1378,14 @@ func (m applicationTestModal) KeyBindings() []keybinding.Binding {
 
 func (m applicationTestModal) Size() modal.Size {
 	return modal.Size{Width: 30, Height: 10}
+}
+
+func (m applicationTestModal) Run(ctx context.Context) {
+	if m.run != nil {
+		m.run(ctx)
+		return
+	}
+	<-ctx.Done()
 }
 
 func (p *bindingPrimitive) KeyBindings() []keybinding.Binding {

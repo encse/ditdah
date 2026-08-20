@@ -45,7 +45,7 @@ func (p *page) confirmQRZSync() {
 		p.syncQRZ,
 		false,
 	)
-	dialog.setHandle(p.host.OpenModal(dialog))
+	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) syncQRZ() error {
@@ -84,7 +84,7 @@ func (p *page) OpenCreateQSO(callsign string) {
 	if err != nil {
 		editor.showError(err)
 	}
-	editor.setHandle(p.host.OpenModal(editor))
+	editor.setHandle(p.host.OpenModal(p.Content(), editor))
 }
 
 func (p *page) newQSODraft(contactedCallsign string) (domain.QSO, error) {
@@ -134,7 +134,7 @@ func (p *page) openSelectedQSO() {
 	}
 	editor := newQSOEditor(p.host.Components(), qso, p.updateQSO)
 	editor.setCallsignLookup(p.ctx, p.lookup)
-	editor.setHandle(p.host.OpenModal(editor))
+	editor.setHandle(p.host.OpenModal(p.Content(), editor))
 }
 
 func (p *page) confirmDeleteQSO() {
@@ -150,7 +150,7 @@ func (p *page) confirmDeleteQSO() {
 		"Delete",
 		func() error { return p.deleteQSO(qso.ID) },
 	)
-	dialog.setHandle(p.host.OpenModal(dialog))
+	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) addQSO(qso domain.QSO) (domain.QSO, error) {

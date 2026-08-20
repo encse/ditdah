@@ -66,7 +66,7 @@ func (p *page) confirmClearLog() {
 		"Clear",
 		p.clearLog,
 	)
-	dialog.setHandle(p.host.OpenModal(dialog))
+	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) clearLog() {

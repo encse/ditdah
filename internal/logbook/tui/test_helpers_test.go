@@ -45,7 +45,10 @@ func (h *testHost) Components() components.Factory {
 	return h.controls
 }
 
-func (h *testHost) OpenModal(dialog modal.Dialog) modal.Handle {
+func (h *testHost) OpenModal(
+	_ tview.Primitive,
+	dialog modal.Dialog,
+) modal.Handle {
 	h.modal = dialog
 	h.modalHandle = &testModalHandle{}
 	return h.modalHandle

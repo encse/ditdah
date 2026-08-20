@@ -16,7 +16,11 @@ type PageHost interface {
 	Refresh()
 	Update(update func())
 	Components() components.Factory
-	OpenModal(dialog modal.Dialog) modal.Handle
+	// OpenModal requests a child layer and returns without blocking the UI
+	// event handler. owner identifies the page or dialog currently requesting
+	// the child; the application ignores the request if that layer is no longer
+	// on top of the stack.
+	OpenModal(owner tview.Primitive, dialog modal.Dialog) modal.Handle
 }
 
 // Page is independently navigable application content. Shared application

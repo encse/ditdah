@@ -2,6 +2,8 @@
 package modal
 
 import (
+	"context"
+
 	"morsemanual/internal/tui/keybinding"
 
 	"github.com/rivo/tview"
@@ -19,9 +21,12 @@ type Dialog interface {
 	Focusables() []tview.Primitive
 	KeyBindings() []keybinding.Binding
 	Size() Size
+	// Run owns work performed while the dialog is visible and must wait for all
+	// child work before returning.
+	Run(ctx context.Context)
 }
 
-// Handle closes an open modal dialog.
+// Handle requests that an open modal dialog and its descendants close.
 type Handle interface {
 	Close()
 }

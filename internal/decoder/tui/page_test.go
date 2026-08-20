@@ -509,7 +509,10 @@ func (h testHost) Update(update func()) {
 
 func (h testHost) Components() components.Factory { return h.controls }
 
-func (h *testHost) OpenModal(dialog modal.Dialog) modal.Handle {
+func (h *testHost) OpenModal(
+	_ tview.Primitive,
+	dialog modal.Dialog,
+) modal.Handle {
 	h.opened = dialog
 	return nil
 }

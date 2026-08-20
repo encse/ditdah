@@ -1,6 +1,8 @@
 package modal
 
 import (
+	"context"
+
 	"morsemanual/internal/tui/components"
 
 	"github.com/rivo/tview"
@@ -82,6 +84,9 @@ type Layout struct {
 func (l Layout) Content() tview.Primitive { return l.content }
 
 func (l Layout) Size() Size { return l.size }
+
+// Run keeps dialogs without background work alive until their layer is closed.
+func (l Layout) Run(ctx context.Context) { <-ctx.Done() }
 
 // LayoutBuilder declares the rows inside one consistently themed modal frame.
 type LayoutBuilder struct {
