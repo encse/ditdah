@@ -17,11 +17,11 @@ import (
 const morseInputLabelWidth = 14
 
 type morseInputDialog struct {
+	modal.Layout
 	ctx        context.Context
 	store      domain.Store
 	values     domain.Settings
 	devices    []audio.Device
-	content    tview.Primitive
 	handle     modal.Handle
 	input      components.SelectField
 	message    components.TextView
@@ -91,19 +91,13 @@ func newMorseInputDialog(
 	dialog.ok.SetSelectedFunc(dialog.submit)
 	dialog.cancel.SetSelectedFunc(dialog.close)
 	dialog.focusables = []tview.Primitive{dialog.input, dialog.ok, dialog.cancel}
-	dialog.content = dialog.layout(controls)
+	dialog.Layout = dialog.layout(controls)
 	return dialog
 }
-
-func (d *morseInputDialog) Content() tview.Primitive { return d.content }
 
 func (d *morseInputDialog) Focusables() []tview.Primitive { return d.focusables }
 
 func (d *morseInputDialog) KeyBindings() []keybinding.Binding { return nil }
-
-func (d *morseInputDialog) Size() modal.Size {
-	return modal.Size{Width: 72, Height: 9}
-}
 
 func (d *morseInputDialog) submit() {
 	index, _ := d.input.CurrentOption()
@@ -152,17 +146,16 @@ func (d *morseInputDialog) close() {
 	}
 }
 
-func (d *morseInputDialog) layout(controls components.Factory) tview.Primitive {
+func (d *morseInputDialog) layout(controls components.Factory) modal.Layout {
 	buttons := centeredButtons(controls, d.ok, d.cancel)
-	body := controls.Flex(tview.FlexRow).
-		AddItem(d.input, 1, 0, true).
-		AddItem(nil, 1, 0, false).
-		AddItem(d.message, 1, 0, false).
-		AddItem(nil, 1, 0, false).
-		AddItem(buttons, 1, 0, false)
-	pages := controls.PageStack(" Morse input ")
-	pages.Add("input", pad(controls, body, 1, 1, 3), true)
-	return pages
+	return modal.NewLayout(controls, " Morse input ", 72).
+		Padding(3).
+		Gap(1).
+		Row(d.input, 1).
+		Gap(1).
+		Row(d.message, 1).
+		Gap(1).
+		Actions(buttons)
 }
 
 func selectedMorseInput(id string, devices []audio.Device) int {

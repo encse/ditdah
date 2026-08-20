@@ -9,7 +9,7 @@ import (
 )
 
 type apiKeyDialog struct {
-	content    tview.Primitive
+	modal.Layout
 	apiKey     components.InputField
 	message    components.TextView
 	update     components.Button
@@ -40,19 +40,13 @@ func newAPIKeyDialog(
 		dialog.update,
 		dialog.cancel,
 	}
-	dialog.content = dialog.layout(controls)
+	dialog.Layout = dialog.layout(controls)
 	return dialog
 }
-
-func (d *apiKeyDialog) Content() tview.Primitive { return d.content }
 
 func (d *apiKeyDialog) Focusables() []tview.Primitive { return d.focusables }
 
 func (d *apiKeyDialog) KeyBindings() []keybinding.Binding { return nil }
-
-func (d *apiKeyDialog) Size() modal.Size {
-	return modal.Size{Width: 58, Height: 8}
-}
 
 func (d *apiKeyDialog) submit() {
 	if d.validate != nil {
@@ -70,12 +64,11 @@ func (d *apiKeyDialog) close() {
 	}
 }
 
-func (d *apiKeyDialog) layout(controls components.Factory) tview.Primitive {
-	body := controls.Flex(tview.FlexRow).
-		AddItem(d.apiKey, 1, 0, false).
-		AddItem(d.message, 1, 0, false).
-		AddItem(centeredButtons(controls, d.update, d.cancel), 1, 0, false)
-	stack := controls.PageStack(" QRZ.com API key ")
-	stack.Add("content", pad(controls, body, 1, 2, 3), true)
-	return stack
+func (d *apiKeyDialog) layout(controls components.Factory) modal.Layout {
+	return modal.NewLayout(controls, " QRZ.com API key ", 58).
+		Padding(3).
+		Gap(1).
+		Row(d.apiKey, 1).
+		Row(d.message, 1).
+		Actions(centeredButtons(controls, d.update, d.cancel))
 }

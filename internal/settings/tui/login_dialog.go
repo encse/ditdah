@@ -11,7 +11,7 @@ import (
 )
 
 type loginDialog struct {
-	content    tview.Primitive
+	modal.Layout
 	callsign   components.InputField
 	password   components.InputField
 	message    components.TextView
@@ -47,19 +47,13 @@ func newLoginDialog(
 		dialog.login,
 		dialog.cancel,
 	}
-	dialog.content = dialog.layout(controls)
+	dialog.Layout = dialog.layout(controls)
 	return dialog
 }
-
-func (d *loginDialog) Content() tview.Primitive { return d.content }
 
 func (d *loginDialog) Focusables() []tview.Primitive { return d.focusables }
 
 func (d *loginDialog) KeyBindings() []keybinding.Binding { return nil }
-
-func (d *loginDialog) Size() modal.Size {
-	return modal.Size{Width: 58, Height: 10}
-}
 
 func (d *loginDialog) submit() {
 	if d.validate != nil {
@@ -77,20 +71,19 @@ func (d *loginDialog) close() {
 	}
 }
 
-func (d *loginDialog) layout(controls components.Factory) tview.Primitive {
+func (d *loginDialog) layout(controls components.Factory) modal.Layout {
 	fields := controls.Grid().
 		SetRows(1, 1, 1).
 		SetColumns(0).
 		AddItem(d.callsign, 0, 0, 1, 1, 0, 0, false).
 		AddItem(d.password, 2, 0, 1, 1, 0, 0, false)
-	body := controls.Flex(tview.FlexRow).
-		AddItem(fields, 3, 0, false).
-		AddItem(d.message, 1, 0, false).
-		AddItem(centeredButtons(controls, d.login, d.cancel), 1, 0, false)
-	stack := controls.PageStack(fmt.Sprintf(
+	return modal.NewLayout(controls, fmt.Sprintf(
 		" Login to QRZ.com as %s ",
 		d.callsign.Value(),
-	))
-	stack.Add("content", pad(controls, body, 1, 2, 3), true)
-	return stack
+	), 58).
+		Padding(3).
+		Gap(1).
+		Row(fields, 3).
+		Row(d.message, 1).
+		Actions(centeredButtons(controls, d.login, d.cancel))
 }

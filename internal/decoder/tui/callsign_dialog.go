@@ -12,7 +12,7 @@ import (
 )
 
 type callsignDialog struct {
-	content tview.Primitive
+	modal.Layout
 	input   components.InputField
 	message components.TextView
 	confirm components.Button
@@ -50,38 +50,24 @@ func newCallsignDialog(
 		AddItem(nil, 2, 0, false).
 		AddItem(dialog.confirm, 10, 0, false).
 		AddItem(nil, 0, 1, false)
-	body := controls.Flex(tview.FlexRow).
-		AddItem(dialog.input, 1, 0, true).
-		AddItem(dialog.message, 1, 0, false).
-		AddItem(buttons, 1, 0, false)
-	padded := controls.Flex(tview.FlexRow).
-		AddItem(nil, 1, 0, false).
-		AddItem(
-			controls.Flex(tview.FlexColumn).
-				AddItem(nil, 2, 0, false).
-				AddItem(body, 0, 1, false).
-				AddItem(nil, 2, 0, false),
-			0,
-			1,
-			false,
-		)
-	stack := controls.PageStack(" " + title + " ")
-	stack.Add("content", padded, true)
-	dialog.content = stack
+	dialog.Layout = modal.NewLayout(
+		controls,
+		" "+title+" ",
+		48,
+	).
+		Padding(2).
+		Gap(1).
+		Row(dialog.input, 1).
+		Row(dialog.message, 1).
+		Actions(buttons)
 	return dialog
 }
-
-func (d *callsignDialog) Content() tview.Primitive { return d.content }
 
 func (d *callsignDialog) Focusables() []tview.Primitive {
 	return []tview.Primitive{d.input, d.cancel, d.confirm}
 }
 
 func (d *callsignDialog) KeyBindings() []keybinding.Binding { return nil }
-
-func (d *callsignDialog) Size() modal.Size {
-	return modal.Size{Width: 48, Height: 6}
-}
 
 func (d *callsignDialog) setHandle(handle modal.Handle) { d.handle = handle }
 

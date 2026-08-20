@@ -74,11 +74,11 @@ func (p *page) clearLog() {
 }
 
 type clearLogDialog struct {
-	content tview.Primitive
-	clear   components.Button
-	cancel  components.Button
-	action  func()
-	handle  modal.Handle
+	modal.Layout
+	clear  components.Button
+	cancel components.Button
+	action func()
+	handle modal.Handle
 }
 
 func newClearLogDialog(
@@ -101,25 +101,20 @@ func newClearLogDialog(
 		AddItem(dialog.clear, 12, 0, false).
 		AddItem(nil, 0, 1, false)
 	body := controls.Flex(tview.FlexRow).
-		AddItem(message, 1, 0, false).
-		AddItem(buttons, 1, 0, false)
-	stack := controls.PageStack(" Clear decoded log ")
-	stack.Add("content", body, true)
-	dialog.content = stack
+		AddItem(message, 1, 0, false)
+	dialog.Layout = modal.NewLayout(
+		controls,
+		" Clear decoded log ",
+		48,
+	).Row(body, 1).Actions(buttons)
 	return dialog
 }
-
-func (d *clearLogDialog) Content() tview.Primitive { return d.content }
 
 func (d *clearLogDialog) Focusables() []tview.Primitive {
 	return []tview.Primitive{d.cancel, d.clear}
 }
 
 func (d *clearLogDialog) KeyBindings() []keybinding.Binding { return nil }
-
-func (d *clearLogDialog) Size() modal.Size {
-	return modal.Size{Width: 48, Height: 5}
-}
 
 func (d *clearLogDialog) setHandle(handle modal.Handle) { d.handle = handle }
 

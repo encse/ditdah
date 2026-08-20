@@ -16,6 +16,7 @@ This document records implementation decisions and future technical work.
 - [x] Use the Nord color scheme to match the original Python application.
 - [x] Keep reusable terminal controls in their own `internal/tui/components` package, with unexported implementations behind small interfaces and a shared themed factory.
 - [x] Display modal dialogs and control popups through one stackable overlay host, allowing controls inside overlays to open further overlays.
+- [x] Derive every modal dialog's height from declared rows in one themed layout abstraction; make the actions row terminal so no content or accidental slack can appear below the buttons.
 - [ ] Introduce a consistent wrapper component layer over tview/tcell instead of styling raw widgets ad hoc.
 
 ## TUI layout and navigation

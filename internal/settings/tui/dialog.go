@@ -19,11 +19,11 @@ import (
 const settingsLabelWidth = 20
 
 type dialog struct {
+	modal.Layout
 	ctx      context.Context
 	host     ui.PageHost
 	store    domain.Store
 	qrz      qrz.Service
-	content  tview.Primitive
 	pages    components.PageStack
 	values   domain.Settings
 	handle   modal.Handle
@@ -102,14 +102,10 @@ func newDialog(
 		dialog.ok,
 		dialog.cancel,
 	}
-	dialog.content = dialog.layout(controls)
+	dialog.Layout = dialog.layout(controls)
 	dialog.showLoginStatus(nil)
 	dialog.showAPIKeyStatus(nil)
 	return dialog
-}
-
-func (d *dialog) Content() tview.Primitive {
-	return d.content
 }
 
 func (d *dialog) Focusables() []tview.Primitive {
@@ -121,10 +117,6 @@ func (d *dialog) Focusables() []tview.Primitive {
 
 func (d *dialog) KeyBindings() []keybinding.Binding {
 	return nil
-}
-
-func (d *dialog) Size() modal.Size {
-	return modal.Size{Width: 72, Height: 13}
 }
 
 func (d *dialog) input(
@@ -292,7 +284,7 @@ func (d *dialog) close() {
 	}
 }
 
-func (d *dialog) layout(controls components.Factory) tview.Primitive {
+func (d *dialog) layout(controls components.Factory) modal.Layout {
 	loginRow := credentialRow(
 		controls,
 		"QRZ.com",
@@ -314,24 +306,31 @@ func (d *dialog) layout(controls components.Factory) tview.Primitive {
 		AddItem(loginRow, 2, 0, 1, 1, 0, 0, false).
 		AddItem(apiKeyRow, 4, 0, 1, 1, 0, 0, false)
 	buttons := centeredButtons(controls, d.ok, d.cancel)
-	body := controls.Flex(tview.FlexRow).
-		AddItem(fields, 5, 0, false).
-		AddItem(nil, 1, 0, false).
-		AddItem(d.message, 1, 0, false).
-		AddItem(buttons, 1, 0, false)
-	padded := pad(controls, body, 1, 2, 3)
 	progress := controls.TextView()
 	progress.SetStyle(components.TextViewAccent)
 	progress.SetTextAlign(tview.AlignCenter)
 	progress.SetText("Checking QRZ.com credentials...")
-	loading := controls.Flex(tview.FlexRow).
-		AddItem(nil, 0, 1, false).
-		AddItem(progress, 1, 0, false).
-		AddItem(nil, 0, 1, false)
-	d.pages = controls.PageStack(" Settings ")
-	d.pages.Add("checking", loading, true)
-	d.pages.Add("settings", padded, false)
-	return d.pages
+	checking := modal.NewRows(controls).
+		Gap(4).
+		Row(progress, 1).
+		Gap(4).
+		Build()
+	settings := modal.NewRows(controls).
+		Gap(1).
+		Row(fields, 5).
+		Gap(1).
+		Row(d.message, 1).
+		Actions(buttons)
+	layout, pages := modal.NewPagedLayout(
+		controls,
+		" Settings ",
+		72,
+		3,
+		modal.Page{Name: "checking", Rows: checking, Visible: true},
+		modal.Page{Name: "settings", Rows: settings},
+	)
+	d.pages = pages
+	return layout
 }
 
 func credentialRow(
@@ -363,25 +362,4 @@ func centeredButtons(
 		AddItem(nil, 2, 0, false).
 		AddItem(second, 12, 0, false).
 		AddItem(nil, 0, 1, false)
-}
-
-func pad(
-	controls components.Factory,
-	content tview.Primitive,
-	top,
-	bottom,
-	horizontal int,
-) tview.Primitive {
-	return controls.Flex(tview.FlexRow).
-		AddItem(nil, top, 0, false).
-		AddItem(
-			controls.Flex(tview.FlexColumn).
-				AddItem(nil, horizontal, 0, false).
-				AddItem(content, 0, 1, false).
-				AddItem(nil, horizontal, 0, false),
-			0,
-			1,
-			false,
-		).
-		AddItem(nil, bottom, 0, false)
 }

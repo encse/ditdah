@@ -31,9 +31,9 @@ var qsoEditorModes = []string{
 }
 
 type qsoEditor struct {
-	content tview.Primitive
-	qso     domain.QSO
-	save    saveQSOFunc
+	modal.Layout
+	qso  domain.QSO
+	save saveQSOFunc
 
 	stationCallsign  components.InputField
 	callsign         components.InputField
@@ -127,7 +127,7 @@ func newQSOEditor(
 		editor.ok,
 		editor.cancel,
 	}
-	editor.content = editor.layout(controls)
+	editor.Layout = editor.layout(controls)
 	return editor
 }
 
@@ -173,20 +173,12 @@ func normalizeEditorCallsign(value string) string {
 	return strings.ToUpper(strings.TrimSpace(value))
 }
 
-func (e *qsoEditor) Content() tview.Primitive {
-	return e.content
-}
-
 func (e *qsoEditor) Focusables() []tview.Primitive {
 	return e.focusables
 }
 
 func (e *qsoEditor) KeyBindings() []keybinding.Binding {
 	return nil
-}
-
-func (e *qsoEditor) Size() modal.Size {
-	return modal.Size{Width: 84, Height: 22}
 }
 
 func (e *qsoEditor) setHandle(handle modal.Handle) {
@@ -287,8 +279,8 @@ func (e *qsoEditor) input(
 	return input
 }
 
-func (e *qsoEditor) layout(controls components.Factory) tview.Primitive {
-	fields := tview.NewGrid().
+func (e *qsoEditor) layout(controls components.Factory) modal.Layout {
+	fields := controls.Grid().
 		SetColumns(0, 2, 0).
 		SetRows(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1)
 	pairs := [][2]tview.Primitive{
@@ -310,38 +302,21 @@ func (e *qsoEditor) layout(controls components.Factory) tview.Primitive {
 
 	notesLabel := controls.TextView()
 	notesLabel.SetText("Notes")
-	buttons := tview.NewFlex().
+	buttons := controls.Flex(tview.FlexColumn).
 		AddItem(nil, 0, 1, false).
 		AddItem(e.ok, 12, 0, false).
 		AddItem(nil, 2, 0, false).
 		AddItem(e.cancel, 12, 0, false).
 		AddItem(nil, 0, 1, false)
-	body := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(fields, 11, 0, false).
-		AddItem(nil, 1, 0, false).
-		AddItem(notesLabel, 1, 0, false).
-		AddItem(e.notes, 0, 1, false).
-		AddItem(e.message, 1, 0, false).
-		AddItem(buttons, 1, 0, false)
-	padded := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(nil, 2, 0, false).
-		AddItem(
-			tview.NewFlex().
-				AddItem(nil, 2, 0, false).
-				AddItem(body, 0, 1, false).
-				AddItem(nil, 2, 0, false),
-			0,
-			1,
-			false,
-		).
-		AddItem(nil, 2, 0, false)
-	surface := controls.TextView()
-	surface.SetBorder(e.title())
-	return tview.NewPages().
-		AddPage("surface", surface, true, true).
-		AddPage("content", padded, true, true)
+	return modal.NewLayout(controls, e.title(), 84).
+		Padding(1).
+		Gap(1).
+		Row(fields, 11).
+		Gap(1).
+		Row(notesLabel, 1).
+		Row(e.notes, 4).
+		Row(e.message, 1).
+		Actions(buttons)
 }
 
 func (e *qsoEditor) title() string {

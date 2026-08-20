@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 func TestHighlightDecodedCallsignMatchesInsideWords(t *testing.T) {
@@ -70,6 +71,29 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 	}
 	if page.decodedText.String() == "" {
 		t.Fatal("opening confirmation cleared the log")
+	}
+	size := dialog.Size()
+	if size.Height != 4 {
+		t.Fatalf("clear dialog height = %d, want 4", size.Height)
+	}
+	screen := tcell.NewSimulationScreen("UTF-8")
+	if err := screen.Init(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(screen.Fini)
+	screen.SetSize(size.Width, size.Height)
+	dialog.Content().SetRect(0, 0, size.Width, size.Height)
+	dialog.Content().Draw(screen)
+	if _, y, _, _ := dialog.clear.GetRect(); y != size.Height-2 {
+		t.Fatalf("Clear button row = %d, want %d", y, size.Height-2)
+	}
+	if character, _, _, _ := screen.GetContent(3, size.Height-1); character != tview.Borders.Horizontal {
+		t.Fatalf("row below Clear = %q, want bottom border", character)
+	}
+	_, _, style, _ := screen.GetContent(3, 1)
+	_, background, _ := style.Decompose()
+	if want := tcell.NewRGBColor(190, 190, 190); background != want {
+		t.Fatalf("modal background = %v, want %v", background, want)
 	}
 	dialog.clear.InputHandler()(
 		tcell.NewEventKey(tcell.KeyEnter, 0, 0),

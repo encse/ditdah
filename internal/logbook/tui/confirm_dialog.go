@@ -9,7 +9,7 @@ import (
 )
 
 type confirmDialog struct {
-	content tview.Primitive
+	modal.Layout
 	message components.TextView
 	detail  components.TextView
 	confirm components.Button
@@ -60,36 +60,19 @@ func newActionDialog(
 	dialog.confirm.SetSelectedFunc(dialog.submit)
 	dialog.cancel.SetSelectedFunc(dialog.close)
 
-	buttons := tview.NewFlex().
+	buttons := controls.Flex(tview.FlexColumn).
 		AddItem(nil, 0, 1, false).
 		AddItem(dialog.cancel, 12, 0, false).
 		AddItem(nil, 2, 0, false).
 		AddItem(dialog.confirm, 12, 0, false).
 		AddItem(nil, 0, 1, false)
-	body := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(dialog.message, 1, 0, false).
-		AddItem(dialog.detail, 1, 0, false).
-		AddItem(buttons, 1, 0, false)
-	content := tview.NewFlex().
-		AddItem(nil, 3, 0, false).
-		AddItem(body, 0, 1, false).
-		AddItem(nil, 3, 0, false)
-	padded := tview.NewFlex().
-		SetDirection(tview.FlexRow).
-		AddItem(nil, 2, 0, false).
-		AddItem(content, 0, 1, false).
-		AddItem(nil, 2, 0, false)
-	surface := controls.TextView()
-	surface.SetBorder(title)
-	dialog.content = tview.NewPages().
-		AddPage("surface", surface, true, true).
-		AddPage("content", padded, true, true)
+	dialog.Layout = modal.NewLayout(controls, title, 58).
+		Padding(3).
+		Gap(2).
+		Row(dialog.message, 1).
+		Row(dialog.detail, 1).
+		Actions(buttons)
 	return dialog
-}
-
-func (d *confirmDialog) Content() tview.Primitive {
-	return d.content
 }
 
 func (d *confirmDialog) Focusables() []tview.Primitive {
@@ -98,10 +81,6 @@ func (d *confirmDialog) Focusables() []tview.Primitive {
 
 func (d *confirmDialog) KeyBindings() []keybinding.Binding {
 	return nil
-}
-
-func (d *confirmDialog) Size() modal.Size {
-	return modal.Size{Width: 58, Height: 7}
 }
 
 func (d *confirmDialog) setHandle(handle modal.Handle) {

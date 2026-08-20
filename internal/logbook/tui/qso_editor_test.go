@@ -10,6 +10,7 @@ import (
 	"morsemanual/internal/optional"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 func TestEditBindingOpensSelectedQSOEditor(t *testing.T) {
@@ -65,8 +66,9 @@ func TestQSOEditorUsesTwoAlignedColumnsAndFullWidthNotes(t *testing.T) {
 	assertRune(t, screen, 43, 4, 'F')
 	assertRune(t, screen, 2, 6, 'M')
 	assertRune(t, screen, 2, 12, 'N')
-	assertRune(t, screen, 34, 19, 'O')
-	assertRune(t, screen, 46, 19, 'C')
+	assertRune(t, screen, 34, 20, 'O')
+	assertRune(t, screen, 46, 20, 'C')
+	assertRune(t, screen, 3, 21, tview.Borders.Horizontal)
 	assertBackground(t, screen, 18, 2, testTheme().FieldBackground)
 	assertBackground(t, screen, 59, 2, testTheme().FieldBackground)
 	assertBackground(t, screen, 18, 6, testTheme().FieldBackground)
