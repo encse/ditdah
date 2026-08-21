@@ -14,6 +14,7 @@ type SelectField interface {
 	tview.FormItem
 	keybinding.BindingProvider
 	CurrentOption() (index int, value string)
+	SetOptions(options []string, selected int)
 }
 
 type selectField struct {
@@ -117,6 +118,13 @@ func (s *selectField) CurrentOption() (int, string) {
 		return -1, ""
 	}
 	return s.selected, s.options[s.selected]
+}
+
+func (s *selectField) SetOptions(options []string, selected int) {
+	s.closePopup()
+	s.options = append(s.options[:0], options...)
+	s.selected = selected
+	s.highlighted = selected
 }
 
 func (s *selectField) KeyBindings() []keybinding.Binding {

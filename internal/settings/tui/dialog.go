@@ -33,6 +33,7 @@ type dialog struct {
 	devices         []audio.Device
 	loadErr         error
 	devicesErr      error
+	inputs          audio.DeviceLister
 	onChanged       func()
 	persistedValues domain.Settings
 	initialAPIKey   string
@@ -65,29 +66,16 @@ type applicationHost interface {
 	OpenModalForCurrentLayer(dialog modal.Dialog) modal.Handle
 }
 
-// Open loads the current settings and displays their editor. Credential
-// validation belongs to the dialog's Run lifecycle.
+// Open displays the settings editor. Loading and credential validation belong
+// to the dialog's Run lifecycle.
 func Open(
-	ctx context.Context,
 	host applicationHost,
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
 	onChanged func(),
 ) {
-	values, loadErr := store.Load(ctx)
-	var devices []audio.Device
-	var devicesErr error
-	if inputs == nil {
-		devicesErr = errors.New("audio input is unavailable")
-	} else {
-		devices, devicesErr = inputs.Devices()
-	}
-	dialog := newDialog(
-		host, store, qrzService, values, devices, onChanged,
-	)
-	dialog.loadErr = loadErr
-	dialog.devicesErr = devicesErr
+	dialog := newDialog(host, store, qrzService, inputs, onChanged)
 	dialog.handle = host.OpenModalForCurrentLayer(dialog)
 }
 
@@ -95,45 +83,32 @@ func newDialog(
 	host ui.PageHost,
 	store domain.Store,
 	qrzService qrz.Service,
-	values domain.Settings,
-	devices []audio.Device,
+	inputs audio.DeviceLister,
 	onChanged func(),
 ) *dialog {
 	controls := host.Components().Modal()
 	dialog := &dialog{
-		host:            host,
-		store:           store,
-		qrz:             qrzService,
-		values:          values,
-		devices:         append([]audio.Device(nil), devices...),
-		onChanged:       onChanged,
-		persistedValues: values,
-		initialAPIKey:   values.QRZAPIKey,
+		host:      host,
+		store:     store,
+		qrz:       qrzService,
+		inputs:    inputs,
+		onChanged: onChanged,
 	}
 	dialog.stationCallsign = dialog.input(
 		controls,
 		"My callsign",
-		values.StationCallsign,
+		"",
 	)
 	dialog.loginGeneration.Store(1)
 	dialog.apiKeyGeneration.Store(1)
 	dialog.loginChecks = mailbox.New(loginValidationRequest{
 		generation: 1,
-		callsign:   strings.TrimSpace(values.StationCallsign),
-		password:   values.QRZPassword,
 	})
 	dialog.stationCallsign.SetChangedFunc(dialog.callsignChanged)
-	options := make([]string, len(devices))
-	for index, device := range devices {
-		options[index] = device.Name
-		if device.IsDefault {
-			options[index] += " (default)"
-		}
-	}
 	dialog.morseInput = controls.SelectField(
 		"Audio input",
-		options,
-		selectedMorseInput(values.MorseInputDeviceID, devices),
+		nil,
+		-1,
 		settingsLabelWidth,
 		0,
 	)
@@ -178,13 +153,7 @@ func (d *dialog) KeyBindings() []keybinding.Binding {
 }
 
 func (d *dialog) Run(ctx context.Context) {
-	d.host.Update(func() {
-		if d.loadErr != nil {
-			d.showError(fmt.Errorf("load settings: %w", d.loadErr))
-		}
-		d.showInitialDeviceError()
-	})
-	if d.loadErr != nil {
+	if !d.load(ctx) {
 		<-ctx.Done()
 		return
 	}
@@ -196,6 +165,51 @@ func (d *dialog) Run(ctx context.Context) {
 		return nil
 	})
 	_ = group.Wait()
+}
+
+func (d *dialog) load(ctx context.Context) bool {
+	values, loadErr := d.store.Load(ctx)
+	var devices []audio.Device
+	var devicesErr error
+	if d.inputs == nil {
+		devicesErr = errors.New("audio input is unavailable")
+	} else {
+		devices, devicesErr = d.inputs.Devices()
+	}
+	if ctx.Err() != nil {
+		return false
+	}
+	d.host.Update(func() {
+		d.values = values
+		d.persistedValues = values
+		d.initialAPIKey = values.QRZAPIKey
+		d.devices = append(d.devices[:0], devices...)
+		d.loadErr = loadErr
+		d.devicesErr = devicesErr
+		d.message.SetText("")
+		d.stationCallsign.SetValue(values.StationCallsign)
+		d.morseInput.SetOptions(
+			deviceOptions(devices),
+			selectedMorseInput(values.MorseInputDeviceID, devices),
+		)
+		d.showInitialCredentialStatuses()
+		if loadErr != nil {
+			d.showError(fmt.Errorf("load settings: %w", loadErr))
+		}
+		d.showInitialDeviceError()
+	})
+	return loadErr == nil
+}
+
+func deviceOptions(devices []audio.Device) []string {
+	options := make([]string, len(devices))
+	for index, device := range devices {
+		options[index] = device.Name
+		if device.IsDefault {
+			options[index] += " (default)"
+		}
+	}
+	return options
 }
 
 func (d *dialog) input(

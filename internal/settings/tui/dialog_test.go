@@ -25,19 +25,20 @@ func TestSettingsIsUsableWhileCredentialValidationRuns(t *testing.T) {
 	}}
 	service := newControlledQRZService()
 	host := newTestHost()
+	host.updated = make(chan struct{}, 1)
 
-	dialog := newDialog(
-		host, store, service, store.loaded, nil, nil,
-	)
+	dialog := newDialog(host, store, service, nil, nil)
 	if len(dialog.Focusables()) == 0 {
 		t.Fatal("settings controls are not immediately focusable")
-	}
-	if dialog.loginStatus.Text() != "Checking..." {
-		t.Fatalf("login status = %q, want Checking...", dialog.loginStatus.Text())
 	}
 
 	cancel, done := runSettingsDialog(t, dialog)
 	defer stopSettingsDialog(t, cancel, done)
+	<-host.updated
+	if dialog.loginStatus.Text() != "Checking..." {
+		t.Fatalf("login status = %q, want Checking...", dialog.loginStatus.Text())
+	}
+
 	request := <-service.loginRequests
 	if request.callsign != "HA7NCS" || request.password != "password" {
 		t.Fatalf("login request = %#v", request)
@@ -54,7 +55,7 @@ func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 	host := newTestHost()
 	host.updated = make(chan struct{}, 3)
 
-	Open(t.Context(), host, store, service, nil, nil)
+	Open(host, store, service, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 	cancel, done := runSettingsDialog(t, dialog)
 	defer stopSettingsDialog(t, cancel, done)
@@ -92,7 +93,7 @@ func TestSettingsRevalidatesQRZLoginWhenCallsignChanges(t *testing.T) {
 	host := newTestHost()
 	host.updated = make(chan struct{}, 3)
 	dialog := newDialog(
-		host, &recordingStore{}, service, values, nil, nil,
+		host, &recordingStore{loaded: values}, service, nil, nil,
 	)
 	cancel, done := runSettingsDialog(t, dialog)
 	defer stopSettingsDialog(t, cancel, done)
@@ -129,7 +130,6 @@ func TestSettingsSelectsSavedMorseInput(t *testing.T) {
 	}}
 	host := newTestHost()
 	Open(
-		t.Context(),
 		host,
 		store,
 		&recordingQRZService{},
@@ -140,6 +140,13 @@ func TestSettingsSelectsSavedMorseInput(t *testing.T) {
 		nil,
 	)
 	dialog := host.lastDialog().(*dialog)
+	if store.loadCalls != 0 {
+		t.Fatal("Open loaded settings before the dialog Run lifecycle started")
+	}
+	loadSettingsDialog(t, host, dialog)
+	if store.loadCalls != 1 {
+		t.Fatalf("settings loads = %d, want one Run-owned load", store.loadCalls)
+	}
 
 	index, label := dialog.morseInput.CurrentOption()
 	if index != 1 || label != "USB radio" {
@@ -156,7 +163,6 @@ func TestSettingsSavesDefaultMorseInputAndNotifiesApplication(t *testing.T) {
 	host := newTestHost()
 	changes := 0
 	Open(
-		t.Context(),
 		host,
 		store,
 		&recordingQRZService{},
@@ -167,6 +173,7 @@ func TestSettingsSavesDefaultMorseInputAndNotifiesApplication(t *testing.T) {
 		func() { changes++ },
 	)
 	dialog := host.lastDialog().(*dialog)
+	loadSettingsDialog(t, host, dialog)
 
 	dialog.submit()
 
@@ -192,10 +199,10 @@ func TestSettingsNotifiesApplicationAfterChangedValuesWereStaged(t *testing.T) {
 		host,
 		store,
 		&recordingQRZService{},
-		values,
-		[]audio.Device{{ID: "usb", Name: "USB radio"}},
+		recordingDeviceLister{devices: []audio.Device{{ID: "usb", Name: "USB radio"}}},
 		func() { changes++ },
 	)
+	loadSettingsDialog(t, host, dialog)
 	staged := values
 	staged.StationCallsign = "HA7NCS"
 	dialog.stage(staged)
@@ -211,7 +218,6 @@ func TestSettingsShowsMorseInputEnumerationError(t *testing.T) {
 	host := newTestHost()
 	host.updated = make(chan struct{}, 1)
 	Open(
-		t.Context(),
 		host,
 		&recordingStore{},
 		&recordingQRZService{},
@@ -234,7 +240,6 @@ func TestSettingsButtonsReceiveMouseClicks(t *testing.T) {
 		host,
 		store,
 		&recordingQRZService{},
-		domain.Settings{},
 		nil,
 		nil,
 	)
@@ -287,8 +292,9 @@ func TestLoginValidatesAndStagesPasswordUntilSettingsAreSaved(t *testing.T) {
 	}}
 	service := &recordingQRZService{}
 	host := newTestHost()
-	Open(t.Context(), host, store, service, nil, nil)
+	Open(host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
+	loadSettingsDialog(t, host, settings)
 
 	settings.openLogin()
 	login := host.lastDialog().(*loginDialog)
@@ -326,8 +332,9 @@ func TestFailedLoginRemainsOpenAndIsNotSaved(t *testing.T) {
 	store := &recordingStore{loaded: domain.Settings{StationCallsign: "HA7NCS"}}
 	service := &recordingQRZService{loginErr: errors.New("password incorrect")}
 	host := newTestHost()
-	Open(t.Context(), host, store, service, nil, nil)
+	Open(host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
+	loadSettingsDialog(t, host, settings)
 
 	settings.openLogin()
 	login := host.lastDialog().(*loginDialog)
@@ -349,8 +356,9 @@ func TestAPIKeyUpdateValidatesAndStagesKeyUntilSettingsAreSaved(t *testing.T) {
 	store := &recordingStore{loaded: domain.Settings{StationCallsign: "HA7NCS"}}
 	service := &recordingQRZService{}
 	host := newTestHost()
-	Open(t.Context(), host, store, service, nil, nil)
+	Open(host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
+	loadSettingsDialog(t, host, settings)
 
 	settings.openAPIKey()
 	editor := host.lastDialog().(*apiKeyDialog)
@@ -383,8 +391,9 @@ func TestClearActionsStageEmptyCredentialsUntilSettingsAreSaved(t *testing.T) {
 		QRZAPIKey:       "key",
 	}}
 	host := newTestHost()
-	Open(t.Context(), host, store, &recordingQRZService{}, nil, nil)
+	Open(host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
+	loadSettingsDialog(t, host, dialog)
 
 	dialog.clearQRZLogin()
 	dialog.clearQRZAPIKey()
@@ -410,8 +419,9 @@ func TestClearActionsStageEmptyCredentialsUntilSettingsAreSaved(t *testing.T) {
 func TestSubmitSavesCallsignAndClosesSettings(t *testing.T) {
 	store := &recordingStore{}
 	host := newTestHost()
-	Open(t.Context(), host, store, &recordingQRZService{}, nil, nil)
+	Open(host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
+	loadSettingsDialog(t, host, dialog)
 
 	dialog.stationCallsign.SetValue("OE1ABC")
 	dialog.submit()
@@ -431,8 +441,9 @@ func TestCancelDiscardsStagedCredentialChanges(t *testing.T) {
 		QRZAPIKey:       "key",
 	}}
 	host := newTestHost()
-	Open(t.Context(), host, store, &recordingQRZService{}, nil, nil)
+	Open(host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
+	loadSettingsDialog(t, host, dialog)
 
 	dialog.clearQRZLogin()
 	dialog.clearQRZAPIKey()
@@ -460,6 +471,25 @@ func runSettingsDialog(
 	return cancel, done
 }
 
+func loadSettingsDialog(
+	t *testing.T,
+	host *testHost,
+	dialog *dialog,
+) {
+	t.Helper()
+	if host.updated == nil {
+		host.updated = make(chan struct{}, 8)
+	}
+	cancel, done := runSettingsDialog(t, dialog)
+	select {
+	case <-host.updated:
+	case <-time.After(time.Second):
+		cancel()
+		t.Fatal("settings were not loaded by Run")
+	}
+	stopSettingsDialog(t, cancel, done)
+}
+
 func stopSettingsDialog(
 	t *testing.T,
 	cancel context.CancelFunc,
@@ -479,10 +509,12 @@ type recordingStore struct {
 	saved     domain.Settings
 	loadErr   error
 	saveErr   error
+	loadCalls int
 	saveCalls int
 }
 
 func (s *recordingStore) Load(context.Context) (domain.Settings, error) {
+	s.loadCalls++
 	return s.loaded, s.loadErr
 }
 

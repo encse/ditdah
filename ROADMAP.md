@@ -36,7 +36,7 @@ This document records implementation decisions and future technical work.
 - [x] Let the overlay host focus each new layer exactly once; avoid re-focusing layers already selected by `tview.Pages`, because `tview.Application.SetFocus` blurs even when the target is unchanged.
 - [x] Add a settings modal for the station callsign and validated QRZ credentials, opened from the application menu.
 - [x] Own the Settings menu action at application composition level, persist the decoder audio input in the main Settings dialog, and notify the active page after any settings change so interested pages can react through their run-loop signal.
-- [x] Show the interactive Settings form immediately, validate saved QRZ credentials inside its structured `Run` lifecycle, run event-triggered saves and credential checks as owner-scoped background work, and revalidate the login whenever the station callsign changes.
+- [x] Show the Settings form without doing I/O or accepting a context in `Open`; load settings and audio devices and validate saved QRZ credentials inside its structured `Run` lifecycle, and run event-triggered saves and checks as owner-scoped background work.
 - [x] Edit QRZ login and Logbook API credentials in nested modal dialogs and persist staged changes only when the main settings dialog is confirmed.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.
 - [x] Add a shared `Layout` that arranges the header, active page content, and footer.
@@ -49,7 +49,7 @@ This document records implementation decisions and future technical work.
 - [x] Coordinate page changes through an initialized, latest-value mailbox inside the application run loop; scope each page and mailbox receiver to one local `errgroup` and wait for both before switching.
 - [x] Pass the initial page ID directly to `Application.Run`; create the page mailbox there so startup and later navigation use the same data path.
 - [x] Let pages contribute their own application-menu items when registered.
-- [x] Remove constructor-captured and page-stored contexts from UI actions; run blocking actions through owner-scoped application background work, while allowing initial constructors to use their caller's context without retaining it.
+- [x] Remove constructor-captured and page-stored contexts from UI actions; run blocking actions through owner-scoped application background work or the owning layer's `Run(ctx)` lifecycle.
 - [x] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
 - [x] Enforce mouse focus and capture centrally from declared page, modal, application, and overlay focusables so decorative controls cannot steal input.
 - [x] Refresh footer hints when the active page, focused control, or overlay changes.

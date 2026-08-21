@@ -38,7 +38,7 @@ func Run(ctx context.Context, databasePath string) (err error) {
 		err = errors.Join(err, deps.close())
 	}()
 
-	terminal, initialPageID, err := newTerminalApplication(ctx, deps)
+	terminal, initialPageID, err := newTerminalApplication(deps)
 	if err != nil {
 		return err
 	}
@@ -50,7 +50,6 @@ func Run(ctx context.Context, databasePath string) (err error) {
 }
 
 func newTerminalApplication(
-	ctx context.Context,
 	deps dependencies,
 ) (tui.Application, string, error) {
 	terminal := tui.NewApplication()
@@ -100,7 +99,6 @@ func newTerminalApplication(
 		"Settings",
 		keybinding.OnRune('s', "settings", func() {
 			settingspage.Open(
-				ctx,
 				terminal,
 				deps.stores.Settings,
 				deps.qrz,

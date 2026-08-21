@@ -11,7 +11,7 @@ import (
 )
 
 func TestTerminalApplicationRegistersLogbookAndDecoderPages(t *testing.T) {
-	terminal, initialPageID, err := newTerminalApplication(t.Context(), dependencies{
+	terminal, initialPageID, err := newTerminalApplication(dependencies{
 		stores: stores.Stores{
 			Logbook:  emptyLogbookStore{},
 			Settings: emptySettingsStore{},

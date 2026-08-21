@@ -42,6 +42,16 @@ func TestSelectFieldPublishesHandledBindings(t *testing.T) {
 	}
 }
 
+func TestSelectFieldOptionsCanBeReplaced(t *testing.T) {
+	field := newTestFactory().SelectField("Input", nil, -1, 10, 0)
+	field.SetOptions([]string{"Built-in", "USB"}, 1)
+
+	index, value := field.CurrentOption()
+	if index != 1 || value != "USB" {
+		t.Fatalf("current option = %d, %q, want 1, USB", index, value)
+	}
+}
+
 func TestSelectFieldPopupClosesWhenItLosesFocus(t *testing.T) {
 	overlays := &testOverlayHost{}
 	field := newTestFactoryWithOverlays(overlays).SelectField(
