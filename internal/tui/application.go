@@ -146,7 +146,7 @@ func (a *application) buildApplicationMenu() {
 	items := append([]components.MenuItem(nil), a.menuItems...)
 	if a.runtimeContext != nil {
 		for _, page := range a.pageOrder {
-			items = append(items, page.MenuItems(a.runtimeContext)...)
+			items = append(items, page.MenuItems()...)
 		}
 	}
 	if a.exitBindingSet {

@@ -64,7 +64,6 @@ func newTerminalApplication(
 		return nil, "", err
 	}
 	decoder := decoderpage.New(
-		ctx,
 		terminal,
 		deps.audio,
 		deps.stores.Settings,

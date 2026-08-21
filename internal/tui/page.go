@@ -31,7 +31,7 @@ type Page interface {
 	Content() tview.Primitive
 	Focusables() []tview.Primitive
 	KeyBindings() []keybinding.Binding
-	MenuItems(ctx context.Context) []components.MenuItem
+	MenuItems() []components.MenuItem
 	SettingsChanged()
 	Run(ctx context.Context)
 }

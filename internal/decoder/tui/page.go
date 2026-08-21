@@ -34,7 +34,6 @@ type lookupRequest struct {
 }
 
 type page struct {
-	ctx             context.Context
 	host            ui.PageHost
 	source          audio.Source
 	settings        settings.Store
@@ -58,7 +57,6 @@ type page struct {
 
 // New creates the page for live Morse decoder output.
 func New(
-	ctx context.Context,
 	host ui.PageHost,
 	source audio.Source,
 	settingsStore settings.Store,
@@ -66,7 +64,6 @@ func New(
 	createQSO func(string),
 ) ui.Page {
 	return newPage(
-		ctx,
 		host,
 		source,
 		settingsStore,
@@ -77,7 +74,6 @@ func New(
 }
 
 func newPage(
-	ctx context.Context,
 	host ui.PageHost,
 	source audio.Source,
 	settingsStore settings.Store,
@@ -87,7 +83,6 @@ func newPage(
 ) *page {
 	controls := host.Components()
 	page := &page{
-		ctx:             ctx,
 		host:            host,
 		source:          source,
 		settings:        settingsStore,
@@ -149,7 +144,7 @@ func (p *page) KeyBindings() []keybinding.Binding {
 	}
 }
 
-func (p *page) MenuItems(context.Context) []components.MenuItem { return nil }
+func (p *page) MenuItems() []components.MenuItem { return nil }
 
 func (p *page) SettingsChanged() { p.settingsChanged.Activate() }
 

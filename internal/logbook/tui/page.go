@@ -112,7 +112,7 @@ func (p *page) KeyBindings() []keybinding.Binding {
 	)
 }
 
-func (p *page) MenuItems(context.Context) []components.MenuItem { return nil }
+func (p *page) MenuItems() []components.MenuItem { return nil }
 
 func (p *page) SettingsChanged() {}
 

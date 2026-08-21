@@ -19,7 +19,7 @@ func TestHighlightDecodedCallsignMatchesInsideWords(t *testing.T) {
 }
 
 func TestSelectedCallsignHighlightsExistingAndNewDecodedText(t *testing.T) {
-	page := New(t.Context(), newTestHost(), nil, nil, nil, nil).(*page)
+	page := New(newTestHost(), nil, nil, nil, nil).(*page)
 	if err := page.appendDecoded(t.Context(), "CQ DEHA7NCS "); err != nil {
 		t.Fatal(err)
 	}
@@ -57,7 +57,7 @@ func TestSelectedCallsignHighlightsExistingAndNewDecodedText(t *testing.T) {
 
 func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 	host := newTestHost()
-	page := New(t.Context(), host, nil, nil, nil, nil).(*page)
+	page := New(host, nil, nil, nil, nil).(*page)
 	if err := page.appendDecoded(t.Context(), "CQ CQ"); err != nil {
 		t.Fatal(err)
 	}
@@ -108,7 +108,7 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 }
 
 func TestDecodedOutputFollowsOnlyWhileScrolledToEnd(t *testing.T) {
-	page := New(t.Context(), newTestHost(), nil, nil, nil, nil).(*page)
+	page := New(newTestHost(), nil, nil, nil, nil).(*page)
 	page.output.SetRect(0, 0, 20, 5)
 	if err := page.appendDecoded(
 		t.Context(),

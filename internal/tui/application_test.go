@@ -1344,7 +1344,7 @@ func (p applicationTestPage) KeyBindings() []keybinding.Binding {
 	return p.bindings
 }
 
-func (p applicationTestPage) MenuItems(context.Context) []components.MenuItem {
+func (p applicationTestPage) MenuItems() []components.MenuItem {
 	return p.menuItems
 }
 

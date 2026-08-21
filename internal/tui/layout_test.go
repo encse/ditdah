@@ -84,7 +84,7 @@ func (p testPage) KeyBindings() []keybinding.Binding {
 	return nil
 }
 
-func (p testPage) MenuItems(context.Context) []components.MenuItem { return nil }
+func (p testPage) MenuItems() []components.MenuItem { return nil }
 
 func (p testPage) SettingsChanged() {}
 

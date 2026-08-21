@@ -20,7 +20,7 @@ import (
 )
 
 func TestPageMetadata(t *testing.T) {
-	page := New(t.Context(), newTestHost(), nil, nil, nil, nil)
+	page := New(newTestHost(), nil, nil, nil, nil)
 
 	if page.ID() != "morse-decoder" {
 		t.Fatalf("ID() = %q, want morse-decoder", page.ID())
@@ -37,7 +37,7 @@ func TestPageMetadata(t *testing.T) {
 }
 
 func TestPageHasEmptyDecoderOutputAndRightPanel(t *testing.T) {
-	page := New(t.Context(), newTestHost(), nil, nil, nil, nil).(*page)
+	page := New(newTestHost(), nil, nil, nil, nil).(*page)
 	if page.output.Text() != "" {
 		t.Fatalf("output text = %q, want empty", page.output.Text())
 	}
@@ -174,8 +174,8 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 }
 
 func TestPageDoesNotContributeMenuItems(t *testing.T) {
-	page := New(t.Context(), newTestHost(), nil, nil, nil, nil)
-	items := page.MenuItems(t.Context())
+	page := New(newTestHost(), nil, nil, nil, nil)
+	items := page.MenuItems()
 	if len(items) != 0 {
 		t.Fatalf("MenuItems() = %#v, want none", items)
 	}
@@ -188,7 +188,6 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 	}}
 	var contactedCallsign string
 	page := New(
-		t.Context(),
 		host,
 		nil,
 		store,
@@ -248,7 +247,7 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 
 func TestDeleteCallsignBindingRequiresConfirmation(t *testing.T) {
 	host := newTestHost()
-	page := New(t.Context(), host, nil, nil, nil, nil).(*page)
+	page := New(host, nil, nil, nil, nil).(*page)
 	if err := page.addCallsign("DL1ABC"); err != nil {
 		t.Fatal(err)
 	}
@@ -294,7 +293,7 @@ func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
 			}),
 		},
 	}
-	page := New(t.Context(), host, nil, nil, lookup, nil).(*page)
+	page := New(host, nil, nil, lookup, nil).(*page)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
@@ -327,7 +326,7 @@ func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
 
 func TestPageRetriesSelectedCallsignAfterReactivation(t *testing.T) {
 	lookup := &cancelingLookupService{requests: make(chan string, 2)}
-	page := New(t.Context(), newTestHost(), nil, nil, lookup, nil).(*page)
+	page := New(newTestHost(), nil, nil, lookup, nil).(*page)
 	if err := page.addCallsign("DL1ABC"); err != nil {
 		t.Fatal(err)
 	}
