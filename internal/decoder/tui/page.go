@@ -34,20 +34,20 @@ type lookupRequest struct {
 }
 
 type page struct {
-	host            ui.PageHost
-	source          audio.Source
-	settings        settings.Store
-	lookup          callsign.Service
-	newStream       streamFactory
-	content         tview.Primitive
-	output          components.TextView
-	right           tview.Primitive
-	callsignList    components.Table
-	details         components.TextView
-	statusText      string
-	settingsChanged trigger.Trigger
-	lookups         mailbox.Mailbox[lookupRequest]
-	createQSO       func(string)
+	host             ui.PageHost
+	source           audio.Source
+	settings         settings.Store
+	lookup           callsign.Service
+	newStream        streamFactory
+	content          tview.Primitive
+	output           components.TextView
+	right            tview.Primitive
+	callsignList     components.Table
+	details          components.TextView
+	statusText       string
+	settingsChanged  trigger.Trigger
+	lookups          mailbox.Mailbox[lookupRequest]
+	showNewQSOEditor func(tview.Primitive, string)
 
 	callsigns        []string
 	selectedCallsign string
@@ -61,14 +61,14 @@ func New(
 	source audio.Source,
 	settingsStore settings.Store,
 	lookup callsign.Service,
-	createQSO func(string),
+	showNewQSOEditor func(tview.Primitive, string),
 ) ui.Page {
 	return newPage(
 		host,
 		source,
 		settingsStore,
 		lookup,
-		createQSO,
+		showNewQSOEditor,
 		domain.NewStreaming,
 	)
 }
@@ -78,20 +78,20 @@ func newPage(
 	source audio.Source,
 	settingsStore settings.Store,
 	lookup callsign.Service,
-	createQSO func(string),
+	showNewQSOEditor func(tview.Primitive, string),
 	newStream streamFactory,
 ) *page {
 	controls := host.Components()
 	page := &page{
-		host:            host,
-		source:          source,
-		settings:        settingsStore,
-		lookup:          lookup,
-		newStream:       newStream,
-		settingsChanged: trigger.New(),
-		lookups:         mailbox.New(lookupRequest{}),
-		createQSO:       createQSO,
-		statusText:      "Paused",
+		host:             host,
+		source:           source,
+		settings:         settingsStore,
+		lookup:           lookup,
+		newStream:        newStream,
+		settingsChanged:  trigger.New(),
+		lookups:          mailbox.New(lookupRequest{}),
+		showNewQSOEditor: showNewQSOEditor,
+		statusText:       "Paused",
 	}
 	output := controls.TextView()
 	output.SetStyle(components.TextViewPrimary)
@@ -233,10 +233,10 @@ func (p *page) showLookupResult(
 }
 
 func (p *page) openCreateQSO() {
-	if p.selectedCallsign == "" || p.createQSO == nil {
+	if p.selectedCallsign == "" || p.showNewQSOEditor == nil {
 		return
 	}
-	p.createQSO(p.selectedCallsign)
+	p.showNewQSOEditor(p.Content(), p.selectedCallsign)
 }
 
 func formatCallsignDetails(entry callsign.Entry) string {

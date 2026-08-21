@@ -6,10 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/optional"
-	"morsemanual/internal/settings"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -25,68 +22,29 @@ func TestCreateBindingOpensNewQSOEditor(t *testing.T) {
 	if !page.createBinding().Handle(tcell.NewEventKey(tcell.KeyRune, 'n', 0)) {
 		t.Fatal("n was not handled")
 	}
-	editor, ok := host.modal.(*qsoEditor)
-	if !ok {
-		t.Fatalf("opened modal = %T, want *qsoEditor", host.modal)
-	}
-	if editor.qso.ID != "" || editor.qso.Mode != "CW" {
-		t.Fatalf("new QSO = %#v", editor.qso)
-	}
-	if editor.qso.StationCallsign != "HA7NCS" {
-		t.Fatalf("station callsign = %q, want selected station", editor.qso.StationCallsign)
-	}
-	if editor.qso.StartedAt.IsZero() {
-		t.Fatal("new QSO start time is zero")
-	}
-	if editor.title() != " New QSO " {
-		t.Fatalf("editor title = %q", editor.title())
+	if host.editors.createdOwner != page.Content() || host.editors.createdCallsign != "" {
+		t.Fatalf("create editor call = %p, %q", host.editors.createdOwner, host.editors.createdCallsign)
 	}
 }
 
-func TestOpenCreateQSOResolvesDraftFromCallsign(t *testing.T) {
+func TestEditBindingOpensSelectedQSOEditor(t *testing.T) {
 	page, host := newTestPage(t)
-	page.settings = staticSettingsStore{values: settings.Settings{
-		StationCallsign: "HA7NCS",
-	}}
-	page.lookup = staticCallsignLookup{entry: callsign.Entry{
-		Callsign: "DL1ABC",
-		Record: optional.Some(callsign.Record{
-			Name: optional.Some("Jane Doe"),
-			QTH:  optional.Some("Berlin"),
-		}),
-	}}
+	page.qsos = []domain.QSO{{ID: "qso-1", Callsign: "HA7NCS"}}
+	page.applyFilter()
 
-	page.OpenCreateQSO(" dl1abc ")
-
-	editor, ok := host.modal.(*qsoEditor)
-	if !ok {
-		t.Fatalf("opened modal = %T, want *qsoEditor", host.modal)
+	if !page.editBinding().Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
+		t.Fatal("Enter was not handled")
 	}
-	if editor.qso.StationCallsign != "HA7NCS" ||
-		editor.qso.Callsign != "DL1ABC" || editor.qso.Mode != "CW" ||
-		editor.qso.Name != "Jane Doe" || editor.qso.QTH != "Berlin" ||
-		editor.qso.StartedAt.IsZero() {
-		t.Fatalf("new QSO = %#v", editor.qso)
-	}
-	if editor.message.Text() != "" {
-		t.Fatalf("editor message = %q, want empty", editor.message.Text())
+	if host.editors.editedOwner != page.Content() || host.editors.editedQSO.ID != "qso-1" {
+		t.Fatalf("edit editor call = %p, %#v", host.editors.editedOwner, host.editors.editedQSO)
 	}
 }
 
-func TestPageAddsQSOToStoreAndView(t *testing.T) {
+func TestPageAddsCreatedQSOToView(t *testing.T) {
 	page, _ := newTestPage(t)
-	store := &recordingActionStore{}
-	page.store = store
-
-	created, err := page.addQSO(domain.QSO{Callsign: "dl1abc"})
-	if err != nil {
-		t.Fatalf("addQSO() error = %v", err)
-	}
-	if store.added.Callsign != "dl1abc" {
-		t.Fatalf("store received Callsign = %q", store.added.Callsign)
-	}
-	if created.ID != "new-qso" || len(page.qsos) != 1 {
-		t.Fatalf("created QSO = %#v, page QSOs = %#v", created, page.qsos)
+	page.QSOChanged(domain.QSO{ID: "new-qso", Callsign: "DL1ABC"})
+	if len(page.qsos) != 1 || page.qsos[0].ID != "new-qso" {
+		t.Fatalf("page QSOs = %#v", page.qsos)
 	}
 	if page.selectedID != "new-qso" {
 		t.Fatalf("selected ID = %q, want new-qso", page.selectedID)
@@ -210,26 +168,6 @@ func (s *listingActionStore) List(
 
 type recordingSynchronizer struct {
 	calls int
-}
-
-type staticSettingsStore struct {
-	settings.Store
-	values settings.Settings
-}
-
-func (s staticSettingsStore) Load(context.Context) (settings.Settings, error) {
-	return s.values, nil
-}
-
-type staticCallsignLookup struct {
-	entry callsign.Entry
-}
-
-func (s staticCallsignLookup) Lookup(
-	context.Context,
-	string,
-) (callsign.Entry, error) {
-	return s.entry, nil
 }
 
 func (s *recordingSynchronizer) Sync(context.Context) (int, error) {

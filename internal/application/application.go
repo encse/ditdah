@@ -9,7 +9,9 @@ import (
 
 	"morsemanual/internal/database"
 	decoderpage "morsemanual/internal/decoder/tui"
+	logbookdomain "morsemanual/internal/logbook"
 	logbookpage "morsemanual/internal/logbook/tui"
+	qsoeditor "morsemanual/internal/qsoeditor/tui"
 	settingspage "morsemanual/internal/settings/tui"
 	"morsemanual/internal/tui"
 	"morsemanual/internal/tui/keybinding"
@@ -52,13 +54,25 @@ func newTerminalApplication(
 	deps dependencies,
 ) (tui.Application, string, error) {
 	terminal := tui.NewApplication()
+	var logbook logbookpage.Page
+	editors := qsoeditor.New(
+		terminal,
+		deps.stores.Logbook,
+		deps.stores.Settings,
+		deps.callsignLookup,
+		func(qso logbookdomain.QSO) {
+			if logbook != nil {
+				logbook.QSOChanged(qso)
+			}
+		},
+	)
 	logbook, err := logbookpage.New(
 		ctx,
 		terminal,
 		deps.stores.Logbook,
 		deps.qrzSync,
-		deps.stores.Settings,
-		deps.callsignLookup,
+		editors.Create,
+		editors.Edit,
 	)
 	if err != nil {
 		return nil, "", err
@@ -68,7 +82,7 @@ func newTerminalApplication(
 		deps.audio,
 		deps.stores.Settings,
 		deps.callsignLookup,
-		logbook.OpenCreateQSO,
+		editors.Create,
 	)
 	for _, page := range []tui.Page{logbook, decoder} {
 		if err := terminal.Register(page); err != nil {

@@ -82,6 +82,6 @@ This document records implementation decisions and future technical work.
 - [x] Run decoder callsign lookups in a context-bound page worker which is always joined by `Run`; retry the selected callsign on page reactivation without detached goroutines.
 - [x] Highlight every substring occurrence of the selected decoder callsign in the decoded log, add a confirmed clear-log action, and follow new output only while the view is already scrolled to the end.
 - [x] Require confirmation before deleting a callsign from the decoder list.
-- [x] Open a prefilled CW QSO editor from Enter on a selected Morse-decoder callsign; keep the cross-page API limited to that callsign and let the logbook dialog resolve the station callsign, timestamp, and available QRZ name and QTH.
+- [x] Keep the QSO editor in its own `internal/qsoeditor/tui` package; construct its factory in the application and let both the logbook and Morse-decoder pages open owner-bound editors without calling each other.
 - [x] Refresh the QSO editor's QRZ-derived name and QTH through editor-owned background work when its contacted callsign changes and the field is confirmed or loses focus, without repeating lookups for an unchanged callsign.
 - [ ] Add further domain stores and migrations as their features are implemented.

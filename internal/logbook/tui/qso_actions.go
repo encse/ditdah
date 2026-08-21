@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
-	"time"
 
 	domain "morsemanual/internal/logbook"
 	"morsemanual/internal/tui/keybinding"
@@ -71,59 +69,9 @@ func (p *page) pendingQRZCount() int {
 }
 
 func (p *page) openCreateQSO() {
-	p.OpenCreateQSO("")
-}
-
-// OpenCreateQSO opens the editor for a new QSO with the contacted station.
-// Creation defaults and available station data are resolved here so callers do
-// not need to construct a partially populated domain model.
-func (p *page) OpenCreateQSO(callsign string) {
-	qso, err := p.newQSODraft(callsign)
-	editor := newQSOEditor(p.host, qso, p.addQSO, p.lookup)
-	if err != nil {
-		editor.showError(err)
+	if p.showNewQSOEditor != nil {
+		p.showNewQSOEditor(p.Content(), "")
 	}
-	editor.setHandle(p.host.OpenModal(p.Content(), editor))
-}
-
-func (p *page) newQSODraft(contactedCallsign string) (domain.QSO, error) {
-	qso := domain.QSO{
-		Callsign:  strings.ToUpper(strings.TrimSpace(contactedCallsign)),
-		StartedAt: time.Now(),
-		Mode:      "CW",
-	}
-	if selected, ok := p.selectedQSO(); ok {
-		qso.StationCallsign = selected.StationCallsign
-	}
-
-	var resultErr error
-	if p.settings != nil {
-		configured, err := p.settings.Load(p.ctx)
-		if err != nil {
-			resultErr = errors.Join(resultErr, fmt.Errorf("load settings: %w", err))
-		} else {
-			qso.StationCallsign = configured.StationCallsign
-		}
-	}
-	if qso.Callsign == "" || p.lookup == nil {
-		return qso, resultErr
-	}
-
-	entry, err := p.lookup.Lookup(p.ctx, qso.Callsign)
-	if err != nil {
-		return qso, errors.Join(
-			resultErr,
-			fmt.Errorf("look up %s: %w", qso.Callsign, err),
-		)
-	}
-	if record, present := entry.Record.Get(); present {
-		qso.Name, _ = record.Name.Get()
-		if qso.Name == "" {
-			qso.Name, _ = record.Nickname.Get()
-		}
-		qso.QTH, _ = record.QTH.Get()
-	}
-	return qso, resultErr
 }
 
 func (p *page) openSelectedQSO() {
@@ -131,8 +79,9 @@ func (p *page) openSelectedQSO() {
 	if !ok {
 		return
 	}
-	editor := newQSOEditor(p.host, qso, p.updateQSO, p.lookup)
-	editor.setHandle(p.host.OpenModal(p.Content(), editor))
+	if p.showQSOEditor != nil {
+		p.showQSOEditor(p.Content(), qso)
+	}
 }
 
 func (p *page) confirmDeleteQSO() {
@@ -151,31 +100,18 @@ func (p *page) confirmDeleteQSO() {
 	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
-func (p *page) addQSO(qso domain.QSO) (domain.QSO, error) {
-	created, err := p.store.Add(p.ctx, qso)
-	if err != nil {
-		return domain.QSO{}, fmt.Errorf("add QSO: %w", err)
-	}
-	p.qsos = append(p.qsos, created)
-	p.selectedID = created.ID
-	p.applyFilter()
-	return created, nil
-}
-
-func (p *page) updateQSO(qso domain.QSO) (domain.QSO, error) {
-	updated, err := p.store.Update(p.ctx, qso)
-	if err != nil {
-		return domain.QSO{}, fmt.Errorf("update QSO: %w", err)
-	}
+func (p *page) QSOChanged(qso domain.QSO) {
 	for index := range p.qsos {
-		if p.qsos[index].ID == updated.ID {
-			p.qsos[index] = updated
-			break
+		if p.qsos[index].ID == qso.ID {
+			p.qsos[index] = qso
+			p.selectedID = qso.ID
+			p.applyFilter()
+			return
 		}
 	}
-	p.selectedID = updated.ID
+	p.qsos = append(p.qsos, qso)
+	p.selectedID = qso.ID
 	p.applyFilter()
-	return updated, nil
 }
 
 func (p *page) deleteQSO(id string) error {

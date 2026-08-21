@@ -10,6 +10,7 @@ import (
 	"morsemanual/internal/audio"
 	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/decoder"
+	logbookdomain "morsemanual/internal/logbook"
 	"morsemanual/internal/optional"
 	"morsemanual/internal/settings"
 	ui "morsemanual/internal/tui"
@@ -66,7 +67,6 @@ func TestPageWritesStreamingDecoderOutput(t *testing.T) {
 		MorseInputDeviceID: device.ID,
 	}}
 	page := newPage(
-		t.Context(),
 		newTestHost(),
 		source,
 		store,
@@ -99,7 +99,6 @@ func TestPageRestartsCaptureWhenSettingsChange(t *testing.T) {
 		MorseInputDeviceID: first.ID,
 	}}
 	page := newPage(
-		t.Context(),
 		newTestHost(),
 		source,
 		store,
@@ -128,7 +127,6 @@ func TestHiddenPageDoesNotReactToSettingsUntilNextActivation(t *testing.T) {
 		MorseInputDeviceID: device.ID,
 	}}
 	page := newPage(
-		t.Context(),
 		newTestHost(),
 		source,
 		store,
@@ -155,7 +153,6 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 		loads: make(chan struct{}, 4),
 	}
 	page := newPage(
-		t.Context(),
 		newTestHost(),
 		source,
 		store,
@@ -187,13 +184,13 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 	store := &decoderSettingsStore{values: settings.Settings{
 		StationCallsign: "HA7NCS",
 	}}
-	var contactedCallsign string
+	editors := &recordingQSOEditors{}
 	page := New(
 		host,
 		nil,
 		store,
 		nil,
-		func(callsign string) { contactedCallsign = callsign },
+		editors.Create,
 	).(*page)
 	bindings := page.KeyBindings()
 	if len(bindings) != 4 || bindings[0].Hint().Keys != "a" ||
@@ -222,8 +219,8 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 	if !bindings[1].Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
 		t.Fatal("Enter new QSO binding was not handled")
 	}
-	if contactedCallsign != "HA7NCS" {
-		t.Fatalf("contacted callsign = %q, want HA7NCS", contactedCallsign)
+	if editors.createdOwner != page.Content() || editors.createdCallsign != "HA7NCS" {
+		t.Fatalf("create editor call = %p, %q", editors.createdOwner, editors.createdCallsign)
 	}
 	if err := page.updateCallsign("HA7NCS", " oe1xyz "); err != nil {
 		t.Fatalf("updateCallsign() error = %v", err)
@@ -476,6 +473,18 @@ type testHost struct {
 	updated  chan struct{}
 	opened   modal.Dialog
 }
+
+type recordingQSOEditors struct {
+	createdOwner    tview.Primitive
+	createdCallsign string
+}
+
+func (f *recordingQSOEditors) Create(owner tview.Primitive, callsign string) {
+	f.createdOwner = owner
+	f.createdCallsign = callsign
+}
+
+func (f *recordingQSOEditors) Edit(tview.Primitive, logbookdomain.QSO) {}
 
 func newTestHost() *testHost {
 	theme := components.Theme{

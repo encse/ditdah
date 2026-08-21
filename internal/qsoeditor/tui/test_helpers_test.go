@@ -4,7 +4,6 @@ import (
 	"context"
 	"testing"
 
-	domain "morsemanual/internal/logbook"
 	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/modal"
@@ -14,48 +13,22 @@ import (
 )
 
 type testHost struct {
-	focus       tview.Primitive
-	refreshes   int
-	controls    components.Factory
-	modal       modal.Dialog
-	modalHandle *testModalHandle
-	editors     *testEditorFactory
+	controls        components.Factory
+	backgroundOwner tview.Primitive
+	modalOwner      tview.Primitive
+	modal           modal.Dialog
+	modalHandle     *testModalHandle
 }
 
-func newTestPage(t *testing.T) (*page, *testHost) {
+func newTestPage(t *testing.T) (struct{}, *testHost) {
 	t.Helper()
-	editors := &testEditorFactory{}
-	host := &testHost{controls: components.New(components.Dependencies{
+	return struct{}{}, &testHost{controls: components.New(components.Dependencies{
 		Theme: testTheme(),
-	}), editors: editors}
-	return newPage(t.Context(), host, nil, nil, editors.Create, editors.Edit), host
+	})}
 }
 
-type testEditorFactory struct {
-	createdOwner    tview.Primitive
-	createdCallsign string
-	editedOwner     tview.Primitive
-	editedQSO       domain.QSO
-}
-
-func (f *testEditorFactory) Create(owner tview.Primitive, callsign string) {
-	f.createdOwner = owner
-	f.createdCallsign = callsign
-}
-
-func (f *testEditorFactory) Edit(owner tview.Primitive, qso domain.QSO) {
-	f.editedOwner = owner
-	f.editedQSO = qso
-}
-
-func (h *testHost) SetFocus(primitive tview.Primitive) {
-	h.focus = primitive
-	h.Refresh()
-}
-
-func (h *testHost) Refresh() {
-	h.refreshes++
-}
+func (h *testHost) SetFocus(tview.Primitive) {}
+func (h *testHost) Refresh()                 {}
 
 func (h *testHost) Update(update func()) {
 	if update != nil {
@@ -63,34 +36,24 @@ func (h *testHost) Update(update func()) {
 	}
 }
 
-func (h *testHost) Components() components.Factory {
-	return h.controls
-}
+func (h *testHost) Components() components.Factory { return h.controls }
 
-func (h *testHost) OpenModal(
-	_ tview.Primitive,
-	dialog modal.Dialog,
-) modal.Handle {
+func (h *testHost) OpenModal(owner tview.Primitive, dialog modal.Dialog) modal.Handle {
+	h.modalOwner = owner
 	h.modal = dialog
 	h.modalHandle = &testModalHandle{}
 	return h.modalHandle
 }
 
-func (h *testHost) Background(
-	_ tview.Primitive,
-	work ui.BackgroundWork,
-) bool {
+func (h *testHost) Background(owner tview.Primitive, work ui.BackgroundWork) bool {
+	h.backgroundOwner = owner
 	work(context.Background())
 	return true
 }
 
-type testModalHandle struct {
-	closed bool
-}
+type testModalHandle struct{ closed bool }
 
-func (h *testModalHandle) Close() {
-	h.closed = true
-}
+func (h *testModalHandle) Close() { h.closed = true }
 
 func testTheme() components.Theme {
 	return components.Theme{
@@ -118,7 +81,7 @@ func testTheme() components.Theme {
 	}
 }
 
-func newTestScreen(t *testing.T, width int, height int) tcell.SimulationScreen {
+func newTestScreen(t *testing.T, width, height int) tcell.SimulationScreen {
 	t.Helper()
 	screen := tcell.NewSimulationScreen("UTF-8")
 	if err := screen.Init(); err != nil {
@@ -129,7 +92,7 @@ func newTestScreen(t *testing.T, width int, height int) tcell.SimulationScreen {
 	return screen
 }
 
-func assertRune(t *testing.T, screen tcell.Screen, x int, y int, want rune) {
+func assertRune(t *testing.T, screen tcell.Screen, x, y int, want rune) {
 	t.Helper()
 	got, _, _, _ := screen.GetContent(x, y)
 	if got != want {
@@ -140,8 +103,7 @@ func assertRune(t *testing.T, screen tcell.Screen, x int, y int, want rune) {
 func assertBackground(
 	t *testing.T,
 	screen tcell.Screen,
-	x int,
-	y int,
+	x, y int,
 	want tcell.Color,
 ) {
 	t.Helper()

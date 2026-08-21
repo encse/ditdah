@@ -1,0 +1,126 @@
+package tui
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"strings"
+	"time"
+
+	"morsemanual/internal/callsign"
+	domain "morsemanual/internal/logbook"
+	"morsemanual/internal/settings"
+	ui "morsemanual/internal/tui"
+
+	"github.com/rivo/tview"
+)
+
+// Factory opens QSO editors owned by a page.
+type Factory interface {
+	Create(owner tview.Primitive, callsign string)
+	Edit(owner tview.Primitive, qso domain.QSO)
+}
+
+type factory struct {
+	host     ui.PageHost
+	store    domain.Store
+	settings settings.Store
+	lookup   callsign.Service
+	changed  func(domain.QSO)
+}
+
+// New creates a QSO editor factory.
+func New(
+	host ui.PageHost,
+	store domain.Store,
+	settingsStore settings.Store,
+	lookup callsign.Service,
+	changed func(domain.QSO),
+) Factory {
+	return &factory{
+		host:     host,
+		store:    store,
+		settings: settingsStore,
+		lookup:   lookup,
+		changed:  changed,
+	}
+}
+
+func (f *factory) Create(owner tview.Primitive, contactedCallsign string) {
+	qso := domain.QSO{
+		Callsign:  strings.ToUpper(strings.TrimSpace(contactedCallsign)),
+		StartedAt: time.Now(),
+		Mode:      "CW",
+	}
+	f.host.Background(owner, func(ctx context.Context) {
+		err := f.resolveDraft(ctx, &qso)
+		if ctx.Err() != nil {
+			return
+		}
+		f.host.Update(func() {
+			f.open(owner, qso, f.add, err)
+		})
+	})
+}
+
+func (f *factory) Edit(owner tview.Primitive, qso domain.QSO) {
+	f.open(owner, qso, f.update, nil)
+}
+
+func (f *factory) resolveDraft(ctx context.Context, qso *domain.QSO) error {
+	var resultErr error
+	if f.settings != nil {
+		configured, err := f.settings.Load(ctx)
+		if err != nil {
+			resultErr = errors.Join(resultErr, fmt.Errorf("load settings: %w", err))
+		} else {
+			qso.StationCallsign = configured.StationCallsign
+		}
+	}
+	if qso.Callsign == "" || f.lookup == nil {
+		return resultErr
+	}
+
+	entry, err := f.lookup.Lookup(ctx, qso.Callsign)
+	if err != nil {
+		return errors.Join(resultErr, fmt.Errorf("look up %s: %w", qso.Callsign, err))
+	}
+	if record, present := entry.Record.Get(); present {
+		qso.Name, _ = record.Name.Get()
+		if qso.Name == "" {
+			qso.Name, _ = record.Nickname.Get()
+		}
+		qso.QTH, _ = record.QTH.Get()
+	}
+	return resultErr
+}
+
+func (f *factory) open(
+	owner tview.Primitive,
+	qso domain.QSO,
+	save saveQSOFunc,
+	err error,
+) {
+	editor := newQSOEditor(f.host, qso, save, f.lookup)
+	editor.saved = f.changed
+	if err != nil {
+		editor.showError(err)
+	}
+	editor.setHandle(f.host.OpenModal(owner, editor))
+}
+
+func (f *factory) add(ctx context.Context, qso domain.QSO) (domain.QSO, error) {
+	created, err := f.store.Add(ctx, qso)
+	if err != nil {
+		return domain.QSO{}, fmt.Errorf("add QSO: %w", err)
+	}
+	return created, nil
+}
+
+func (f *factory) update(ctx context.Context, qso domain.QSO) (domain.QSO, error) {
+	updated, err := f.store.Update(ctx, qso)
+	if err != nil {
+		return domain.QSO{}, fmt.Errorf("update QSO: %w", err)
+	}
+	return updated, nil
+}

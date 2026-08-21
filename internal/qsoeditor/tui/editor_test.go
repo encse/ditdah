@@ -13,31 +13,6 @@ import (
 	"github.com/rivo/tview"
 )
 
-func TestEditBindingOpensSelectedQSOEditor(t *testing.T) {
-	page, host := newTestPage(t)
-	page.qsos = []domain.QSO{{ID: "qso-1", Callsign: "HA7NCS"}}
-	page.applyFilter()
-
-	if !page.editBinding().Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
-		t.Fatal("Enter was not handled")
-	}
-	editor, ok := host.modal.(*qsoEditor)
-	if !ok {
-		t.Fatalf("opened modal = %T, want *qsoEditor", host.modal)
-	}
-	if editor.qso.ID != "qso-1" {
-		t.Fatalf("edited QSO = %q, want qso-1", editor.qso.ID)
-	}
-	if len(editor.Focusables()) != 14 {
-		t.Fatalf("focusable count = %d, want 14", len(editor.Focusables()))
-	}
-
-	editor.cancel.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
-	if host.modalHandle == nil || !host.modalHandle.closed {
-		t.Fatal("Cancel did not close the modal")
-	}
-}
-
 func TestQSOEditorUsesTwoAlignedColumnsAndFullWidthNotes(t *testing.T) {
 	_, host := newTestPage(t)
 	editor := newQSOEditor(host, domain.QSO{
@@ -110,7 +85,7 @@ func TestQSOEditorSubmitsEditedValue(t *testing.T) {
 		StartedAt:       originalStartedAt,
 		Mode:            "CW",
 		Submode:         "PCW",
-	}, func(qso domain.QSO) (domain.QSO, error) {
+	}, func(_ context.Context, qso domain.QSO) (domain.QSO, error) {
 		submitted = qso
 		return qso, nil
 	}, nil)
@@ -160,7 +135,7 @@ func TestQSOEditorKeepsOpenAndShowsInvalidInput(t *testing.T) {
 	editor := newQSOEditor(host, domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
 		Mode:      "CW",
-	}, func(qso domain.QSO) (domain.QSO, error) {
+	}, func(_ context.Context, qso domain.QSO) (domain.QSO, error) {
 		saveCalls++
 		return qso, nil
 	}, nil)
@@ -291,37 +266,6 @@ func TestQSOEditorLeavesModalBindingsToApplication(t *testing.T) {
 	}
 }
 
-func TestPageUpdatesStoreAndDisplayedModel(t *testing.T) {
-	page, _ := newTestPage(t)
-	store := &recordingUpdateStore{}
-	page.store = store
-	page.qsos = []domain.QSO{{ID: "qso-1", Callsign: "OLD"}}
-	page.applyFilter()
-
-	updated, err := page.updateQSO(domain.QSO{
-		ID:       "qso-1",
-		Callsign: "new",
-	})
-	if err != nil {
-		t.Fatalf("updateQSO() error = %v", err)
-	}
-
-	if store.received.Callsign != "new" {
-		t.Fatalf("store received Callsign = %q, want new", store.received.Callsign)
-	}
-	if updated.Callsign != "NEW" {
-		t.Fatalf("updated Callsign = %q, want NEW", updated.Callsign)
-	}
-	if len(page.qsos) != 1 || page.qsos[0].Callsign != "NEW" {
-		t.Fatalf("page QSOs = %#v, want returned store model", page.qsos)
-	}
-}
-
-type recordingUpdateStore struct {
-	domain.Store
-	received domain.QSO
-}
-
 type editorCallsignLookup struct {
 	entries map[string]callsign.Entry
 	calls   []string
@@ -333,15 +277,6 @@ func (s *editorCallsignLookup) Lookup(
 ) (callsign.Entry, error) {
 	s.calls = append(s.calls, value)
 	return s.entries[value], nil
-}
-
-func (s *recordingUpdateStore) Update(
-	_ context.Context,
-	qso domain.QSO,
-) (domain.QSO, error) {
-	s.received = qso
-	qso.Callsign = "NEW"
-	return qso, nil
 }
 
 func TestEditorModesKeepsUnknownCurrentMode(t *testing.T) {

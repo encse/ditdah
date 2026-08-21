@@ -1,3 +1,4 @@
+// Package tui implements the QSO editor terminal user interface.
 package tui
 
 import (
@@ -25,7 +26,7 @@ const qsoEditorLabelWidth = 16
 
 const qsoEditorTimeLayout = "2006-01-02 15:04"
 
-type saveQSOFunc func(domain.QSO) (domain.QSO, error)
+type saveQSOFunc func(context.Context, domain.QSO) (domain.QSO, error)
 
 var qsoEditorModes = []string{
 	"CW", "SSB", "AM", "FM", "RTTY", "FT8", "FT4", "PSK", "MFSK", "DATA",
@@ -33,8 +34,9 @@ var qsoEditorModes = []string{
 
 type qsoEditor struct {
 	modal.Layout
-	qso  domain.QSO
-	save saveQSOFunc
+	qso   domain.QSO
+	save  saveQSOFunc
+	saved func(domain.QSO)
 
 	stationCallsign  components.InputField
 	callsign         components.InputField
@@ -182,6 +184,15 @@ func normalizeEditorCallsign(value string) string {
 	return strings.ToUpper(strings.TrimSpace(value))
 }
 
+func formatFrequency(qso domain.QSO) string {
+	frequency, present := qso.FrequencyHz.Get()
+	if !present {
+		return ""
+	}
+	formatted := fmt.Sprintf("%.6f", float64(frequency)/1_000_000)
+	return strings.TrimRight(strings.TrimRight(formatted, "0"), ".")
+}
+
 func (e *qsoEditor) Focusables() []tview.Primitive {
 	return e.focusables
 }
@@ -206,15 +217,28 @@ func (e *qsoEditor) submit() {
 		e.showError(err)
 		return
 	}
-	if e.save != nil {
-		qso, err = e.save(qso)
-		if err != nil {
-			e.showError(err)
+	if e.save == nil {
+		e.qso = qso
+		e.close()
+		return
+	}
+	e.host.Background(e.Content(), func(ctx context.Context) {
+		saved, err := e.save(ctx, qso)
+		if ctx.Err() != nil {
 			return
 		}
-	}
-	e.qso = qso
-	e.close()
+		e.host.Update(func() {
+			if err != nil {
+				e.showError(err)
+				return
+			}
+			e.qso = saved
+			if e.saved != nil {
+				e.saved(saved)
+			}
+			e.close()
+		})
+	})
 }
 
 func (e *qsoEditor) value() (domain.QSO, error) {

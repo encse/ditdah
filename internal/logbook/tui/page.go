@@ -5,9 +5,7 @@ import (
 	"context"
 	"fmt"
 
-	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/settings"
 	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
@@ -18,12 +16,12 @@ import (
 const qsoPageSize = 500
 
 type page struct {
-	ctx      context.Context
-	host     ui.PageHost
-	store    domain.Store
-	syncer   qrzSynchronizer
-	settings settings.Store
-	lookup   callsign.Service
+	ctx              context.Context
+	host             ui.PageHost
+	store            domain.Store
+	syncer           qrzSynchronizer
+	showNewQSOEditor func(tview.Primitive, string)
+	showQSOEditor    func(tview.Primitive, domain.QSO)
 
 	content tview.Primitive
 	search  components.InputField
@@ -35,11 +33,9 @@ type page struct {
 	selectedID   string
 }
 
-// Page exposes the logbook page and the cross-page action for creating a QSO
-// with the contacted station.
 type Page interface {
 	ui.Page
-	OpenCreateQSO(string)
+	QSOChanged(domain.QSO)
 }
 
 // New creates and loads a logbook page.
@@ -48,10 +44,17 @@ func New(
 	host ui.PageHost,
 	store domain.Store,
 	syncer qrzSynchronizer,
-	settingsStore settings.Store,
-	lookup callsign.Service,
+	showNewQSOEditor func(tview.Primitive, string),
+	showQSOEditor func(tview.Primitive, domain.QSO),
 ) (Page, error) {
-	page := newPage(ctx, host, store, syncer, settingsStore, lookup)
+	page := newPage(
+		ctx,
+		host,
+		store,
+		syncer,
+		showNewQSOEditor,
+		showQSOEditor,
+	)
 	if err := page.load(); err != nil {
 		return nil, err
 	}
@@ -63,17 +66,17 @@ func newPage(
 	host ui.PageHost,
 	store domain.Store,
 	syncer qrzSynchronizer,
-	settingsStore settings.Store,
-	lookup callsign.Service,
+	showNewQSOEditor func(tview.Primitive, string),
+	showQSOEditor func(tview.Primitive, domain.QSO),
 ) *page {
 	controls := host.Components()
 	page := &page{
-		ctx:      ctx,
-		host:     host,
-		store:    store,
-		syncer:   syncer,
-		settings: settingsStore,
-		lookup:   lookup,
+		ctx:              ctx,
+		host:             host,
+		store:            store,
+		syncer:           syncer,
+		showNewQSOEditor: showNewQSOEditor,
+		showQSOEditor:    showQSOEditor,
 	}
 	page.search = page.newSearch(controls)
 	page.table = page.newTable(controls)

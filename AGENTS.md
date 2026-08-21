@@ -11,4 +11,5 @@
 - Record technical decisions and implementation details in `ROADMAP.md`, not in the README.
 - Track completed and future technical work in `ROADMAP.md` with Markdown checkboxes: `[x]` for completed work and `[ ]` for pending work.
 - Update `ROADMAP.md` when a technical decision is made, implemented, superseded, or added as future work.
+- Implement the change agreed with the user without broadening its scope, introducing unrequested abstractions, or refactoring adjacent code. If the requested change or its boundary is unclear, ask before choosing an interpretation.
 - Implement the change that was agreed with the user without broadening its scope, introducing unrequested abstractions, or refactoring adjacent code. If the requested change or its boundary is unclear, ask the user before choosing an interpretation.
