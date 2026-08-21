@@ -12,6 +12,7 @@ import (
 	domain "morsemanual/internal/decoder"
 	"morsemanual/internal/optional"
 	"morsemanual/internal/settings"
+	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/modal"
 
@@ -514,6 +515,13 @@ func (h *testHost) OpenModal(
 ) modal.Handle {
 	h.opened = dialog
 	return nil
+}
+
+func (h *testHost) Background(
+	_ tview.Primitive,
+	_ ui.BackgroundWork,
+) bool {
+	return false
 }
 
 type decoderLookupService struct {

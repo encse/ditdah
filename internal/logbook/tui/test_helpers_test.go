@@ -3,6 +3,7 @@ package tui
 import (
 	"testing"
 
+	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/modal"
 
@@ -52,6 +53,13 @@ func (h *testHost) OpenModal(
 	h.modal = dialog
 	h.modalHandle = &testModalHandle{}
 	return h.modalHandle
+}
+
+func (h *testHost) Background(
+	_ tview.Primitive,
+	_ ui.BackgroundWork,
+) bool {
+	return false
 }
 
 type testModalHandle struct {

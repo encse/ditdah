@@ -45,6 +45,7 @@ This document records implementation decisions and future technical work.
 - [x] Add a separate Morse decoder page and application-level F1/F2 navigation between it and the logbook.
 - [x] Give every page a context-bound `Run` lifecycle; cancel and wait for the active page before hiding it or stopping the terminal.
 - [x] Reconcile pages and nested modals through one application-owned layer stack: derive every layer context from the layer below it, bind modal requests to the exact parent stack entry, keep parent layers running, and hide a removed suffix only after all of its `Run` lifecycles return.
+- [x] Let the application run owner-identified background work under the active page or modal lifecycle, wait for it during layer shutdown, and apply its returned update on the UI thread only while that owner remains current.
 - [x] Coordinate page changes through an initialized, latest-value mailbox inside the application run loop; scope each page and mailbox receiver to one local `errgroup` and wait for both before switching.
 - [x] Pass the initial page ID directly to `Application.Run`; create the page mailbox there so startup and later navigation use the same data path.
 - [x] Let pages contribute their own application-menu items when registered.

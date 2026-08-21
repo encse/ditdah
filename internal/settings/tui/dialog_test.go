@@ -10,6 +10,7 @@ import (
 	"morsemanual/internal/audio"
 	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/settings"
+	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/modal"
 
@@ -673,6 +674,13 @@ func (h *testHost) OpenModalForCurrentLayer(
 	dialog modal.Dialog,
 ) modal.Handle {
 	return h.OpenModal(nil, dialog)
+}
+
+func (h *testHost) Background(
+	_ tview.Primitive,
+	_ ui.BackgroundWork,
+) bool {
+	return false
 }
 
 func (h *testHost) lastDialog() modal.Dialog {

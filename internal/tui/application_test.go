@@ -179,7 +179,7 @@ func TestApplicationRejectsDuplicateAndUnknownPages(t *testing.T) {
 func TestApplicationOwnsQuitBinding(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	stopped := 0
-	app.initializeRuntime(t.Context(), func() { stopped++ })
+	app.initializeRuntime(func() { stopped++ })
 	binding := app.exitBinding
 	if binding.Hint() != (keybinding.Hint{Keys: "q", Description: "quit"}) {
 		t.Fatalf("quit hint = %#v", binding.Hint())
@@ -271,7 +271,7 @@ func TestRegisteredPageContributesApplicationMenuItems(t *testing.T) {
 	if err := app.Register(page); err != nil {
 		t.Fatal(err)
 	}
-	app.runtimeContext = t.Context()
+	app.running = true
 	app.buildApplicationMenu()
 	if len(app.globalBindings) != 1 {
 		t.Fatalf("global bindings = %d, want 1", len(app.globalBindings))
@@ -730,15 +730,98 @@ func TestApplicationRejectsModalRequestedByNonTopLayer(t *testing.T) {
 	app.OpenModal(logbook.Content(), applicationTestModal{
 		content: tview.NewBox(),
 	})
-	app.layerMu.Lock()
-	requestedCount := len(app.requestedLayers)
-	app.layerMu.Unlock()
+	requestedCount := app.layers.requestedCount()
 
 	if requestedCount != 1 {
 		t.Fatalf("requested layer count = %d, want page only", requestedCount)
 	}
 	if app.overlays.Active() {
 		t.Fatal("modal requested by hidden page became visible")
+	}
+}
+
+func TestApplicationRunsBackgroundWorkForTopLayerAndAppliesUpdate(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	page := applicationTestPage{
+		id: "logbook", title: "Logbook", content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatal(err)
+	}
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
+
+	workStarted := make(chan struct{})
+	releaseWork := make(chan struct{})
+	updated := make(chan struct{})
+	accepted := app.Background(page.Content(), func(ctx context.Context) func() {
+		close(workStarted)
+		select {
+		case <-releaseWork:
+		case <-ctx.Done():
+			return nil
+		}
+		return func() { close(updated) }
+	})
+	if !accepted {
+		t.Fatal("Background() rejected work for the top page")
+	}
+	waitForApplicationSignal(t, workStarted, "background work start")
+	close(releaseWork)
+	waitForApplicationSignal(t, updated, "background UI update")
+}
+
+func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	page := applicationTestPage{
+		id: "logbook", title: "Logbook", content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatal(err)
+	}
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
+
+	dialog := applicationTestModal{content: tview.NewBox()}
+	handle := app.OpenModal(page.Content(), dialog)
+	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
+
+	if app.Background(page.Content(), func(context.Context) func() {
+		t.Error("background work ran for a covered page")
+		return nil
+	}) {
+		t.Fatal("Background() accepted work for a non-top page")
+	}
+
+	workStarted := make(chan struct{})
+	workCancelled := make(chan struct{})
+	releaseWork := make(chan struct{})
+	updated := make(chan struct{}, 1)
+	accepted := app.Background(dialog.Content(), func(ctx context.Context) func() {
+		close(workStarted)
+		<-ctx.Done()
+		close(workCancelled)
+		<-releaseWork
+		return func() { updated <- struct{}{} }
+	})
+	if !accepted {
+		t.Fatal("Background() rejected work for the top modal")
+	}
+	waitForApplicationSignal(t, workStarted, "modal background work start")
+
+	handle.Close()
+	waitForApplicationSignal(t, workCancelled, "modal background cancellation")
+	if !app.overlays.Active() {
+		t.Fatal("modal was hidden before its background work stopped")
+	}
+	close(releaseWork)
+	waitForApplicationCondition(t, app, "modal close", func() bool {
+		return !app.overlays.Active()
+	})
+	select {
+	case <-updated:
+		t.Fatal("cancelled modal background work updated the UI")
+	default:
 	}
 }
 
