@@ -25,7 +25,6 @@ const settingsLabelWidth = 20
 
 type dialog struct {
 	modal.Layout
-	ctx             context.Context
 	host            ui.PageHost
 	store           domain.Store
 	qrz             qrz.Service
@@ -85,7 +84,7 @@ func Open(
 		devices, devicesErr = inputs.Devices()
 	}
 	dialog := newDialog(
-		ctx, host, store, qrzService, values, devices, onChanged,
+		host, store, qrzService, values, devices, onChanged,
 	)
 	dialog.loadErr = loadErr
 	dialog.devicesErr = devicesErr
@@ -93,7 +92,6 @@ func Open(
 }
 
 func newDialog(
-	ctx context.Context,
 	host ui.PageHost,
 	store domain.Store,
 	qrzService qrz.Service,
@@ -103,7 +101,6 @@ func newDialog(
 ) *dialog {
 	controls := host.Components().Modal()
 	dialog := &dialog{
-		ctx:             ctx,
 		host:            host,
 		store:           store,
 		qrz:             qrzService,
@@ -181,7 +178,6 @@ func (d *dialog) KeyBindings() []keybinding.Binding {
 }
 
 func (d *dialog) Run(ctx context.Context) {
-	d.ctx = ctx
 	d.host.Update(func() {
 		if d.loadErr != nil {
 			d.showError(fmt.Errorf("load settings: %w", d.loadErr))
@@ -274,11 +270,10 @@ func (d *dialog) showInitialDeviceError() {
 
 func (d *dialog) submit() {
 	values := d.currentValues()
-	if err := d.save(values); err != nil {
-		d.showError(err)
-		return
-	}
-	d.close()
+	d.host.Background(d.Content(), func(ctx context.Context) func() {
+		saved, err := d.store.Save(ctx, values)
+		return func() { d.finishSave(saved, err) }
+	})
 }
 
 func (d *dialog) openLogin() {
@@ -287,39 +282,49 @@ func (d *dialog) openLogin() {
 		d.showError(fmt.Errorf("callsign is required before QRZ.com login"))
 		return
 	}
-	login := newLoginDialog(
+	var login *loginDialog
+	login = newLoginDialog(
 		d.host.Components(),
 		callsign,
-		func(password string) error {
-			if err := d.qrz.ValidateLogin(d.ctx, callsign, password); err != nil {
-				return err
-			}
-			values := d.currentValues()
-			values.StationCallsign = callsign
-			values.QRZPassword = password
-			d.stage(values)
-			d.loginGeneration.Add(1)
-			d.stationCallsign.SetValue(callsign)
-			d.showLoginStatus(nil)
-			return nil
+		func(password string) {
+			d.host.Background(login.Content(), func(ctx context.Context) func() {
+				err := d.qrz.ValidateLogin(ctx, callsign, password)
+				return func() {
+					if err == nil {
+						values := d.currentValues()
+						values.StationCallsign = callsign
+						values.QRZPassword = password
+						d.stage(values)
+						d.loginGeneration.Add(1)
+						d.stationCallsign.SetValue(callsign)
+						d.showLoginStatus(nil)
+					}
+					login.finish(err)
+				}
+			})
 		},
 	)
 	login.handle = d.host.OpenModal(d.Content(), login)
 }
 
 func (d *dialog) openAPIKey() {
-	editor := newAPIKeyDialog(
+	var editor *apiKeyDialog
+	editor = newAPIKeyDialog(
 		d.host.Components(),
-		func(apiKey string) error {
-			if err := d.qrz.ValidateAPIKey(d.ctx, apiKey); err != nil {
-				return err
-			}
-			values := d.currentValues()
-			values.QRZAPIKey = apiKey
-			d.stage(values)
-			d.apiKeyGeneration.Add(1)
-			d.showAPIKeyStatus(nil)
-			return nil
+		func(apiKey string) {
+			d.host.Background(editor.Content(), func(ctx context.Context) func() {
+				err := d.qrz.ValidateAPIKey(ctx, apiKey)
+				return func() {
+					if err == nil {
+						values := d.currentValues()
+						values.QRZAPIKey = apiKey
+						d.stage(values)
+						d.apiKeyGeneration.Add(1)
+						d.showAPIKeyStatus(nil)
+					}
+					editor.finish(err)
+				}
+			})
 		},
 	)
 	editor.handle = d.host.OpenModal(d.Content(), editor)
@@ -351,10 +356,10 @@ func (d *dialog) currentValues() domain.Settings {
 	return values
 }
 
-func (d *dialog) save(values domain.Settings) error {
-	saved, err := d.store.Save(d.ctx, values)
+func (d *dialog) finishSave(saved domain.Settings, err error) {
 	if err != nil {
-		return err
+		d.showError(err)
+		return
 	}
 	d.values = saved
 	d.message.SetText("")
@@ -362,7 +367,7 @@ func (d *dialog) save(values domain.Settings) error {
 		d.onChanged()
 	}
 	d.persistedValues = saved
-	return nil
+	d.close()
 }
 
 func (d *dialog) stage(values domain.Settings) {

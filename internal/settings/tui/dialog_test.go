@@ -27,7 +27,7 @@ func TestSettingsIsUsableWhileCredentialValidationRuns(t *testing.T) {
 	host := newTestHost()
 
 	dialog := newDialog(
-		t.Context(), host, store, service, store.loaded, nil, nil,
+		host, store, service, store.loaded, nil, nil,
 	)
 	if len(dialog.Focusables()) == 0 {
 		t.Fatal("settings controls are not immediately focusable")
@@ -92,7 +92,7 @@ func TestSettingsRevalidatesQRZLoginWhenCallsignChanges(t *testing.T) {
 	host := newTestHost()
 	host.updated = make(chan struct{}, 3)
 	dialog := newDialog(
-		t.Context(), host, &recordingStore{}, service, values, nil, nil,
+		host, &recordingStore{}, service, values, nil, nil,
 	)
 	cancel, done := runSettingsDialog(t, dialog)
 	defer stopSettingsDialog(t, cancel, done)
@@ -189,7 +189,6 @@ func TestSettingsNotifiesApplicationAfterChangedValuesWereStaged(t *testing.T) {
 	host := newTestHost()
 	changes := 0
 	dialog := newDialog(
-		t.Context(),
 		host,
 		store,
 		&recordingQRZService{},
@@ -200,10 +199,9 @@ func TestSettingsNotifiesApplicationAfterChangedValuesWereStaged(t *testing.T) {
 	staged := values
 	staged.StationCallsign = "HA7NCS"
 	dialog.stage(staged)
+	dialog.stationCallsign.SetValue(staged.StationCallsign)
 
-	if err := dialog.save(staged); err != nil {
-		t.Fatalf("save staged settings: %v", err)
-	}
+	dialog.submit()
 	if changes != 1 {
 		t.Fatalf("settings change notifications = %d, want 1", changes)
 	}
@@ -233,7 +231,6 @@ func TestSettingsButtonsReceiveMouseClicks(t *testing.T) {
 	store := &recordingStore{}
 	host := newTestHost()
 	dialog := newDialog(
-		t.Context(),
 		host,
 		store,
 		&recordingQRZService{},
@@ -678,9 +675,13 @@ func (h *testHost) OpenModalForCurrentLayer(
 
 func (h *testHost) Background(
 	_ tview.Primitive,
-	_ ui.BackgroundWork,
+	work ui.BackgroundWork,
 ) bool {
-	return false
+	update := work(context.Background())
+	if update != nil {
+		update()
+	}
+	return true
 }
 
 func (h *testHost) lastDialog() modal.Dialog {

@@ -18,17 +18,17 @@ type loginDialog struct {
 	login      components.Button
 	cancel     components.Button
 	focusables []tview.Primitive
-	validate   func(password string) error
+	loginWith  func(string)
 	handle     modal.Handle
 }
 
 func newLoginDialog(
 	controls components.Factory,
 	callsign string,
-	validate func(password string) error,
+	loginWith func(string),
 ) *loginDialog {
 	controls = controls.Modal()
-	dialog := &loginDialog{validate: validate}
+	dialog := &loginDialog{loginWith: loginWith}
 	dialog.callsign = controls.InputField("Callsign", callsign)
 	dialog.callsign.SetLabelWidth(settingsLabelWidth)
 	dialog.callsign.SetDisabled(true)
@@ -56,11 +56,15 @@ func (d *loginDialog) Focusables() []tview.Primitive { return d.focusables }
 func (d *loginDialog) KeyBindings() []keybinding.Binding { return nil }
 
 func (d *loginDialog) submit() {
-	if d.validate != nil {
-		if err := d.validate(d.password.Value()); err != nil {
-			d.message.SetText("Error: " + err.Error())
-			return
-		}
+	if d.loginWith != nil {
+		d.loginWith(d.password.Value())
+	}
+}
+
+func (d *loginDialog) finish(err error) {
+	if err != nil {
+		d.message.SetText("Error: " + err.Error())
+		return
 	}
 	d.close()
 }

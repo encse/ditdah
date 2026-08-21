@@ -15,16 +15,16 @@ type apiKeyDialog struct {
 	update     components.Button
 	cancel     components.Button
 	focusables []tview.Primitive
-	validate   func(apiKey string) error
+	updateWith func(string)
 	handle     modal.Handle
 }
 
 func newAPIKeyDialog(
 	controls components.Factory,
-	validate func(apiKey string) error,
+	updateWith func(string),
 ) *apiKeyDialog {
 	controls = controls.Modal()
-	dialog := &apiKeyDialog{validate: validate}
+	dialog := &apiKeyDialog{updateWith: updateWith}
 	dialog.apiKey = controls.InputField("API key", "")
 	dialog.apiKey.SetLabelWidth(settingsLabelWidth)
 	dialog.apiKey.SetMaskCharacter('*')
@@ -49,11 +49,15 @@ func (d *apiKeyDialog) Focusables() []tview.Primitive { return d.focusables }
 func (d *apiKeyDialog) KeyBindings() []keybinding.Binding { return nil }
 
 func (d *apiKeyDialog) submit() {
-	if d.validate != nil {
-		if err := d.validate(d.apiKey.Value()); err != nil {
-			d.message.SetText("Error: " + err.Error())
-			return
-		}
+	if d.updateWith != nil {
+		d.updateWith(d.apiKey.Value())
+	}
+}
+
+func (d *apiKeyDialog) finish(err error) {
+	if err != nil {
+		d.message.SetText("Error: " + err.Error())
+		return
 	}
 	d.close()
 }
