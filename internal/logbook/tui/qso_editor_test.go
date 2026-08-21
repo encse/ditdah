@@ -40,7 +40,7 @@ func TestEditBindingOpensSelectedQSOEditor(t *testing.T) {
 
 func TestQSOEditorUsesTwoAlignedColumnsAndFullWidthNotes(t *testing.T) {
 	_, host := newTestPage(t)
-	editor := newQSOEditor(host.Components(), domain.QSO{
+	editor := newQSOEditor(host, domain.QSO{
 		StationCallsign:  "HA7NCS",
 		Callsign:         "DL1ABC",
 		StartedAt:        time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
@@ -52,7 +52,7 @@ func TestQSOEditorUsesTwoAlignedColumnsAndFullWidthNotes(t *testing.T) {
 		Name:             "Alice",
 		QTH:              "Budapest",
 		Notes:            "portable operation",
-	}, nil)
+	}, nil, nil)
 	screen := newTestScreen(t, 84, 22)
 	editor.Content().SetRect(0, 0, 84, 22)
 	editor.Content().Draw(screen)
@@ -79,11 +79,11 @@ func TestQSOEditorUsesTwoAlignedColumnsAndFullWidthNotes(t *testing.T) {
 
 func TestQSOEditorShowsCursorInFocusedInput(t *testing.T) {
 	_, host := newTestPage(t)
-	editor := newQSOEditor(host.Components(), domain.QSO{
+	editor := newQSOEditor(host, domain.QSO{
 		StationCallsign: "HA7NCS",
 		StartedAt:       time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
 		Mode:            "CW",
-	}, nil)
+	}, nil, nil)
 	screen := newTestScreen(t, 84, 22)
 	editor.Content().SetRect(0, 0, 84, 22)
 	editor.stationCallsign.Focus(nil)
@@ -103,7 +103,7 @@ func TestQSOEditorSubmitsEditedValue(t *testing.T) {
 	_, host := newTestPage(t)
 	originalStartedAt := time.Date(2026, 8, 15, 12, 34, 45, 0, time.Local)
 	var submitted domain.QSO
-	editor := newQSOEditor(host.Components(), domain.QSO{
+	editor := newQSOEditor(host, domain.QSO{
 		ID:              "qso-1",
 		StationCallsign: "HA7NCS",
 		Callsign:        "DL1ABC",
@@ -113,7 +113,7 @@ func TestQSOEditorSubmitsEditedValue(t *testing.T) {
 	}, func(qso domain.QSO) (domain.QSO, error) {
 		submitted = qso
 		return qso, nil
-	})
+	}, nil)
 	handle := &testModalHandle{}
 	editor.setHandle(handle)
 	editor.stationCallsign.SetValue("ha5xyz")
@@ -157,13 +157,13 @@ func TestQSOEditorSubmitsEditedValue(t *testing.T) {
 func TestQSOEditorKeepsOpenAndShowsInvalidInput(t *testing.T) {
 	_, host := newTestPage(t)
 	saveCalls := 0
-	editor := newQSOEditor(host.Components(), domain.QSO{
+	editor := newQSOEditor(host, domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
 		Mode:      "CW",
 	}, func(qso domain.QSO) (domain.QSO, error) {
 		saveCalls++
 		return qso, nil
-	})
+	}, nil)
 	handle := &testModalHandle{}
 	editor.setHandle(handle)
 	editor.startedAt.SetValue("tomorrow")
@@ -183,10 +183,10 @@ func TestQSOEditorKeepsOpenAndShowsInvalidInput(t *testing.T) {
 
 func TestQSOEditorCallsignInputOnlyOwnsLookupEnter(t *testing.T) {
 	_, host := newTestPage(t)
-	editor := newQSOEditor(host.Components(), domain.QSO{
+	editor := newQSOEditor(host, domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
 		Mode:      "CW",
-	}, nil)
+	}, nil, nil)
 	handle := &testModalHandle{}
 	editor.setHandle(handle)
 	bindings := editor.callsign.KeyBindings()
@@ -220,14 +220,13 @@ func TestQSOEditorRefreshesCallsignDataOnEnterAndBlur(t *testing.T) {
 			}),
 		},
 	}}
-	editor := newQSOEditor(host.Components(), domain.QSO{
+	editor := newQSOEditor(host, domain.QSO{
 		Callsign:  "OLD",
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
 		Mode:      "CW",
 		Name:      "Old name",
 		QTH:       "Old QTH",
-	}, nil)
-	editor.setCallsignLookup(t.Context(), lookup)
+	}, nil, lookup)
 
 	editor.callsign.SetValue(" oe1abc ")
 	editor.callsign.InputHandler()(
@@ -262,10 +261,10 @@ func TestQSOEditorRefreshesCallsignDataOnEnterAndBlur(t *testing.T) {
 
 func TestQSOEditorInputEnterDoesNotMoveFocus(t *testing.T) {
 	_, host := newTestPage(t)
-	editor := newQSOEditor(host.Components(), domain.QSO{
+	editor := newQSOEditor(host, domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
 		Mode:      "CW",
-	}, nil)
+	}, nil, nil)
 	handle := &testModalHandle{}
 	editor.setHandle(handle)
 
@@ -281,10 +280,10 @@ func TestQSOEditorInputEnterDoesNotMoveFocus(t *testing.T) {
 
 func TestQSOEditorLeavesModalBindingsToApplication(t *testing.T) {
 	_, host := newTestPage(t)
-	editor := newQSOEditor(host.Components(), domain.QSO{
+	editor := newQSOEditor(host, domain.QSO{
 		StartedAt: time.Date(2026, 8, 15, 12, 34, 0, 0, time.Local),
 		Mode:      "CW",
-	}, nil)
+	}, nil, nil)
 	bindings := editor.KeyBindings()
 
 	if len(bindings) != 0 {

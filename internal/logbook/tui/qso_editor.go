@@ -12,6 +12,7 @@ import (
 	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/logbook"
 	"morsemanual/internal/optional"
+	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
 	"morsemanual/internal/tui/modal"
@@ -52,18 +53,24 @@ type qsoEditor struct {
 	cancel           components.Button
 	focusables       []tview.Primitive
 	handle           modal.Handle
+	host             ui.PageHost
 	lookup           callsign.Service
-	lookupContext    context.Context
 	lookedUpCallsign string
 }
 
 func newQSOEditor(
-	controls components.Factory,
+	host ui.PageHost,
 	qso domain.QSO,
 	save saveQSOFunc,
+	lookup callsign.Service,
 ) *qsoEditor {
-	controls = controls.Modal()
-	editor := &qsoEditor{qso: qso, save: save}
+	controls := host.Components().Modal()
+	editor := &qsoEditor{
+		qso:    qso,
+		save:   save,
+		host:   host,
+		lookup: lookup,
+	}
 	editor.stationCallsign = editor.input(
 		controls,
 		"My callsign",
@@ -128,16 +135,8 @@ func newQSOEditor(
 		editor.cancel,
 	}
 	editor.Layout = editor.layout(controls)
+	editor.lookedUpCallsign = normalizeEditorCallsign(editor.callsign.Value())
 	return editor
-}
-
-func (e *qsoEditor) setCallsignLookup(
-	ctx context.Context,
-	lookup callsign.Service,
-) {
-	e.lookupContext = ctx
-	e.lookup = lookup
-	e.lookedUpCallsign = normalizeEditorCallsign(e.callsign.Value())
 }
 
 func (e *qsoEditor) refreshCallsign() {
@@ -148,25 +147,35 @@ func (e *qsoEditor) refreshCallsign() {
 	e.lookedUpCallsign = callsignValue
 	e.name.SetValue("")
 	e.qth.SetValue("")
-	if callsignValue == "" || e.lookup == nil {
+	if callsignValue == "" || e.lookup == nil || e.host == nil {
 		return
 	}
 
-	entry, err := e.lookup.Lookup(e.lookupContext, callsignValue)
-	if err != nil {
-		e.showError(fmt.Errorf("look up %s: %w", callsignValue, err))
-		return
-	}
-	e.message.SetText("")
-	if record, present := entry.Record.Get(); present {
-		name, _ := record.Name.Get()
-		if name == "" {
-			name, _ = record.Nickname.Get()
+	e.host.Background(e.Content(), func(ctx context.Context) {
+		entry, err := e.lookup.Lookup(ctx, callsignValue)
+		if ctx.Err() != nil {
+			return
 		}
-		e.name.SetValue(name)
-		qth, _ := record.QTH.Get()
-		e.qth.SetValue(qth)
-	}
+		e.host.Update(func() {
+			if e.lookedUpCallsign != callsignValue {
+				return
+			}
+			if err != nil {
+				e.showError(fmt.Errorf("look up %s: %w", callsignValue, err))
+				return
+			}
+			e.message.SetText("")
+			if record, present := entry.Record.Get(); present {
+				name, _ := record.Name.Get()
+				if name == "" {
+					name, _ = record.Nickname.Get()
+				}
+				e.name.SetValue(name)
+				qth, _ := record.QTH.Get()
+				e.qth.SetValue(qth)
+			}
+		})
+	})
 }
 
 func normalizeEditorCallsign(value string) string {

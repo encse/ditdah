@@ -79,8 +79,7 @@ func (p *page) openCreateQSO() {
 // not need to construct a partially populated domain model.
 func (p *page) OpenCreateQSO(callsign string) {
 	qso, err := p.newQSODraft(callsign)
-	editor := newQSOEditor(p.host.Components(), qso, p.addQSO)
-	editor.setCallsignLookup(p.ctx, p.lookup)
+	editor := newQSOEditor(p.host, qso, p.addQSO, p.lookup)
 	if err != nil {
 		editor.showError(err)
 	}
@@ -132,8 +131,7 @@ func (p *page) openSelectedQSO() {
 	if !ok {
 		return
 	}
-	editor := newQSOEditor(p.host.Components(), qso, p.updateQSO)
-	editor.setCallsignLookup(p.ctx, p.lookup)
+	editor := newQSOEditor(p.host, qso, p.updateQSO, p.lookup)
 	editor.setHandle(p.host.OpenModal(p.Content(), editor))
 }
 
