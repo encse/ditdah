@@ -53,6 +53,8 @@ func TestPageAddsCreatedQSOToView(t *testing.T) {
 
 func TestDeleteBindingConfirmsAndDeletesSelectedQSO(t *testing.T) {
 	page, host := newTestPage(t)
+	backgroundCtx := context.WithValue(context.Background(), "source", "background")
+	host.backgroundContext = backgroundCtx
 	store := &recordingActionStore{}
 	page.store = store
 	page.qsos = []domain.QSO{
@@ -79,6 +81,9 @@ func TestDeleteBindingConfirmsAndDeletesSelectedQSO(t *testing.T) {
 
 	if store.deleted != "qso-1" {
 		t.Fatalf("deleted ID = %q, want qso-1", store.deleted)
+	}
+	if store.deleteContext != backgroundCtx {
+		t.Fatal("delete did not use the Background context")
 	}
 	if len(page.qsos) != 1 || page.qsos[0].ID != "qso-2" {
 		t.Fatalf("page QSOs = %#v, want qso-2", page.qsos)
@@ -114,6 +119,8 @@ func TestDeleteFailureKeepsConfirmationOpen(t *testing.T) {
 
 func TestSyncBindingUploadsPendingQSOsAndRefreshesPage(t *testing.T) {
 	page, host := newTestPage(t)
+	backgroundCtx := context.WithValue(context.Background(), "source", "background")
+	host.backgroundContext = backgroundCtx
 	store := &listingActionStore{}
 	syncer := &recordingSynchronizer{}
 	page.store = store
@@ -140,6 +147,9 @@ func TestSyncBindingUploadsPendingQSOsAndRefreshesPage(t *testing.T) {
 	if syncer.calls != 1 {
 		t.Fatalf("Sync() calls = %d, want 1", syncer.calls)
 	}
+	if syncer.ctx != backgroundCtx {
+		t.Fatal("sync did not use the Background context")
+	}
 	if len(page.qsos) != 0 {
 		t.Fatalf("page QSOs = %#v, want refreshed empty list", page.qsos)
 	}
@@ -150,9 +160,10 @@ func TestSyncBindingUploadsPendingQSOsAndRefreshesPage(t *testing.T) {
 
 type recordingActionStore struct {
 	domain.Store
-	added     domain.QSO
-	deleted   string
-	deleteErr error
+	added         domain.QSO
+	deleted       string
+	deleteContext context.Context
+	deleteErr     error
 }
 
 type listingActionStore struct {
@@ -168,10 +179,12 @@ func (s *listingActionStore) List(
 
 type recordingSynchronizer struct {
 	calls int
+	ctx   context.Context
 }
 
-func (s *recordingSynchronizer) Sync(context.Context) (int, error) {
+func (s *recordingSynchronizer) Sync(ctx context.Context) (int, error) {
 	s.calls++
+	s.ctx = ctx
 	return 2, nil
 }
 
@@ -184,7 +197,8 @@ func (s *recordingActionStore) Add(
 	return qso, nil
 }
 
-func (s *recordingActionStore) Delete(_ context.Context, id string) error {
+func (s *recordingActionStore) Delete(ctx context.Context, id string) error {
 	s.deleted = id
+	s.deleteContext = ctx
 	return s.deleteErr
 }

@@ -55,7 +55,7 @@ func newTerminalApplication(
 ) (tui.Application, string, error) {
 	terminal := tui.NewApplication()
 	var logbook logbookpage.Page
-	editors := qsoeditor.New(
+	qsoEditors := qsoeditor.New(
 		terminal,
 		deps.stores.Logbook,
 		deps.stores.Settings,
@@ -66,23 +66,19 @@ func newTerminalApplication(
 			}
 		},
 	)
-	logbook, err := logbookpage.New(
-		ctx,
+	logbook = logbookpage.New(
 		terminal,
 		deps.stores.Logbook,
 		deps.qrzSync,
-		editors.Create,
-		editors.Edit,
+		qsoEditors.Create,
+		qsoEditors.Edit,
 	)
-	if err != nil {
-		return nil, "", err
-	}
 	decoder := decoderpage.New(
 		terminal,
 		deps.audio,
 		deps.stores.Settings,
 		deps.callsignLookup,
-		editors.Create,
+		qsoEditors.Create,
 	)
 	for _, page := range []tui.Page{logbook, decoder} {
 		if err := terminal.Register(page); err != nil {

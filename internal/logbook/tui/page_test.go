@@ -1,10 +1,57 @@
 package tui
 
 import (
+	"context"
 	"testing"
+	"time"
 
 	domain "morsemanual/internal/logbook"
 )
+
+func TestPageLoadsLogbookInRun(t *testing.T) {
+	page, host := newTestPage(t)
+	host.updates = make(chan struct{}, 1)
+	store := &runListingStore{}
+	page.store = store
+	ctx, cancel := context.WithCancel(context.Background())
+	done := make(chan struct{})
+	go func() {
+		page.Run(ctx)
+		close(done)
+	}()
+
+	select {
+	case <-host.updates:
+	case <-time.After(time.Second):
+		t.Fatal("Run did not load the logbook")
+	}
+	if store.ctx != ctx {
+		t.Fatal("List did not use the Run context")
+	}
+	if len(page.qsos) != 1 || page.qsos[0].ID != "qso-1" {
+		t.Fatalf("loaded QSOs = %#v", page.qsos)
+	}
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("Run did not stop after context cancellation")
+	}
+}
+
+type runListingStore struct {
+	domain.Store
+	ctx context.Context
+}
+
+func (s *runListingStore) List(
+	ctx context.Context,
+	_ domain.Filter,
+) ([]domain.QSO, error) {
+	s.ctx = ctx
+	return []domain.QSO{{ID: "qso-1", Callsign: "DL1ABC"}}, nil
+}
 
 func TestPageMetadata(t *testing.T) {
 	page, _ := newTestPage(t)

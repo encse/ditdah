@@ -16,7 +16,6 @@ import (
 const qsoPageSize = 500
 
 type page struct {
-	ctx              context.Context
 	host             ui.PageHost
 	store            domain.Store
 	syncer           qrzSynchronizer
@@ -38,31 +37,24 @@ type Page interface {
 	QSOChanged(domain.QSO)
 }
 
-// New creates and loads a logbook page.
+// New creates the logbook page.
 func New(
-	ctx context.Context,
 	host ui.PageHost,
 	store domain.Store,
 	syncer qrzSynchronizer,
 	showNewQSOEditor func(tview.Primitive, string),
 	showQSOEditor func(tview.Primitive, domain.QSO),
-) (Page, error) {
-	page := newPage(
-		ctx,
+) Page {
+	return newPage(
 		host,
 		store,
 		syncer,
 		showNewQSOEditor,
 		showQSOEditor,
 	)
-	if err := page.load(); err != nil {
-		return nil, err
-	}
-	return page, nil
 }
 
 func newPage(
-	ctx context.Context,
 	host ui.PageHost,
 	store domain.Store,
 	syncer qrzSynchronizer,
@@ -71,7 +63,6 @@ func newPage(
 ) *page {
 	controls := host.Components()
 	page := &page{
-		ctx:              ctx,
 		host:             host,
 		store:            store,
 		syncer:           syncer,
@@ -119,21 +110,37 @@ func (p *page) MenuItems() []components.MenuItem { return nil }
 
 func (p *page) SettingsChanged() {}
 
-func (p *page) Run(ctx context.Context) { <-ctx.Done() }
+func (p *page) Run(ctx context.Context) {
+	qsos, err := p.list(ctx)
+	if ctx.Err() != nil {
+		return
+	}
+	p.host.Update(func() {
+		if err != nil {
+			p.details.setRows([]detailRow{{
+				left: detailField{value: "Error: " + err.Error()},
+			}})
+			return
+		}
+		p.qsos = qsos
+		p.applyFilter()
+	})
+	<-ctx.Done()
+}
 
 func (p *page) Status() string {
 	return fmt.Sprintf("(%d/%d)", len(p.filteredQsos), len(p.qsos))
 }
 
-func (p *page) load() error {
-	var qsos []domain.QSO
+func (p *page) list(ctx context.Context) ([]domain.QSO, error) {
+	qsos := make([]domain.QSO, 0)
 	for offset := 0; ; offset += qsoPageSize {
-		result, err := p.store.List(p.ctx, domain.Filter{
+		result, err := p.store.List(ctx, domain.Filter{
 			Limit:  qsoPageSize,
 			Offset: offset,
 		})
 		if err != nil {
-			return fmt.Errorf("load logbook: %w", err)
+			return nil, fmt.Errorf("load logbook: %w", err)
 		}
 		qsos = append(qsos, result...)
 		if len(result) < qsoPageSize {
@@ -141,9 +148,7 @@ func (p *page) load() error {
 		}
 	}
 
-	p.qsos = qsos
-	p.applyFilter()
-	return nil
+	return qsos, nil
 }
 
 func (p *page) refreshView() {

@@ -41,7 +41,7 @@ This document records implementation decisions and future technical work.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.
 - [x] Add a shared `Layout` that arranges the header, active page content, and footer.
 - [x] Define a `Page` abstraction that exposes its identity, title, content, and page-level keybindings without owning the shared header or footer.
-- [x] Refactor the logbook view into a page and remove its duplicated outer layout, header, and footer management.
+- [x] Refactor the logbook view into a page, remove its duplicated outer layout, and load its data from the page-owned `Run(ctx)` lifecycle instead of doing I/O or accepting a context in `New`.
 - [x] Add a separate Morse decoder page and application-level F1/F2 navigation between it and the logbook.
 - [x] Give every page a context-bound `Run` lifecycle; cancel and wait for the active page before hiding it or stopping the terminal.
 - [x] Reconcile pages and nested modals through one application-owned layer stack: derive every layer context from the layer below it, bind modal requests to the exact parent stack entry, keep parent layers running, and hide a removed suffix only after all of its `Run` lifecycles return.
@@ -49,7 +49,7 @@ This document records implementation decisions and future technical work.
 - [x] Coordinate page changes through an initialized, latest-value mailbox inside the application run loop; scope each page and mailbox receiver to one local `errgroup` and wait for both before switching.
 - [x] Pass the initial page ID directly to `Application.Run`; create the page mailbox there so startup and later navigation use the same data path.
 - [x] Let pages contribute their own application-menu items when registered.
-- [ ] Pass the application runtime context to keybinding handlers during dispatch, then remove constructor-captured and page-stored contexts from UI actions, including context-dependent menu items.
+- [x] Remove constructor-captured and page-stored contexts from UI actions; run blocking actions through owner-scoped application background work, while allowing initial constructors to use their caller's context without retaining it.
 - [x] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
 - [x] Enforce mouse focus and capture centrally from declared page, modal, application, and overlay focusables so decorative controls cannot steal input.
 - [x] Refresh footer hints when the active page, focused control, or overlay changes.

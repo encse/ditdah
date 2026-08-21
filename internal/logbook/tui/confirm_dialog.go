@@ -1,6 +1,9 @@
 package tui
 
 import (
+	"context"
+
+	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
 	"morsemanual/internal/tui/modal"
@@ -14,34 +17,35 @@ type confirmDialog struct {
 	detail  components.TextView
 	confirm components.Button
 	cancel  components.Button
-	action  func() error
+	host    ui.PageHost
+	action  func(context.Context) error
 	handle  modal.Handle
 }
 
 func newConfirmDialog(
-	controls components.Factory,
+	host ui.PageHost,
 	title string,
 	message string,
 	detail string,
 	confirmLabel string,
-	action func() error,
+	action func(context.Context) error,
 ) *confirmDialog {
 	return newActionDialog(
-		controls, title, message, detail, confirmLabel, action, true,
+		host, title, message, detail, confirmLabel, action, true,
 	)
 }
 
 func newActionDialog(
-	controls components.Factory,
+	host ui.PageHost,
 	title string,
 	message string,
 	detail string,
 	confirmLabel string,
-	action func() error,
+	action func(context.Context) error,
 	danger bool,
 ) *confirmDialog {
-	controls = controls.Modal()
-	dialog := &confirmDialog{action: action}
+	controls := host.Components().Modal()
+	dialog := &confirmDialog{host: host, action: action}
 	dialog.message = controls.TextView()
 	dialog.message.SetText(message)
 	dialog.message.SetTextAlign(tview.AlignCenter)
@@ -87,11 +91,23 @@ func (d *confirmDialog) setHandle(handle modal.Handle) {
 
 func (d *confirmDialog) submit() {
 	if d.action != nil {
-		if err := d.action(); err != nil {
-			d.detail.SetStyle(components.TextViewDanger)
-			d.detail.SetText("Error: " + err.Error())
-			return
-		}
+		d.host.Background(d.Content(), func(ctx context.Context) {
+			err := d.action(ctx)
+			if ctx.Err() != nil {
+				return
+			}
+			d.host.Update(func() { d.finish(err) })
+		})
+		return
+	}
+	d.close()
+}
+
+func (d *confirmDialog) finish(err error) {
+	if err != nil {
+		d.detail.SetStyle(components.TextViewDanger)
+		d.detail.SetText("Error: " + err.Error())
+		return
 	}
 	d.close()
 }

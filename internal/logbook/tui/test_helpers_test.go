@@ -14,12 +14,14 @@ import (
 )
 
 type testHost struct {
-	focus       tview.Primitive
-	refreshes   int
-	controls    components.Factory
-	modal       modal.Dialog
-	modalHandle *testModalHandle
-	editors     *testEditorFactory
+	focus             tview.Primitive
+	refreshes         int
+	controls          components.Factory
+	modal             modal.Dialog
+	modalHandle       *testModalHandle
+	editors           *testEditorFactory
+	backgroundContext context.Context
+	updates           chan struct{}
 }
 
 func newTestPage(t *testing.T) (*page, *testHost) {
@@ -28,7 +30,7 @@ func newTestPage(t *testing.T) (*page, *testHost) {
 	host := &testHost{controls: components.New(components.Dependencies{
 		Theme: testTheme(),
 	}), editors: editors}
-	return newPage(t.Context(), host, nil, nil, editors.Create, editors.Edit), host
+	return newPage(host, nil, nil, editors.Create, editors.Edit), host
 }
 
 type testEditorFactory struct {
@@ -61,6 +63,9 @@ func (h *testHost) Update(update func()) {
 	if update != nil {
 		update()
 	}
+	if h.updates != nil {
+		h.updates <- struct{}{}
+	}
 }
 
 func (h *testHost) Components() components.Factory {
@@ -80,7 +85,11 @@ func (h *testHost) Background(
 	_ tview.Primitive,
 	work ui.BackgroundWork,
 ) bool {
-	work(context.Background())
+	ctx := h.backgroundContext
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	work(ctx)
 	return true
 }
 

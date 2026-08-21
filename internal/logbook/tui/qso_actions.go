@@ -35,7 +35,7 @@ func (p *page) syncBinding() keybinding.Binding {
 func (p *page) confirmQRZSync() {
 	pending := p.pendingQRZCount()
 	dialog := newActionDialog(
-		p.host.Components(),
+		p.host,
 		" Sync QRZ.com ",
 		fmt.Sprintf("Upload %d pending QSO(s) to QRZ.com?", pending),
 		"Replacement may reset the QRZ confirmation.",
@@ -46,14 +46,19 @@ func (p *page) confirmQRZSync() {
 	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
-func (p *page) syncQRZ() error {
+func (p *page) syncQRZ(ctx context.Context) error {
 	if p.syncer == nil {
 		return fmt.Errorf("QRZ.com synchronization is unavailable")
 	}
-	_, syncErr := p.syncer.Sync(p.ctx)
-	refreshErr := p.load()
+	_, syncErr := p.syncer.Sync(ctx)
+	qsos, refreshErr := p.list(ctx)
 	if refreshErr != nil {
 		refreshErr = fmt.Errorf("refresh logbook after QRZ.com sync: %w", refreshErr)
+	} else if ctx.Err() == nil {
+		p.host.Update(func() {
+			p.qsos = qsos
+			p.applyFilter()
+		})
 	}
 	return errors.Join(syncErr, refreshErr)
 }
@@ -89,13 +94,16 @@ func (p *page) confirmDeleteQSO() {
 	if !ok {
 		return
 	}
+	nextSelectedID := p.selectionAfterDelete(qso.ID)
 	dialog := newConfirmDialog(
-		p.host.Components(),
+		p.host,
 		" Delete QSO ",
 		fmt.Sprintf("Delete QSO with %s?", qso.Callsign),
 		"This action cannot be undone.",
 		"Delete",
-		func() error { return p.deleteQSO(qso.ID) },
+		func(ctx context.Context) error {
+			return p.deleteQSO(ctx, qso.ID, nextSelectedID)
+		},
 	)
 	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
@@ -114,16 +122,24 @@ func (p *page) QSOChanged(qso domain.QSO) {
 	p.applyFilter()
 }
 
-func (p *page) deleteQSO(id string) error {
-	nextSelectedID := p.selectionAfterDelete(id)
-	if err := p.store.Delete(p.ctx, id); err != nil {
+func (p *page) deleteQSO(
+	ctx context.Context,
+	id string,
+	nextSelectedID string,
+) error {
+	if err := p.store.Delete(ctx, id); err != nil {
 		return fmt.Errorf("delete QSO: %w", err)
 	}
-	p.qsos = slices.DeleteFunc(p.qsos, func(qso domain.QSO) bool {
-		return qso.ID == id
+	if ctx.Err() != nil {
+		return ctx.Err()
+	}
+	p.host.Update(func() {
+		p.qsos = slices.DeleteFunc(p.qsos, func(qso domain.QSO) bool {
+			return qso.ID == id
+		})
+		p.selectedID = nextSelectedID
+		p.applyFilter()
 	})
-	p.selectedID = nextSelectedID
-	p.applyFilter()
 	return nil
 }
 
