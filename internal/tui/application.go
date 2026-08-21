@@ -207,15 +207,7 @@ func (a *application) Background(
 	}
 
 	return a.layers.startBackground(owner, func(layer *runningLayer) error {
-		update := work(layer.ctx)
-		if update == nil || layer.ctx.Err() != nil {
-			return nil
-		}
-		a.Update(func() {
-			if layer.ctx.Err() == nil && a.layers.topIs(layer.instance) {
-				update()
-			}
-		})
+		work(layer.ctx)
 		return nil
 	})
 }

@@ -740,7 +740,7 @@ func TestApplicationRejectsModalRequestedByNonTopLayer(t *testing.T) {
 	}
 }
 
-func TestApplicationRunsBackgroundWorkForTopLayerAndAppliesUpdate(t *testing.T) {
+func TestApplicationRunsBackgroundWorkForTopLayer(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	page := applicationTestPage{
 		id: "logbook", title: "Logbook", content: tview.NewBox(),
@@ -754,14 +754,14 @@ func TestApplicationRunsBackgroundWorkForTopLayerAndAppliesUpdate(t *testing.T) 
 	workStarted := make(chan struct{})
 	releaseWork := make(chan struct{})
 	updated := make(chan struct{})
-	accepted := app.Background(page.Content(), func(ctx context.Context) func() {
+	accepted := app.Background(page.Content(), func(ctx context.Context) {
 		close(workStarted)
 		select {
 		case <-releaseWork:
 		case <-ctx.Done():
-			return nil
+			return
 		}
-		return func() { close(updated) }
+		app.Update(func() { close(updated) })
 	})
 	if !accepted {
 		t.Fatal("Background() rejected work for the top page")
@@ -786,9 +786,8 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 	handle := app.OpenModal(page.Content(), dialog)
 	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
 
-	if app.Background(page.Content(), func(context.Context) func() {
+	if app.Background(page.Content(), func(context.Context) {
 		t.Error("background work ran for a covered page")
-		return nil
 	}) {
 		t.Fatal("Background() accepted work for a non-top page")
 	}
@@ -797,12 +796,14 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 	workCancelled := make(chan struct{})
 	releaseWork := make(chan struct{})
 	updated := make(chan struct{}, 1)
-	accepted := app.Background(dialog.Content(), func(ctx context.Context) func() {
+	accepted := app.Background(dialog.Content(), func(ctx context.Context) {
 		close(workStarted)
 		<-ctx.Done()
 		close(workCancelled)
 		<-releaseWork
-		return func() { updated <- struct{}{} }
+		if ctx.Err() == nil {
+			app.Update(func() { updated <- struct{}{} })
+		}
 	})
 	if !accepted {
 		t.Fatal("Background() rejected work for the top modal")

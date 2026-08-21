@@ -10,9 +10,8 @@ import (
 	"github.com/rivo/tview"
 )
 
-// BackgroundWork performs lifecycle-bound work away from the UI thread and
-// returns an optional update to run on the UI thread after it completes.
-type BackgroundWork func(ctx context.Context) func()
+// BackgroundWork performs lifecycle-bound work away from the UI thread.
+type BackgroundWork func(ctx context.Context)
 
 // PageHost exposes the application services available to pages.
 type PageHost interface {
@@ -26,8 +25,8 @@ type PageHost interface {
 	// on top of the stack.
 	OpenModal(owner tview.Primitive, dialog modal.Dialog) modal.Handle
 	// Background starts work under the current lifecycle of owner without
-	// blocking the UI event handler. The returned update runs on the UI thread
-	// only if owner is still the top layer when the work completes.
+	// blocking the UI event handler. Work uses Update explicitly when it needs
+	// to modify the UI.
 	Background(owner tview.Primitive, work BackgroundWork) bool
 }
 

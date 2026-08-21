@@ -292,13 +292,6 @@ func (r *layerRuntime) startBackground(
 	return layer.startTask(func() error { return work(layer) })
 }
 
-func (r *layerRuntime) topIs(instance *layerInstance) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	return len(r.requested) > 0 &&
-		r.requested[len(r.requested)-1].instance == instance
-}
-
 func (r *layerRuntime) requestedCount() int {
 	r.mu.Lock()
 	defer r.mu.Unlock()

@@ -677,10 +677,7 @@ func (h *testHost) Background(
 	_ tview.Primitive,
 	work ui.BackgroundWork,
 ) bool {
-	update := work(context.Background())
-	if update != nil {
-		update()
-	}
+	work(context.Background())
 	return true
 }
 

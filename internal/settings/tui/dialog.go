@@ -270,9 +270,11 @@ func (d *dialog) showInitialDeviceError() {
 
 func (d *dialog) submit() {
 	values := d.currentValues()
-	d.host.Background(d.Content(), func(ctx context.Context) func() {
+	d.host.Background(d.Content(), func(ctx context.Context) {
 		saved, err := d.store.Save(ctx, values)
-		return func() { d.finishSave(saved, err) }
+		if ctx.Err() == nil {
+			d.host.Update(func() { d.finishSave(saved, err) })
+		}
 	})
 }
 
@@ -287,9 +289,12 @@ func (d *dialog) openLogin() {
 		d.host.Components(),
 		callsign,
 		func(password string) {
-			d.host.Background(login.Content(), func(ctx context.Context) func() {
+			d.host.Background(login.Content(), func(ctx context.Context) {
 				err := d.qrz.ValidateLogin(ctx, callsign, password)
-				return func() {
+				if ctx.Err() != nil {
+					return
+				}
+				d.host.Update(func() {
 					if err == nil {
 						values := d.currentValues()
 						values.StationCallsign = callsign
@@ -300,7 +305,7 @@ func (d *dialog) openLogin() {
 						d.showLoginStatus(nil)
 					}
 					login.finish(err)
-				}
+				})
 			})
 		},
 	)
@@ -312,9 +317,12 @@ func (d *dialog) openAPIKey() {
 	editor = newAPIKeyDialog(
 		d.host.Components(),
 		func(apiKey string) {
-			d.host.Background(editor.Content(), func(ctx context.Context) func() {
+			d.host.Background(editor.Content(), func(ctx context.Context) {
 				err := d.qrz.ValidateAPIKey(ctx, apiKey)
-				return func() {
+				if ctx.Err() != nil {
+					return
+				}
+				d.host.Update(func() {
 					if err == nil {
 						values := d.currentValues()
 						values.QRZAPIKey = apiKey
@@ -323,7 +331,7 @@ func (d *dialog) openAPIKey() {
 						d.showAPIKeyStatus(nil)
 					}
 					editor.finish(err)
-				}
+				})
 			})
 		},
 	)
