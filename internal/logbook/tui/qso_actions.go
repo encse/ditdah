@@ -8,6 +8,7 @@ import (
 
 	domain "morsemanual/internal/logbook"
 	"morsemanual/internal/tui/keybinding"
+	"morsemanual/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -34,15 +35,15 @@ func (p *page) syncBinding() keybinding.Binding {
 
 func (p *page) confirmQRZSync() {
 	pending := p.pendingQRZCount()
-	dialog := newRegularConfirmDialog(
-		p.host.Components(),
+	modal.OpenConfirm(
+		p.host,
+		p.Content(),
 		" Sync QRZ.com ",
 		fmt.Sprintf("Upload %d pending QSO(s) to QRZ.com?", pending),
 		"Replacement may reset the QRZ confirmation.",
 		"Sync",
 		p.startQRZSync,
 	)
-	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) startQRZSync() {
@@ -102,8 +103,9 @@ func (p *page) confirmDeleteQSO() {
 		return
 	}
 	nextSelectedID := p.selectionAfterDelete(qso.ID)
-	dialog := newConfirmDialog(
-		p.host.Components(),
+	modal.OpenDangerConfirm(
+		p.host,
+		p.Content(),
 		" Delete QSO ",
 		fmt.Sprintf("Delete QSO with %s?", qso.Callsign),
 		"This action cannot be undone.",
@@ -112,7 +114,6 @@ func (p *page) confirmDeleteQSO() {
 			p.startDeleteQSO(qso.ID, nextSelectedID)
 		},
 	)
-	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) QSOChanged(qso domain.QSO) {
@@ -160,12 +161,12 @@ func (p *page) showActionError(err error) {
 }
 
 func (p *page) openActionError(err error) {
-	dialog := newMessageDialog(
-		p.host.Components(),
+	modal.OpenError(
+		p.host,
+		p.Content(),
 		" Error ",
 		"Error: "+err.Error(),
 	)
-	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) selectionAfterDelete(id string) string {

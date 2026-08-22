@@ -1,69 +1,74 @@
-package tui
+package modal
 
 import (
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
-	"morsemanual/internal/tui/modal"
 
 	"github.com/rivo/tview"
 )
 
+type Opener interface {
+	Components() components.Factory
+	OpenModal(owner tview.Primitive, dialog Dialog) Handle
+}
+
 type confirmDialog struct {
-	modal.Layout
-	message       components.TextView
-	detail        components.TextView
+	Layout
 	confirm       components.Button
 	cancel        components.Button
 	confirmAction func()
-	handle        modal.Handle
+	handle        Handle
 }
 
-func newConfirmDialog(
-	controls components.Factory,
+func OpenConfirm(
+	host Opener,
+	owner tview.Primitive,
 	title string,
 	message string,
 	detail string,
 	confirmLabel string,
 	confirmAction func(),
-) *confirmDialog {
-	return newStyledConfirmDialog(
-		controls, title, message, detail, confirmLabel, confirmAction, true,
+) Dialog {
+	return openConfirm(
+		host, owner, title, message, detail, confirmLabel, confirmAction, false,
 	)
 }
 
-func newRegularConfirmDialog(
-	controls components.Factory,
+func OpenDangerConfirm(
+	host Opener,
+	owner tview.Primitive,
 	title string,
 	message string,
 	detail string,
 	confirmLabel string,
 	confirmAction func(),
-) *confirmDialog {
-	return newStyledConfirmDialog(
-		controls, title, message, detail, confirmLabel, confirmAction, false,
+) Dialog {
+	return openConfirm(
+		host, owner, title, message, detail, confirmLabel, confirmAction, true,
 	)
 }
 
-func newStyledConfirmDialog(
-	controls components.Factory,
+func openConfirm(
+	host Opener,
+	owner tview.Primitive,
 	title string,
 	message string,
 	detail string,
 	confirmLabel string,
 	confirmAction func(),
 	danger bool,
-) *confirmDialog {
-	controls = controls.Modal()
+) Dialog {
+	controls := host.Components().Modal()
 	dialog := &confirmDialog{confirmAction: confirmAction}
-	dialog.message = controls.TextView()
-	dialog.message.SetText(message)
-	dialog.message.SetTextAlign(tview.AlignCenter)
-	dialog.message.SetWrap(true)
-	dialog.message.SetWordWrap(true)
-	dialog.detail = controls.TextView()
-	dialog.detail.SetText(detail)
-	dialog.detail.SetStyle(components.TextViewMuted)
-	dialog.detail.SetTextAlign(tview.AlignCenter)
+	messageView := controls.TextView()
+	messageView.SetText(message)
+	messageView.SetTextAlign(tview.AlignCenter)
+	messageView.SetWrap(true)
+	messageView.SetWordWrap(true)
+	detailView := controls.TextView()
+	detailView.SetText(detail)
+	detailView.SetStyle(components.TextViewMuted)
+	detailView.SetTextAlign(tview.AlignCenter)
 	if danger {
 		dialog.confirm = controls.DangerButton(confirmLabel)
 	} else {
@@ -72,17 +77,17 @@ func newStyledConfirmDialog(
 	dialog.cancel = controls.Button("Cancel")
 	dialog.confirm.SetSelectedFunc(dialog.submit)
 	dialog.cancel.SetSelectedFunc(dialog.close)
-
 	buttons := controls.Flex(tview.FlexColumn).
 		AddItem(nil, 0, 1, false).
 		AddItem(dialog.cancel, 12, 0, false).
 		AddItem(nil, 2, 0, false).
 		AddItem(dialog.confirm, 12, 0, false).
 		AddItem(nil, 0, 1, false)
-	dialog.Layout = modal.NewLayout(controls, title, 58).
-		Row(dialog.message, 1).
-		Row(dialog.detail, 1).
+	dialog.Layout = NewLayout(controls, title, 58).
+		Row(messageView, 1).
+		Row(detailView, 1).
 		Actions(buttons)
+	dialog.handle = host.OpenModal(owner, dialog)
 	return dialog
 }
 
@@ -90,13 +95,7 @@ func (d *confirmDialog) Focusables() []tview.Primitive {
 	return []tview.Primitive{d.cancel, d.confirm}
 }
 
-func (d *confirmDialog) KeyBindings() []keybinding.Binding {
-	return nil
-}
-
-func (d *confirmDialog) setHandle(handle modal.Handle) {
-	d.handle = handle
-}
+func (d *confirmDialog) KeyBindings() []keybinding.Binding { return nil }
 
 func (d *confirmDialog) submit() {
 	d.close()

@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	domain "morsemanual/internal/logbook"
+	"morsemanual/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 )
@@ -66,18 +67,18 @@ func TestDeleteBindingConfirmsAndDeletesSelectedQSO(t *testing.T) {
 	if !page.deleteBinding().Handle(tcell.NewEventKey(tcell.KeyRune, 'd', 0)) {
 		t.Fatal("d was not handled")
 	}
-	dialog, ok := host.modal.(*confirmDialog)
-	if !ok {
-		t.Fatalf("opened modal = %T, want *confirmDialog", host.modal)
+	dialog := host.modal
+	if dialog == nil {
+		t.Fatal("delete did not open confirmation")
 	}
-	if !strings.Contains(dialog.message.Text(), "DL1ABC") {
-		t.Fatalf("confirmation = %q, want callsign", dialog.message.Text())
+	if text := renderedDialogText(t, dialog); !strings.Contains(text, "DL1ABC") {
+		t.Fatalf("confirmation = %q, want callsign", text)
 	}
 	if len(dialog.KeyBindings()) != 0 {
 		t.Fatalf("confirm bindings = %#v, want application-owned Escape", dialog.KeyBindings())
 	}
 
-	dialog.confirm.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	pressDialogButton(t, dialog, 1)
 
 	if store.deleted != "qso-1" {
 		t.Fatalf("deleted ID = %q, want qso-1", store.deleted)
@@ -102,20 +103,20 @@ func TestDeleteFailureClosesConfirmationAndOpensError(t *testing.T) {
 	page.qsos = []domain.QSO{{ID: "qso-1", Callsign: "DL1ABC"}}
 	page.applyFilter()
 	page.confirmDeleteQSO()
-	dialog := host.modal.(*confirmDialog)
+	dialog := host.modal
 	confirmHandle := host.modalHandle
 
-	dialog.confirm.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	pressDialogButton(t, dialog, 1)
 
 	if !confirmHandle.closed {
 		t.Fatal("failed delete did not close confirmation")
 	}
-	errorDialog, ok := host.modal.(*messageDialog)
-	if !ok {
-		t.Fatalf("opened modal = %T, want *messageDialog", host.modal)
+	errorDialog := host.modal
+	if errorDialog == nil || len(errorDialog.Focusables()) != 1 {
+		t.Fatalf("opened modal = %T, want message dialog", host.modal)
 	}
-	if !strings.Contains(errorDialog.message.Text(), "disk failed") {
-		t.Fatalf("error message = %q", errorDialog.message.Text())
+	if text := renderedDialogText(t, errorDialog); !strings.Contains(text, "disk failed") {
+		t.Fatalf("error message = %q", text)
 	}
 	if len(page.qsos) != 1 {
 		t.Fatal("failed delete changed page model")
@@ -129,10 +130,10 @@ func TestDeleteConfirmationCancelDoesNotDelete(t *testing.T) {
 	page.qsos = []domain.QSO{{ID: "qso-1", Callsign: "DL1ABC"}}
 	page.applyFilter()
 	page.confirmDeleteQSO()
-	dialog := host.modal.(*confirmDialog)
+	dialog := host.modal
 	confirmHandle := host.modalHandle
 
-	dialog.cancel.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	pressDialogButton(t, dialog, 0)
 
 	if !confirmHandle.closed {
 		t.Fatal("Cancel did not close confirmation")
@@ -162,15 +163,15 @@ func TestSyncBindingUploadsPendingQSOsAndRefreshesPage(t *testing.T) {
 	if !page.syncBinding().Handle(tcell.NewEventKey(tcell.KeyRune, 'u', 0)) {
 		t.Fatal("u was not handled")
 	}
-	dialog, ok := host.modal.(*confirmDialog)
-	if !ok {
-		t.Fatalf("opened modal = %T, want *confirmDialog", host.modal)
+	dialog := host.modal
+	if dialog == nil {
+		t.Fatal("sync did not open confirmation")
 	}
-	if !strings.Contains(dialog.message.Text(), "2 pending") {
-		t.Fatalf("confirmation = %q, want pending count", dialog.message.Text())
+	if text := renderedDialogText(t, dialog); !strings.Contains(text, "2 pending") {
+		t.Fatalf("confirmation = %q, want pending count", text)
 	}
 
-	dialog.confirm.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	pressDialogButton(t, dialog, 1)
 
 	if syncer.calls != 1 {
 		t.Fatalf("Sync() calls = %d, want 1", syncer.calls)
@@ -184,6 +185,35 @@ func TestSyncBindingUploadsPendingQSOsAndRefreshesPage(t *testing.T) {
 	if host.modalHandle == nil || !host.modalHandle.closed {
 		t.Fatal("successful sync did not close confirmation")
 	}
+}
+
+func pressDialogButton(t *testing.T, dialog modal.Dialog, index int) {
+	t.Helper()
+	focusables := dialog.Focusables()
+	if index < 0 || index >= len(focusables) {
+		t.Fatalf("dialog button index %d outside %d focusables", index, len(focusables))
+	}
+	focusables[index].InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		nil,
+	)
+}
+
+func renderedDialogText(t *testing.T, dialog modal.Dialog) string {
+	t.Helper()
+	size := dialog.Size()
+	screen := newTestScreen(t, size.Width, size.Height)
+	dialog.Content().SetRect(0, 0, size.Width, size.Height)
+	dialog.Content().Draw(screen)
+	var text strings.Builder
+	for y := 0; y < size.Height; y++ {
+		for x := 0; x < size.Width; x++ {
+			character, _, _, _ := screen.GetContent(x, y)
+			text.WriteRune(character)
+		}
+		text.WriteByte('\n')
+	}
+	return text.String()
 }
 
 type recordingActionStore struct {

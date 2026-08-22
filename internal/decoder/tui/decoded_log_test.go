@@ -65,9 +65,9 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 	if !binding.Handle(tcell.NewEventKey(tcell.KeyRune, 'c', 0)) {
 		t.Fatal("c clear binding was not handled")
 	}
-	dialog, ok := host.opened.(*confirmDialog)
-	if !ok {
-		t.Fatalf("c opened %T, want *confirmDialog", host.opened)
+	dialog := host.opened
+	if dialog == nil {
+		t.Fatal("c did not open confirmation")
 	}
 	if page.decodedText.String() == "" {
 		t.Fatal("opening confirmation cleared the log")
@@ -84,7 +84,8 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 	screen.SetSize(size.Width, size.Height)
 	dialog.Content().SetRect(0, 0, size.Width, size.Height)
 	dialog.Content().Draw(screen)
-	if _, y, _, _ := dialog.confirm.GetRect(); y != size.Height-2 {
+	confirm := dialog.Focusables()[1]
+	if _, y, _, _ := confirm.GetRect(); y != size.Height-2 {
 		t.Fatalf("Clear button row = %d, want %d", y, size.Height-2)
 	}
 	if character, _, _, _ := screen.GetContent(3, size.Height-3); character != ' ' {
@@ -98,10 +99,7 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 	if want := tcell.NewRGBColor(190, 190, 190); background != want {
 		t.Fatalf("modal background = %v, want %v", background, want)
 	}
-	dialog.confirm.InputHandler()(
-		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
-		nil,
-	)
+	pressModalButton(t, dialog, 1)
 	if page.decodedText.String() != "" || page.output.Text() != "" {
 		t.Fatalf("cleared log = %q / %q", page.decodedText.String(), page.output.Text())
 	}

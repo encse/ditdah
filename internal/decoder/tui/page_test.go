@@ -255,20 +255,17 @@ func TestDeleteCallsignBindingRequiresConfirmation(t *testing.T) {
 	) {
 		t.Fatal("d delete binding was not handled")
 	}
-	dialog, ok := host.opened.(*confirmDialog)
-	if !ok {
-		t.Fatalf("d opened %T, want *confirmDialog", host.opened)
+	dialog := host.opened
+	if dialog == nil {
+		t.Fatal("d did not open confirmation")
 	}
 	if len(page.callsigns) != 1 {
 		t.Fatal("opening delete confirmation changed the callsign list")
 	}
-	if !strings.Contains(dialog.message.Text(), "DL1ABC") {
-		t.Fatalf("confirmation message = %q, want callsign", dialog.message.Text())
+	if text := renderedModalText(t, dialog); !strings.Contains(text, "DL1ABC") {
+		t.Fatalf("confirmation message = %q, want callsign", text)
 	}
-	dialog.confirm.InputHandler()(
-		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
-		nil,
-	)
+	pressModalButton(t, dialog, 1)
 	if len(page.callsigns) != 0 || page.selectedCallsign != "" {
 		t.Fatalf("callsigns after delete = %#v, selected = %q", page.callsigns, page.selectedCallsign)
 	}
@@ -501,6 +498,40 @@ func newTestHost() *testHost {
 		Theme:      theme,
 		ModalTheme: modalTheme,
 	})}
+}
+
+func pressModalButton(t *testing.T, dialog modal.Dialog, index int) {
+	t.Helper()
+	focusables := dialog.Focusables()
+	if index < 0 || index >= len(focusables) {
+		t.Fatalf("dialog button index %d outside %d focusables", index, len(focusables))
+	}
+	focusables[index].InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		nil,
+	)
+}
+
+func renderedModalText(t *testing.T, dialog modal.Dialog) string {
+	t.Helper()
+	size := dialog.Size()
+	screen := tcell.NewSimulationScreen("UTF-8")
+	if err := screen.Init(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(screen.Fini)
+	screen.SetSize(size.Width, size.Height)
+	dialog.Content().SetRect(0, 0, size.Width, size.Height)
+	dialog.Content().Draw(screen)
+	var text strings.Builder
+	for y := 0; y < size.Height; y++ {
+		for x := 0; x < size.Width; x++ {
+			character, _, _, _ := screen.GetContent(x, y)
+			text.WriteRune(character)
+		}
+		text.WriteByte('\n')
+	}
+	return text.String()
 }
 
 func (h testHost) SetFocus(tview.Primitive) {}

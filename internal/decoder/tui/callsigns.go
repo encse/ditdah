@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"morsemanual/internal/tui/components"
+	"morsemanual/internal/tui/modal"
 )
 
 func (p *page) newCallsignList(controls components.Factory) components.Table {
@@ -151,14 +152,15 @@ func (p *page) confirmDeleteSelectedCallsign() {
 	if !slices.Contains(p.callsigns, value) {
 		return
 	}
-	dialog := newConfirmDialog(
-		p.host.Components(),
+	modal.OpenDangerConfirm(
+		p.host,
+		p.Content(),
 		" Delete callsign ",
 		fmt.Sprintf("Delete %s from the callsign list?", value),
+		"",
 		"Delete",
 		func() { p.deleteCallsign(value) },
 	)
-	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) deleteSelectedCallsign() {

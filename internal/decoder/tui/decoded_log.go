@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 
+	"morsemanual/internal/tui/modal"
+
 	"github.com/rivo/tview"
 )
 
@@ -59,14 +61,15 @@ func highlightDecodedCallsign(text, selected string) string {
 }
 
 func (p *page) confirmClearLog() {
-	dialog := newConfirmDialog(
-		p.host.Components(),
+	modal.OpenDangerConfirm(
+		p.host,
+		p.Content(),
 		" Clear decoded log ",
 		"Clear the decoded log?",
+		"",
 		"Clear",
 		p.clearLog,
 	)
-	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) clearLog() {
