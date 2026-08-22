@@ -1,9 +1,6 @@
 package tui
 
 import (
-	"context"
-
-	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
 	"morsemanual/internal/tui/modal"
@@ -13,39 +10,51 @@ import (
 
 type confirmDialog struct {
 	modal.Layout
-	message components.TextView
-	detail  components.TextView
-	confirm components.Button
-	cancel  components.Button
-	host    ui.PageHost
-	action  func(context.Context, tview.Primitive) error
-	handle  modal.Handle
+	message       components.TextView
+	detail        components.TextView
+	confirm       components.Button
+	cancel        components.Button
+	confirmAction func()
+	handle        modal.Handle
 }
 
 func newConfirmDialog(
-	host ui.PageHost,
+	controls components.Factory,
 	title string,
 	message string,
 	detail string,
 	confirmLabel string,
-	action func(context.Context, tview.Primitive) error,
+	confirmAction func(),
 ) *confirmDialog {
-	return newActionDialog(
-		host, title, message, detail, confirmLabel, action, true,
+	return newStyledConfirmDialog(
+		controls, title, message, detail, confirmLabel, confirmAction, true,
 	)
 }
 
-func newActionDialog(
-	host ui.PageHost,
+func newRegularConfirmDialog(
+	controls components.Factory,
 	title string,
 	message string,
 	detail string,
 	confirmLabel string,
-	action func(context.Context, tview.Primitive) error,
+	confirmAction func(),
+) *confirmDialog {
+	return newStyledConfirmDialog(
+		controls, title, message, detail, confirmLabel, confirmAction, false,
+	)
+}
+
+func newStyledConfirmDialog(
+	controls components.Factory,
+	title string,
+	message string,
+	detail string,
+	confirmLabel string,
+	confirmAction func(),
 	danger bool,
 ) *confirmDialog {
-	controls := host.Components().Modal()
-	dialog := &confirmDialog{host: host, action: action}
+	controls = controls.Modal()
+	dialog := &confirmDialog{confirmAction: confirmAction}
 	dialog.message = controls.TextView()
 	dialog.message.SetText(message)
 	dialog.message.SetTextAlign(tview.AlignCenter)
@@ -90,26 +99,10 @@ func (d *confirmDialog) setHandle(handle modal.Handle) {
 }
 
 func (d *confirmDialog) submit() {
-	if d.action != nil {
-		d.host.Background(d.Content(), func(ctx context.Context) {
-			err := d.action(ctx, d.Content())
-			if ctx.Err() != nil {
-				return
-			}
-			d.host.Update(d.Content(), func() { d.finish(err) })
-		})
-		return
-	}
 	d.close()
-}
-
-func (d *confirmDialog) finish(err error) {
-	if err != nil {
-		d.detail.SetStyle(components.TextViewDanger)
-		d.detail.SetText("Error: " + err.Error())
-		return
+	if d.confirmAction != nil {
+		d.confirmAction()
 	}
-	d.close()
 }
 
 func (d *confirmDialog) close() {

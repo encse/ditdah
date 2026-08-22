@@ -96,24 +96,52 @@ func TestDeleteBindingConfirmsAndDeletesSelectedQSO(t *testing.T) {
 	}
 }
 
-func TestDeleteFailureKeepsConfirmationOpen(t *testing.T) {
+func TestDeleteFailureClosesConfirmationAndOpensError(t *testing.T) {
 	page, host := newTestPage(t)
 	page.store = &recordingActionStore{deleteErr: errors.New("disk failed")}
 	page.qsos = []domain.QSO{{ID: "qso-1", Callsign: "DL1ABC"}}
 	page.applyFilter()
 	page.confirmDeleteQSO()
 	dialog := host.modal.(*confirmDialog)
+	confirmHandle := host.modalHandle
 
 	dialog.confirm.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
 
-	if host.modalHandle.closed {
-		t.Fatal("failed delete closed confirmation")
+	if !confirmHandle.closed {
+		t.Fatal("failed delete did not close confirmation")
 	}
-	if !strings.Contains(dialog.detail.Text(), "disk failed") {
-		t.Fatalf("confirmation error = %q", dialog.detail.Text())
+	errorDialog, ok := host.modal.(*messageDialog)
+	if !ok {
+		t.Fatalf("opened modal = %T, want *messageDialog", host.modal)
+	}
+	if !strings.Contains(errorDialog.message.Text(), "disk failed") {
+		t.Fatalf("error message = %q", errorDialog.message.Text())
 	}
 	if len(page.qsos) != 1 {
 		t.Fatal("failed delete changed page model")
+	}
+}
+
+func TestDeleteConfirmationCancelDoesNotDelete(t *testing.T) {
+	page, host := newTestPage(t)
+	store := &recordingActionStore{}
+	page.store = store
+	page.qsos = []domain.QSO{{ID: "qso-1", Callsign: "DL1ABC"}}
+	page.applyFilter()
+	page.confirmDeleteQSO()
+	dialog := host.modal.(*confirmDialog)
+	confirmHandle := host.modalHandle
+
+	dialog.cancel.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+
+	if !confirmHandle.closed {
+		t.Fatal("Cancel did not close confirmation")
+	}
+	if store.deleted != "" {
+		t.Fatalf("deleted ID = %q after Cancel", store.deleted)
+	}
+	if len(page.qsos) != 1 {
+		t.Fatal("Cancel changed page model")
 	}
 }
 

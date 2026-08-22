@@ -10,7 +10,6 @@ import (
 	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 )
 
 type qrzSynchronizer interface {
@@ -35,36 +34,40 @@ func (p *page) syncBinding() keybinding.Binding {
 
 func (p *page) confirmQRZSync() {
 	pending := p.pendingQRZCount()
-	dialog := newActionDialog(
-		p.host,
+	dialog := newRegularConfirmDialog(
+		p.host.Components(),
 		" Sync QRZ.com ",
 		fmt.Sprintf("Upload %d pending QSO(s) to QRZ.com?", pending),
 		"Replacement may reset the QRZ confirmation.",
 		"Sync",
-		p.syncQRZ,
-		false,
+		p.startQRZSync,
 	)
 	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
-func (p *page) syncQRZ(
-	ctx context.Context,
-	owner tview.Primitive,
-) error {
-	if p.syncer == nil {
-		return fmt.Errorf("QRZ.com synchronization is unavailable")
-	}
-	_, syncErr := p.syncer.Sync(ctx)
-	qsos, refreshErr := p.list(ctx)
-	if refreshErr != nil {
-		refreshErr = fmt.Errorf("refresh logbook after QRZ.com sync: %w", refreshErr)
-	} else if ctx.Err() == nil {
-		p.host.Update(owner, func() {
+func (p *page) startQRZSync() {
+	p.host.Background(p.Content(), func(ctx context.Context) {
+		if p.syncer == nil {
+			p.showActionError(errors.New("QRZ.com synchronization is unavailable"))
+			return
+		}
+		_, syncErr := p.syncer.Sync(ctx)
+		qsos, refreshErr := p.list(ctx)
+		if refreshErr != nil {
+			refreshErr = fmt.Errorf("refresh logbook after QRZ.com sync: %w", refreshErr)
+		}
+		if ctx.Err() != nil {
+			return
+		}
+		p.host.Update(p.Content(), func() {
+			if err := errors.Join(syncErr, refreshErr); err != nil {
+				p.openActionError(err)
+				return
+			}
 			p.qsos = qsos
 			p.applyFilter()
 		})
-	}
-	return errors.Join(syncErr, refreshErr)
+	})
 }
 
 func (p *page) pendingQRZCount() int {
@@ -100,13 +103,13 @@ func (p *page) confirmDeleteQSO() {
 	}
 	nextSelectedID := p.selectionAfterDelete(qso.ID)
 	dialog := newConfirmDialog(
-		p.host,
+		p.host.Components(),
 		" Delete QSO ",
 		fmt.Sprintf("Delete QSO with %s?", qso.Callsign),
 		"This action cannot be undone.",
 		"Delete",
-		func(ctx context.Context, owner tview.Primitive) error {
-			return p.deleteQSO(ctx, owner, qso.ID, nextSelectedID)
+		func() {
+			p.startDeleteQSO(qso.ID, nextSelectedID)
 		},
 	)
 	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
@@ -126,26 +129,43 @@ func (p *page) QSOChanged(qso domain.QSO) {
 	p.applyFilter()
 }
 
-func (p *page) deleteQSO(
-	ctx context.Context,
-	owner tview.Primitive,
+func (p *page) startDeleteQSO(
 	id string,
 	nextSelectedID string,
-) error {
-	if err := p.store.Delete(ctx, id); err != nil {
-		return fmt.Errorf("delete QSO: %w", err)
-	}
-	if ctx.Err() != nil {
-		return ctx.Err()
-	}
-	p.host.Update(owner, func() {
-		p.qsos = slices.DeleteFunc(p.qsos, func(qso domain.QSO) bool {
-			return qso.ID == id
+) {
+	p.host.Background(p.Content(), func(ctx context.Context) {
+		err := p.store.Delete(ctx, id)
+		if ctx.Err() != nil {
+			return
+		}
+		p.host.Update(p.Content(), func() {
+			if err != nil {
+				p.openActionError(fmt.Errorf("delete QSO: %w", err))
+				return
+			}
+			p.qsos = slices.DeleteFunc(p.qsos, func(qso domain.QSO) bool {
+				return qso.ID == id
+			})
+			p.selectedID = nextSelectedID
+			p.applyFilter()
 		})
-		p.selectedID = nextSelectedID
-		p.applyFilter()
 	})
-	return nil
+}
+
+func (p *page) showActionError(err error) {
+	if err == nil {
+		return
+	}
+	p.host.Update(p.Content(), func() { p.openActionError(err) })
+}
+
+func (p *page) openActionError(err error) {
+	dialog := newMessageDialog(
+		p.host.Components(),
+		" Error ",
+		"Error: "+err.Error(),
+	)
+	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
 func (p *page) selectionAfterDelete(id string) string {
