@@ -93,6 +93,9 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Check out source
+        uses: actions/checkout@v6
+
       - name: Download builds
         uses: actions/download-artifact@v8
         with:
