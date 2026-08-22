@@ -40,11 +40,12 @@ type layerState struct {
 
 type runningLayer struct {
 	requestedLayer
-	ctx      context.Context
-	cancel   context.CancelFunc
-	group    *errgroup.Group
-	taskMu   sync.Mutex
-	stopping bool
+	ctx        context.Context
+	cancel     context.CancelFunc
+	group      *errgroup.Group
+	taskMu     sync.Mutex
+	stopping   bool
+	lastUpdate <-chan struct{}
 }
 
 func newLayerRuntime() layerRuntime {
@@ -110,14 +111,17 @@ func (r *layerRuntime) start(
 		}
 		layerCtx, cancel := context.WithCancel(parentCtx)
 		group, runCtx := errgroup.WithContext(layerCtx)
+		ready := make(chan struct{})
+		close(ready)
 		layer := &runningLayer{
 			requestedLayer: request,
 			ctx:            runCtx,
 			cancel:         cancel,
 			group:          group,
+			lastUpdate:     ready,
 		}
 		r.register(layer)
-		app.Update(func() {
+		app.update(func() {
 			if request.modal != nil {
 				app.showModal(request.modal)
 				return
@@ -153,7 +157,7 @@ func (r *layerRuntime) stop(
 		_ = running[index].group.Wait()
 		r.unregister(running[index].instance)
 	}
-	app.Update(func() {
+	app.update(func() {
 		for layerIndex := len(running) - 1; layerIndex >= from; layerIndex-- {
 			opened := running[layerIndex].modal
 			if opened == nil {
@@ -272,7 +276,7 @@ func (r *layerRuntime) requestIsCurrent(target requestedLayer) bool {
 	return false
 }
 
-func (r *layerRuntime) startBackground(
+func (r *layerRuntime) startTask(
 	owner tview.Primitive,
 	work func(*runningLayer) error,
 ) bool {
@@ -290,6 +294,37 @@ func (r *layerRuntime) startBackground(
 		return false
 	}
 	return layer.startTask(func() error { return work(layer) })
+}
+
+func (r *layerRuntime) startUpdate(
+	owner tview.Primitive,
+	update func(*runningLayer) error,
+) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if len(r.requested) == 0 {
+		return false
+	}
+	requested := r.requested[len(r.requested)-1]
+	if requested.content() != owner {
+		return false
+	}
+	layer := r.running[requested.instance]
+	if layer == nil {
+		return false
+	}
+	return layer.startUpdate(func() error { return update(layer) })
+}
+
+func (r *layerRuntime) isRequested(target *runningLayer) bool {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, layer := range r.requested {
+		if layer.instance == target.instance {
+			return r.running[layer.instance] == target
+		}
+	}
+	return false
 }
 
 func (r *layerRuntime) requestedCount() int {
@@ -312,6 +347,23 @@ func (l *runningLayer) startTask(work func() error) bool {
 		return false
 	}
 	l.group.Go(work)
+	return true
+}
+
+func (l *runningLayer) startUpdate(update func() error) bool {
+	l.taskMu.Lock()
+	defer l.taskMu.Unlock()
+	if l.stopping || l.ctx.Err() != nil {
+		return false
+	}
+	previous := l.lastUpdate
+	done := make(chan struct{})
+	l.lastUpdate = done
+	l.group.Go(func() error {
+		defer close(done)
+		<-previous
+		return update()
+	})
 	return true
 }
 

@@ -57,7 +57,7 @@ func (f *factory) Create(owner tview.Primitive, contactedCallsign string) {
 		if ctx.Err() != nil {
 			return
 		}
-		f.host.Update(func() {
+		f.host.Update(owner, func() {
 			f.open(owner, qso, f.add, err)
 		})
 	})

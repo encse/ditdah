@@ -30,10 +30,11 @@ func newTestPage(t *testing.T) (struct{}, *testHost) {
 func (h *testHost) SetFocus(tview.Primitive) {}
 func (h *testHost) Refresh()                 {}
 
-func (h *testHost) Update(update func()) {
+func (h *testHost) Update(_ tview.Primitive, update func()) bool {
 	if update != nil {
 		update()
 	}
+	return true
 }
 
 func (h *testHost) Components() components.Factory { return h.controls }

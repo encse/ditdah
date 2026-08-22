@@ -17,7 +17,9 @@ type BackgroundWork func(ctx context.Context)
 type PageHost interface {
 	SetFocus(primitive tview.Primitive)
 	Refresh()
-	Update(update func())
+	// Update schedules a UI change owned by the current lifecycle of owner.
+	// The update is ignored if that exact layer has been closed before it runs.
+	Update(owner tview.Primitive, update func()) bool
 	Components() components.Factory
 	// OpenModal requests a child layer and returns without blocking the UI
 	// event handler. owner identifies the page or dialog currently requesting

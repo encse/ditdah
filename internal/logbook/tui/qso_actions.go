@@ -10,6 +10,7 @@ import (
 	"morsemanual/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
+	"github.com/rivo/tview"
 )
 
 type qrzSynchronizer interface {
@@ -46,7 +47,10 @@ func (p *page) confirmQRZSync() {
 	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
 }
 
-func (p *page) syncQRZ(ctx context.Context) error {
+func (p *page) syncQRZ(
+	ctx context.Context,
+	owner tview.Primitive,
+) error {
 	if p.syncer == nil {
 		return fmt.Errorf("QRZ.com synchronization is unavailable")
 	}
@@ -55,7 +59,7 @@ func (p *page) syncQRZ(ctx context.Context) error {
 	if refreshErr != nil {
 		refreshErr = fmt.Errorf("refresh logbook after QRZ.com sync: %w", refreshErr)
 	} else if ctx.Err() == nil {
-		p.host.Update(func() {
+		p.host.Update(owner, func() {
 			p.qsos = qsos
 			p.applyFilter()
 		})
@@ -101,8 +105,8 @@ func (p *page) confirmDeleteQSO() {
 		fmt.Sprintf("Delete QSO with %s?", qso.Callsign),
 		"This action cannot be undone.",
 		"Delete",
-		func(ctx context.Context) error {
-			return p.deleteQSO(ctx, qso.ID, nextSelectedID)
+		func(ctx context.Context, owner tview.Primitive) error {
+			return p.deleteQSO(ctx, owner, qso.ID, nextSelectedID)
 		},
 	)
 	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
@@ -124,6 +128,7 @@ func (p *page) QSOChanged(qso domain.QSO) {
 
 func (p *page) deleteQSO(
 	ctx context.Context,
+	owner tview.Primitive,
 	id string,
 	nextSelectedID string,
 ) error {
@@ -133,7 +138,7 @@ func (p *page) deleteQSO(
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	p.host.Update(func() {
+	p.host.Update(owner, func() {
 		p.qsos = slices.DeleteFunc(p.qsos, func(qso domain.QSO) bool {
 			return qso.ID == id
 		})

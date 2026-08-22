@@ -158,7 +158,7 @@ func (e *qsoEditor) refreshCallsign() {
 		if ctx.Err() != nil {
 			return
 		}
-		e.host.Update(func() {
+		e.host.Update(e.Content(), func() {
 			if e.lookedUpCallsign != callsignValue {
 				return
 			}
@@ -227,7 +227,7 @@ func (e *qsoEditor) submit() {
 		if ctx.Err() != nil {
 			return
 		}
-		e.host.Update(func() {
+		e.host.Update(e.Content(), func() {
 			if err != nil {
 				e.showError(err)
 				return

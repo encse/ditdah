@@ -761,7 +761,7 @@ func TestApplicationRunsBackgroundWorkForTopLayer(t *testing.T) {
 		case <-ctx.Done():
 			return
 		}
-		app.Update(func() { close(updated) })
+		app.Update(page.Content(), func() { close(updated) })
 	})
 	if !accepted {
 		t.Fatal("Background() rejected work for the top page")
@@ -785,7 +785,6 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 	dialog := applicationTestModal{content: tview.NewBox()}
 	handle := app.OpenModal(page.Content(), dialog)
 	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
-
 	if app.Background(page.Content(), func(context.Context) {
 		t.Error("background work ran for a covered page")
 	}) {
@@ -802,7 +801,7 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 		close(workCancelled)
 		<-releaseWork
 		if ctx.Err() == nil {
-			app.Update(func() { updated <- struct{}{} })
+			app.Update(dialog.Content(), func() { updated <- struct{}{} })
 		}
 	})
 	if !accepted {
@@ -822,6 +821,72 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 	select {
 	case <-updated:
 		t.Fatal("cancelled modal background work updated the UI")
+	default:
+	}
+}
+
+func TestApplicationDropsQueuedUpdateAfterOwnerCloses(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	page := applicationTestPage{
+		id: "logbook", title: "Logbook", content: tview.NewBox(),
+	}
+	if err := app.Register(page); err != nil {
+		t.Fatal(err)
+	}
+	cancel, runDone := startTestApplication(t, app, page.ID())
+	defer finishTestApplication(t, cancel, runDone)
+
+	dialog := applicationTestModal{content: tview.NewBox()}
+	handle := app.OpenModal(page.Content(), dialog)
+	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
+	app.layers.mu.Lock()
+	modalRequest := app.layers.requested[len(app.layers.requested)-1]
+	modalLayer := app.layers.running[modalRequest.instance]
+	app.layers.mu.Unlock()
+	if modalLayer == nil {
+		t.Fatal("modal layer is not running")
+	}
+	layerCancelled := make(chan struct{})
+	if !app.Background(dialog.Content(), func(ctx context.Context) {
+		<-ctx.Done()
+		close(layerCancelled)
+	}) {
+		t.Fatal("Background() rejected cancellation observer")
+	}
+
+	uiBlocked := make(chan struct{})
+	releaseUI := make(chan struct{})
+	uiReleased := make(chan struct{})
+	go func() {
+		app.update(func() {
+			close(uiBlocked)
+			<-releaseUI
+		})
+		close(uiReleased)
+	}()
+	waitForApplicationSignal(t, uiBlocked, "blocked UI callback")
+
+	updated := make(chan struct{})
+	if !app.Update(dialog.Content(), func() { close(updated) }) {
+		t.Fatal("Update() rejected work for the top modal")
+	}
+	handle.Close()
+	waitForApplicationSignal(t, layerCancelled, "modal layer cancellation")
+	app.layers.mu.Lock()
+	stillRunning := app.layers.running[modalRequest.instance] == modalLayer
+	app.layers.mu.Unlock()
+	if !stillRunning {
+		t.Fatal("modal layer was removed while its queued UI update was pending")
+	}
+	close(releaseUI)
+	waitForApplicationSignal(t, uiReleased, "UI callback release")
+	waitForApplicationCondition(t, app, "modal close", func() bool {
+		return !app.overlays.Active()
+	})
+
+	select {
+	case <-updated:
+		t.Fatal("closed modal received its queued update")
 	default:
 	}
 }
@@ -1224,7 +1289,7 @@ func waitForApplicationCondition(
 	deadline := time.Now().Add(time.Second)
 	for time.Now().Before(deadline) {
 		matched := false
-		app.Update(func() { matched = condition() })
+		app.update(func() { matched = condition() })
 		if matched {
 			return
 		}
@@ -1235,7 +1300,7 @@ func waitForApplicationCondition(
 
 func onApplication[T any](app *application, operation func() T) T {
 	var result T
-	app.Update(func() { result = operation() })
+	app.update(func() { result = operation() })
 	return result
 }
 

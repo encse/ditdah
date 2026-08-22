@@ -36,7 +36,6 @@ type dialog struct {
 	inputs          audio.DeviceLister
 	onChanged       func()
 	persistedValues domain.Settings
-	initialAPIKey   string
 
 	stationCallsign  components.InputField
 	morseInput       components.SelectField
@@ -153,7 +152,8 @@ func (d *dialog) KeyBindings() []keybinding.Binding {
 }
 
 func (d *dialog) Run(ctx context.Context) {
-	if !d.load(ctx) {
+	apiKey, loaded := d.load(ctx)
+	if !loaded {
 		<-ctx.Done()
 		return
 	}
@@ -161,13 +161,13 @@ func (d *dialog) Run(ctx context.Context) {
 	group, runCtx := errgroup.WithContext(ctx)
 	group.Go(func() error { return d.runLoginChecks(runCtx) })
 	group.Go(func() error {
-		d.validateStoredAPIKey(runCtx)
+		d.validateStoredAPIKey(runCtx, apiKey)
 		return nil
 	})
 	_ = group.Wait()
 }
 
-func (d *dialog) load(ctx context.Context) bool {
+func (d *dialog) load(ctx context.Context) (string, bool) {
 	values, loadErr := d.store.Load(ctx)
 	var devices []audio.Device
 	var devicesErr error
@@ -177,12 +177,11 @@ func (d *dialog) load(ctx context.Context) bool {
 		devices, devicesErr = d.inputs.Devices()
 	}
 	if ctx.Err() != nil {
-		return false
+		return "", false
 	}
-	d.host.Update(func() {
+	d.host.Update(d.Content(), func() {
 		d.values = values
 		d.persistedValues = values
-		d.initialAPIKey = values.QRZAPIKey
 		d.devices = append(d.devices[:0], devices...)
 		d.loadErr = loadErr
 		d.devicesErr = devicesErr
@@ -198,7 +197,7 @@ func (d *dialog) load(ctx context.Context) bool {
 		}
 		d.showInitialDeviceError()
 	})
-	return loadErr == nil
+	return values.QRZAPIKey, loadErr == nil
 }
 
 func deviceOptions(devices []audio.Device) []string {
@@ -243,7 +242,7 @@ func (d *dialog) runLoginChecks(ctx context.Context) error {
 		if ctx.Err() != nil {
 			return nil
 		}
-		d.host.Update(func() {
+		d.host.Update(d.Content(), func() {
 			if d.loginGeneration.Load() == request.generation {
 				d.showLoginStatusFor(request.password, validationErr)
 			}
@@ -251,8 +250,7 @@ func (d *dialog) runLoginChecks(ctx context.Context) error {
 	}
 }
 
-func (d *dialog) validateStoredAPIKey(ctx context.Context) {
-	apiKey := d.initialAPIKey
+func (d *dialog) validateStoredAPIKey(ctx context.Context, apiKey string) {
 	generation := d.apiKeyGeneration.Load()
 	if apiKey == "" {
 		return
@@ -261,7 +259,7 @@ func (d *dialog) validateStoredAPIKey(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
-	d.host.Update(func() {
+	d.host.Update(d.Content(), func() {
 		if d.apiKeyGeneration.Load() == generation {
 			d.showAPIKeyStatus(validationErr)
 		}
@@ -287,7 +285,7 @@ func (d *dialog) submit() {
 	d.host.Background(d.Content(), func(ctx context.Context) {
 		saved, err := d.store.Save(ctx, values)
 		if ctx.Err() == nil {
-			d.host.Update(func() { d.finishSave(saved, err) })
+			d.host.Update(d.Content(), func() { d.finishSave(saved, err) })
 		}
 	})
 }
@@ -308,7 +306,7 @@ func (d *dialog) openLogin() {
 				if ctx.Err() != nil {
 					return
 				}
-				d.host.Update(func() {
+				d.host.Update(login.Content(), func() {
 					if err == nil {
 						values := d.currentValues()
 						values.StationCallsign = callsign
@@ -336,7 +334,7 @@ func (d *dialog) openAPIKey() {
 				if ctx.Err() != nil {
 					return
 				}
-				d.host.Update(func() {
+				d.host.Update(editor.Content(), func() {
 					if err == nil {
 						values := d.currentValues()
 						values.QRZAPIKey = apiKey

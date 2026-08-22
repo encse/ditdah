@@ -156,7 +156,7 @@ func (p *page) Run(ctx context.Context) {
 	// Re-issue the current selection on every activation. If a lookup was
 	// cancelled when the page was hidden, the next Run retries it without
 	// retaining cross-run goroutines or reading UI state off the event loop.
-	p.host.Update(p.requestSelectedCallsign)
+	p.host.Update(p.Content(), p.requestSelectedCallsign)
 	var group errgroup.Group
 	group.Go(func() error {
 		p.runDecoder(ctx)
@@ -217,7 +217,7 @@ func (p *page) showLookupResult(
 	entry callsign.Entry,
 	err error,
 ) {
-	p.host.Update(func() {
+	p.host.Update(p.Content(), func() {
 		if request.generation != p.lookupGeneration ||
 			request.callsign != p.selectedCallsign {
 			return
@@ -326,7 +326,7 @@ func (p *page) appendDecoded(ctx context.Context, text string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	p.host.Update(func() {
+	p.host.Update(p.Content(), func() {
 		wasAtEnd := p.output.AtEnd()
 		previousLength := p.decodedText.Len()
 		_, _ = p.decodedText.WriteString(text)
@@ -343,7 +343,7 @@ func (p *page) appendDecoded(ctx context.Context, text string) error {
 }
 
 func (p *page) setStatus(status string) {
-	p.host.Update(func() {
+	p.host.Update(p.Content(), func() {
 		p.statusText = status
 	})
 }

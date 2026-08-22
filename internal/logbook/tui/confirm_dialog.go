@@ -18,7 +18,7 @@ type confirmDialog struct {
 	confirm components.Button
 	cancel  components.Button
 	host    ui.PageHost
-	action  func(context.Context) error
+	action  func(context.Context, tview.Primitive) error
 	handle  modal.Handle
 }
 
@@ -28,7 +28,7 @@ func newConfirmDialog(
 	message string,
 	detail string,
 	confirmLabel string,
-	action func(context.Context) error,
+	action func(context.Context, tview.Primitive) error,
 ) *confirmDialog {
 	return newActionDialog(
 		host, title, message, detail, confirmLabel, action, true,
@@ -41,7 +41,7 @@ func newActionDialog(
 	message string,
 	detail string,
 	confirmLabel string,
-	action func(context.Context) error,
+	action func(context.Context, tview.Primitive) error,
 	danger bool,
 ) *confirmDialog {
 	controls := host.Components().Modal()
@@ -92,11 +92,11 @@ func (d *confirmDialog) setHandle(handle modal.Handle) {
 func (d *confirmDialog) submit() {
 	if d.action != nil {
 		d.host.Background(d.Content(), func(ctx context.Context) {
-			err := d.action(ctx)
+			err := d.action(ctx, d.Content())
 			if ctx.Err() != nil {
 				return
 			}
-			d.host.Update(func() { d.finish(err) })
+			d.host.Update(d.Content(), func() { d.finish(err) })
 		})
 		return
 	}

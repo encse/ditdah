@@ -59,13 +59,14 @@ func (h *testHost) Refresh() {
 	h.refreshes++
 }
 
-func (h *testHost) Update(update func()) {
+func (h *testHost) Update(_ tview.Primitive, update func()) bool {
 	if update != nil {
 		update()
 	}
 	if h.updates != nil {
 		h.updates <- struct{}{}
 	}
+	return true
 }
 
 func (h *testHost) Components() components.Factory {

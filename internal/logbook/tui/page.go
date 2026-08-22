@@ -115,7 +115,7 @@ func (p *page) Run(ctx context.Context) {
 	if ctx.Err() != nil {
 		return
 	}
-	p.host.Update(func() {
+	p.host.Update(p.Content(), func() {
 		if err != nil {
 			p.details.setRows([]detailRow{{
 				left: detailField{value: "Error: " + err.Error()},

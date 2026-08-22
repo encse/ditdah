@@ -206,7 +206,7 @@ func (a *application) Background(
 		return false
 	}
 
-	return a.layers.startBackground(owner, func(layer *runningLayer) error {
+	return a.layers.startTask(owner, func(layer *runningLayer) error {
 		work(layer.ctx)
 		return nil
 	})
@@ -308,8 +308,28 @@ func (a *application) setKeyBindings(bindings []keybinding.Binding) {
 	a.layout.Footer().SetKeyBindings(footer)
 }
 
-// Update serializes a background update with tview drawing.
-func (a *application) Update(update func()) {
+// Update schedules a layer-owned UI change with tview drawing.
+func (a *application) Update(
+	owner tview.Primitive,
+	update func(),
+) bool {
+	if owner == nil || update == nil {
+		return false
+	}
+	return a.layers.startUpdate(owner, func(layer *runningLayer) error {
+		a.engine.QueueUpdateDraw(func() {
+			if !a.layers.isRequested(layer) {
+				return
+			}
+			update()
+			a.Refresh()
+		})
+		return nil
+	})
+}
+
+// update schedules application-owned UI work which is not tied to a layer.
+func (a *application) update(update func()) {
 	a.engine.QueueUpdateDraw(func() {
 		if update != nil {
 			update()
