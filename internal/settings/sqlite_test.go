@@ -3,6 +3,7 @@ package settings
 import (
 	"context"
 	"testing"
+	"time"
 
 	"morsemanual/internal/database"
 )
@@ -71,6 +72,24 @@ func TestSQLiteStoreOverwritesSettings(t *testing.T) {
 	}
 	if loaded != want {
 		t.Fatalf("Load() = %#v, want %#v", loaded, want)
+	}
+}
+
+func TestSQLiteStoreNotifiesSubscribersAfterSave(t *testing.T) {
+	store := openTestStore(t)
+	subscription := store.Subscribe()
+	defer subscription.Close()
+
+	if _, err := store.Save(t.Context(), Settings{
+		StationCallsign: "HA7NCS",
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := subscription.Wait(ctx); err != nil {
+		t.Fatalf("Wait() after Save() = %v", err)
 	}
 }
 

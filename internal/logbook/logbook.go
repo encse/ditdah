@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"morsemanual/internal/optional"
+	"morsemanual/internal/syncutil"
 )
 
 var ErrNotFound = errors.New("qso not found")
@@ -56,6 +57,7 @@ type Store interface {
 		logID int64,
 		syncedAt time.Time,
 	) (QSO, error)
+	Subscribe() syncutil.Subscription
 }
 
 func normalizeQSO(qso QSO) QSO {

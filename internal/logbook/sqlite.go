@@ -15,6 +15,7 @@ import (
 	dbmodel "morsemanual/internal/database/dbgen/model"
 	. "morsemanual/internal/database/dbgen/table"
 	"morsemanual/internal/optional"
+	"morsemanual/internal/syncutil"
 )
 
 const (
@@ -23,12 +24,20 @@ const (
 )
 
 type sqliteStore struct {
-	db *sql.DB
+	db      *sql.DB
+	changes syncutil.Broadcaster
 }
 
 // NewSQLiteStore exposes QSO persistence over the application-owned database.
 func NewSQLiteStore(db *sql.DB) Store {
-	return &sqliteStore{db: db}
+	return &sqliteStore{
+		db:      db,
+		changes: syncutil.NewBroadcaster(),
+	}
+}
+
+func (s *sqliteStore) Subscribe() syncutil.Subscription {
+	return s.changes.Subscribe()
 }
 
 func (s *sqliteStore) Add(ctx context.Context, qso QSO) (QSO, error) {
@@ -57,6 +66,7 @@ func (s *sqliteStore) Add(ctx context.Context, qso QSO) (QSO, error) {
 		return QSO{}, fmt.Errorf("add QSO: %w", err)
 	}
 
+	s.changes.Activate()
 	return qso, nil
 }
 
@@ -157,6 +167,7 @@ func (s *sqliteStore) Update(ctx context.Context, qso QSO) (QSO, error) {
 		return QSO{}, ErrNotFound
 	}
 
+	s.changes.Activate()
 	return qso, nil
 }
 
@@ -176,6 +187,7 @@ func (s *sqliteStore) Delete(ctx context.Context, id string) error {
 		return ErrNotFound
 	}
 
+	s.changes.Activate()
 	return nil
 }
 
@@ -221,6 +233,7 @@ func (s *sqliteStore) MarkQRZSynced(
 		return QSO{}, ErrNotFound
 	}
 
+	s.changes.Activate()
 	return s.Get(ctx, id)
 }
 

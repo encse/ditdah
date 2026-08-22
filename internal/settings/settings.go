@@ -4,6 +4,8 @@ package settings
 import (
 	"context"
 	"strings"
+
+	"morsemanual/internal/syncutil"
 )
 
 // Settings contains the user-configurable station, QRZ, and audio values.
@@ -18,6 +20,7 @@ type Settings struct {
 type Store interface {
 	Load(ctx context.Context) (Settings, error)
 	Save(ctx context.Context, settings Settings) (Settings, error)
+	Subscribe() syncutil.Subscription
 }
 
 func normalize(settings Settings) Settings {

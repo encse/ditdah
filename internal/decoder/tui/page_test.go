@@ -13,6 +13,7 @@ import (
 	logbookdomain "morsemanual/internal/logbook"
 	"morsemanual/internal/optional"
 	"morsemanual/internal/settings"
+	"morsemanual/internal/syncutil"
 	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/modal"
@@ -413,6 +414,10 @@ func (s *decoderSettingsStore) Save(
 	defer s.mu.Unlock()
 	s.values = values
 	return values, nil
+}
+
+func (s *decoderSettingsStore) Subscribe() syncutil.Subscription {
+	return syncutil.NewBroadcaster().Subscribe()
 }
 
 func (s *decoderSettingsStore) setInput(id string) {

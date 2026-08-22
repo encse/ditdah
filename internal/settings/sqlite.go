@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"morsemanual/internal/syncutil"
+
 	"github.com/go-jet/jet/v2/qrm"
 	. "github.com/go-jet/jet/v2/sqlite"
 	dbmodel "morsemanual/internal/database/dbgen/model"
@@ -15,12 +17,20 @@ import (
 const settingsID int64 = 1
 
 type sqliteStore struct {
-	db *sql.DB
+	db      *sql.DB
+	changes syncutil.Broadcaster
 }
 
 // NewSQLiteStore exposes settings persistence over the application-owned database.
 func NewSQLiteStore(db *sql.DB) Store {
-	return &sqliteStore{db: db}
+	return &sqliteStore{
+		db:      db,
+		changes: syncutil.NewBroadcaster(),
+	}
+}
+
+func (s *sqliteStore) Subscribe() syncutil.Subscription {
+	return s.changes.Subscribe()
 }
 
 func (s *sqliteStore) Load(ctx context.Context) (Settings, error) {
@@ -68,6 +78,7 @@ func (s *sqliteStore) Save(
 		return Settings{}, fmt.Errorf("save application settings: %w", err)
 	}
 
+	s.changes.Activate()
 	return settings, nil
 }
 

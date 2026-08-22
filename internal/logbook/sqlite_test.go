@@ -8,6 +8,7 @@ import (
 
 	"morsemanual/internal/database"
 	"morsemanual/internal/optional"
+	"morsemanual/internal/syncutil"
 )
 
 func TestSQLiteStoreLifecycle(t *testing.T) {
@@ -173,6 +174,55 @@ func TestSQLiteStorePreservesMissingFrequency(t *testing.T) {
 	}
 	if loaded.FrequencyHz.IsSome() {
 		t.Fatalf("Get() FrequencyHz = %v, want none", loaded.FrequencyHz)
+	}
+}
+
+func TestSQLiteStoreNotifiesSubscribersAfterMutations(t *testing.T) {
+	store := openTestStore(t)
+	subscription := store.Subscribe()
+	defer subscription.Close()
+	qso := QSO{
+		StationCallsign: "HA7NCS",
+		Callsign:        "DL8ECA/P",
+		StartedAt:       time.Now(),
+		Mode:            "CW",
+	}
+
+	created, err := store.Add(t.Context(), qso)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForStoreChange(t, subscription)
+
+	created.Notes = "updated"
+	updated, err := store.Update(t.Context(), created)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waitForStoreChange(t, subscription)
+
+	if _, err := store.MarkQRZSynced(
+		t.Context(),
+		updated.ID,
+		12345,
+		time.Now(),
+	); err != nil {
+		t.Fatal(err)
+	}
+	waitForStoreChange(t, subscription)
+
+	if err := store.Delete(t.Context(), updated.ID); err != nil {
+		t.Fatal(err)
+	}
+	waitForStoreChange(t, subscription)
+}
+
+func waitForStoreChange(t *testing.T, subscription syncutil.Subscription) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(t.Context(), time.Second)
+	defer cancel()
+	if err := subscription.Wait(ctx); err != nil {
+		t.Fatalf("Wait() after store mutation = %v", err)
 	}
 }
 

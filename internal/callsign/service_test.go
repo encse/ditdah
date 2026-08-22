@@ -9,6 +9,7 @@ import (
 
 	"morsemanual/internal/optional"
 	"morsemanual/internal/settings"
+	"morsemanual/internal/syncutil"
 )
 
 func TestServiceReturnsCachedEntryWithoutLoadingCredentials(t *testing.T) {
@@ -136,6 +137,10 @@ func (s *serviceTestSettings) Save(
 	settings.Settings,
 ) (settings.Settings, error) {
 	return settings.Settings{}, nil
+}
+
+func (s *serviceTestSettings) Subscribe() syncutil.Subscription {
+	return syncutil.NewBroadcaster().Subscribe()
 }
 
 type serviceTestProvider struct {

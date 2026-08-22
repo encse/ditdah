@@ -10,6 +10,7 @@ import (
 	"morsemanual/internal/audio"
 	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/settings"
+	"morsemanual/internal/syncutil"
 	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/modal"
@@ -529,6 +530,10 @@ func (s *recordingStore) Save(
 	s.saved = values
 	s.loaded = values
 	return values, nil
+}
+
+func (s *recordingStore) Subscribe() syncutil.Subscription {
+	return syncutil.NewBroadcaster().Subscribe()
 }
 
 type recordingQRZService struct {
