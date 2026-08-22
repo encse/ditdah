@@ -4,7 +4,7 @@ package modal
 import (
 	"context"
 
-	"morsemanual/internal/tui/keybinding"
+	"ditdah/internal/tui/keybinding"
 
 	"github.com/rivo/tview"
 )

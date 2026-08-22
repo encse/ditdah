@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"strings"
 
-	domain "morsemanual/internal/callsign"
-	"morsemanual/internal/optional"
+	domain "ditdah/internal/callsign"
+	"ditdah/internal/optional"
 )
 
 type xmlCallsign struct {

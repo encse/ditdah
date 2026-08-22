@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"morsemanual/internal/callsign"
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/optional"
-	"morsemanual/internal/settings"
+	"ditdah/internal/callsign"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/optional"
+	"ditdah/internal/settings"
 
 	"github.com/gdamore/tcell/v2"
 )

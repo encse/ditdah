@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/syncutil"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/syncutil"
 )
 
 func TestPageLoadsLogbookAndRefreshesItAfterChanges(t *testing.T) {

@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/optional"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/optional"
 
 	"github.com/gdamore/tcell/v2"
 )

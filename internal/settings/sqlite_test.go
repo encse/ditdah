@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"morsemanual/internal/database"
+	"ditdah/internal/database"
 )
 
 func TestSQLiteStoreLoadsEmptySettingsInitially(t *testing.T) {

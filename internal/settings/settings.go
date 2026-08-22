@@ -5,7 +5,7 @@ import (
 	"context"
 	"strings"
 
-	"morsemanual/internal/syncutil"
+	"ditdah/internal/syncutil"
 )
 
 // Settings contains the user-configurable station, QRZ, and audio values.

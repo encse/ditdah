@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/tui/modal"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 )

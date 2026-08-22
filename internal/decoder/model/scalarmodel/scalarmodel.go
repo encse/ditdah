@@ -3,8 +3,8 @@ package scalarmodel
 import (
 	"fmt"
 	"math"
-	"morsemanual/internal/decoder/model/artifacts"
-	modelpkg "morsemanual/internal/decoder/model/core"
+	"ditdah/internal/decoder/model/artifacts"
+	modelpkg "ditdah/internal/decoder/model/core"
 )
 
 type model struct {

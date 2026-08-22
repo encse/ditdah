@@ -3,8 +3,8 @@
 package model
 
 import (
-	"morsemanual/internal/decoder/model/core"
-	"morsemanual/internal/decoder/model/scalarmodel"
+	"ditdah/internal/decoder/model/core"
+	"ditdah/internal/decoder/model/scalarmodel"
 )
 
 func LoadModel() (core.Model, error) {

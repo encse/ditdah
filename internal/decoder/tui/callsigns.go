@@ -6,8 +6,8 @@ import (
 	"slices"
 	"strings"
 
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/modal"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/modal"
 )
 
 func (p *page) newCallsignList(controls components.Factory) components.Table {

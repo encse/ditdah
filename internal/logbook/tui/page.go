@@ -5,10 +5,10 @@ import (
 	"context"
 	"fmt"
 
-	domain "morsemanual/internal/logbook"
-	ui "morsemanual/internal/tui"
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
+	domain "ditdah/internal/logbook"
+	ui "ditdah/internal/tui"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/keybinding"
 
 	"github.com/rivo/tview"
 )

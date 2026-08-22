@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
-	"morsemanual/internal/tui/modal"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/keybinding"
+	"ditdah/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

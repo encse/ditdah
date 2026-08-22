@@ -7,13 +7,13 @@ import (
 	"errors"
 	"fmt"
 
-	"morsemanual/internal/database"
-	decoderpage "morsemanual/internal/decoder/tui"
-	logbookpage "morsemanual/internal/logbook/tui"
-	qsoeditor "morsemanual/internal/qsoeditor/tui"
-	settingspage "morsemanual/internal/settings/tui"
-	"morsemanual/internal/tui"
-	"morsemanual/internal/tui/keybinding"
+	"ditdah/internal/database"
+	decoderpage "ditdah/internal/decoder/tui"
+	logbookpage "ditdah/internal/logbook/tui"
+	qsoeditor "ditdah/internal/qsoeditor/tui"
+	settingspage "ditdah/internal/settings/tui"
+	"ditdah/internal/tui"
+	"ditdah/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 )

@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"morsemanual/internal/database"
-	"morsemanual/internal/optional"
+	"ditdah/internal/database"
+	"ditdah/internal/optional"
 )
 
 func TestSQLiteStoreSavesPositiveAndNegativeLookups(t *testing.T) {

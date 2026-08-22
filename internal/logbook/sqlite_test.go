@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"morsemanual/internal/database"
-	"morsemanual/internal/optional"
-	"morsemanual/internal/syncutil"
+	"ditdah/internal/database"
+	"ditdah/internal/optional"
+	"ditdah/internal/syncutil"
 )
 
 func TestSQLiteStoreLifecycle(t *testing.T) {

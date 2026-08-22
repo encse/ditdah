@@ -3,9 +3,9 @@ package tui
 import (
 	"context"
 
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
-	"morsemanual/internal/tui/modal"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/keybinding"
+	"ditdah/internal/tui/modal"
 
 	"github.com/rivo/tview"
 )

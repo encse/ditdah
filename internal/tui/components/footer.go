@@ -1,7 +1,7 @@
 package components
 
 import (
-	"morsemanual/internal/tui/keybinding"
+	"ditdah/internal/tui/keybinding"
 
 	"github.com/rivo/tview"
 )

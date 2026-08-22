@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"sync"
 
-	"morsemanual/internal/syncutil"
-	"morsemanual/internal/tui/modal"
+	"ditdah/internal/syncutil"
+	"ditdah/internal/tui/modal"
 
 	"golang.org/x/sync/errgroup"
 )

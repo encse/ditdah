@@ -6,7 +6,7 @@ import (
 	"os"
 	"os/signal"
 
-	"morsemanual/internal/application"
+	"ditdah/internal/application"
 )
 
 const databasePath = "logbook.db"

@@ -1,7 +1,7 @@
 package components
 
 import (
-	"morsemanual/internal/tui/keybinding"
+	"ditdah/internal/tui/keybinding"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"

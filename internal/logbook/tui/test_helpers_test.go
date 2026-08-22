@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	domain "morsemanual/internal/logbook"
-	ui "morsemanual/internal/tui"
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/modal"
+	domain "ditdah/internal/logbook"
+	ui "ditdah/internal/tui"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

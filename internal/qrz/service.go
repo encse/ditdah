@@ -12,13 +12,13 @@ import (
 	"strings"
 	"time"
 
-	domain "morsemanual/internal/callsign"
+	domain "ditdah/internal/callsign"
 )
 
 const (
 	xmlEndpoint     = "https://xmldata.qrz.com/xml/current/"
 	logbookEndpoint = "https://logbook.qrz.com/api"
-	userAgent       = "MorseManual/0.1 (HA7NCS)"
+	userAgent       = "DitDah/0.1 (HA7NCS)"
 	maxResponseSize = 1 << 20
 )
 

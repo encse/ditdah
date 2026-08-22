@@ -6,8 +6,8 @@ import (
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/overlay"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/overlay"
 )
 
 const labelWidth = 24

@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/optional"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/optional"
 )
 
 func TestUploadQSOUsesReplaceAndEncodesADIF(t *testing.T) {

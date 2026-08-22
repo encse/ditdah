@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/settings"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/settings"
 )
 
 const syncPageSize = 500

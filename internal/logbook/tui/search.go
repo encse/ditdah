@@ -3,9 +3,9 @@ package tui
 import (
 	"strings"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 )

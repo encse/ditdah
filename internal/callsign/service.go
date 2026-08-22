@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"morsemanual/internal/optional"
-	"morsemanual/internal/settings"
+	"ditdah/internal/optional"
+	"ditdah/internal/settings"
 )
 
 const qrzProvider = "qrz.com"

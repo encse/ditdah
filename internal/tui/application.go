@@ -4,10 +4,10 @@ import (
 	"context"
 	"errors"
 
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
-	"morsemanual/internal/tui/modal"
-	"morsemanual/internal/tui/overlay"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/keybinding"
+	"ditdah/internal/tui/modal"
+	"ditdah/internal/tui/overlay"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

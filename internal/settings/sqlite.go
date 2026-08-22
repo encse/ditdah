@@ -6,12 +6,12 @@ import (
 	"errors"
 	"fmt"
 
-	"morsemanual/internal/syncutil"
+	"ditdah/internal/syncutil"
 
 	"github.com/go-jet/jet/v2/qrm"
 	. "github.com/go-jet/jet/v2/sqlite"
-	dbmodel "morsemanual/internal/database/dbgen/model"
-	. "morsemanual/internal/database/dbgen/table"
+	dbmodel "ditdah/internal/database/dbgen/model"
+	. "ditdah/internal/database/dbgen/table"
 )
 
 const settingsID int64 = 1

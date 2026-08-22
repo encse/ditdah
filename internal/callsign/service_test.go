@@ -7,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	"morsemanual/internal/optional"
-	"morsemanual/internal/settings"
-	"morsemanual/internal/syncutil"
+	"ditdah/internal/optional"
+	"ditdah/internal/settings"
+	"ditdah/internal/syncutil"
 )
 
 func TestServiceReturnsCachedEntryWithoutLoadingCredentials(t *testing.T) {

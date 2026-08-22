@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"slices"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/tui/keybinding"
-	"morsemanual/internal/tui/modal"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/tui/keybinding"
+	"ditdah/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 )

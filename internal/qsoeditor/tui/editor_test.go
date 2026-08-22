@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	"morsemanual/internal/callsign"
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/optional"
+	"ditdah/internal/callsign"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/optional"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

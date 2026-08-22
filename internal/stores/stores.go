@@ -4,9 +4,9 @@ package stores
 import (
 	"database/sql"
 
-	"morsemanual/internal/callsign"
-	"morsemanual/internal/logbook"
-	"morsemanual/internal/settings"
+	"ditdah/internal/callsign"
+	"ditdah/internal/logbook"
+	"ditdah/internal/settings"
 )
 
 // Stores contains the persistence boundaries shared by application features.

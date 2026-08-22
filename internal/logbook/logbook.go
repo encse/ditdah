@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"morsemanual/internal/optional"
-	"morsemanual/internal/syncutil"
+	"ditdah/internal/optional"
+	"ditdah/internal/syncutil"
 )
 
 var ErrNotFound = errors.New("qso not found")

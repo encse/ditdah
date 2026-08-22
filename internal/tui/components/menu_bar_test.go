@@ -3,7 +3,7 @@ package components
 import (
 	"testing"
 
-	"morsemanual/internal/tui/keybinding"
+	"ditdah/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

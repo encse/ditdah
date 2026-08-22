@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"morsemanual/internal/tui/modal"
+	"ditdah/internal/tui/modal"
 
 	"github.com/rivo/tview"
 )

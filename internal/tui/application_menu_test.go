@@ -3,8 +3,8 @@ package tui
 import (
 	"testing"
 
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
 )

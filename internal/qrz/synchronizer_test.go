@@ -5,9 +5,9 @@ import (
 	"testing"
 	"time"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/optional"
-	"morsemanual/internal/settings"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/optional"
+	"ditdah/internal/settings"
 )
 
 func TestSynchronizerUploadsOnlyPendingAndReplacesOldLogID(t *testing.T) {

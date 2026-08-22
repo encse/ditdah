@@ -3,7 +3,7 @@ package modal
 import (
 	"context"
 
-	"morsemanual/internal/tui/components"
+	"ditdah/internal/tui/components"
 
 	"github.com/rivo/tview"
 )

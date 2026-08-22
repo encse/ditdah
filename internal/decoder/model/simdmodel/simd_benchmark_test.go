@@ -4,8 +4,8 @@ package simdmodel_test
 
 import (
 	"math/rand"
-	"morsemanual/internal/decoder/model/scalarmodel"
-	"morsemanual/internal/decoder/model/simdmodel"
+	"ditdah/internal/decoder/model/scalarmodel"
+	"ditdah/internal/decoder/model/simdmodel"
 	"testing"
 )
 

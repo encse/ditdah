@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"morsemanual/internal/callsign"
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/settings"
-	ui "morsemanual/internal/tui"
+	"ditdah/internal/callsign"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/settings"
+	ui "ditdah/internal/tui"
 )
 
 // Factory opens QSO editors owned by a page.

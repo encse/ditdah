@@ -51,13 +51,13 @@ This document records implementation decisions and future technical work.
 - [x] Let the decoder and logbook page subscribe directly, for the duration of `Run`, to coalesced store change notifications emitted after successful mutations; do not forward those changes through application callbacks.
 - [x] Coordinate page changes through an initialized, latest-value mailbox inside the application run loop; scope each page and mailbox receiver to one local `errgroup` and wait for both before switching.
 - [x] Pass the initial page object directly to `Application.Run`; create a fresh page object for every navigation action and use the page or dialog object itself as its lifecycle identity.
-- [x] Let pages contribute their own application-menu items when registered.
+- [x] Let the active page contribute its own application-menu items when shown.
 - [x] Remove constructor-captured and page-stored contexts from UI actions; run blocking actions through owner-scoped application background work or the owning layer's `Run(ctx)` lifecycle.
 - [x] Dispatch input in overlay, focused-control, page, then application order, while leaving native tview bindings with their controls.
 - [x] Enforce mouse focus and capture centrally from declared page, modal, application, and overlay focusables so decorative controls cannot steal input.
 - [x] Refresh footer hints when the active page, focused control, or overlay changes.
 - [x] Test hint composition, focus-sensitive footer content, modal isolation, and the refactored logbook page.
-- [x] Extract an application layer that owns the shared layout and overlays, registers pages, handles navigation, and provides global keybindings.
+- [x] Extract an application layer that owns the shared layout and overlays, shows fresh page objects, handles navigation, and provides global keybindings.
 
 ## Database
 
@@ -75,6 +75,7 @@ This document records implementation decisions and future technical work.
 
 ## Future work
 
+- [x] Build cgo-enabled Linux amd64, Windows amd64, macOS Intel, and SIMD-enabled macOS Apple Silicon release archives on native GitHub-hosted runners; fall back to the scalar implementation when the SIMD build is unavailable and publish version tags as GitHub releases.
 - [x] Implement QRZ synchronization on top of the validated credentials and stored synchronization state, retaining remote log IDs so edited records can be replaced without duplicates.
 - [x] Add the initial read-only logbook TUI with table, details, and search.
 - [x] Add QSO creation, editing, and confirmed deletion to the logbook TUI.

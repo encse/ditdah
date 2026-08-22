@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	ui "morsemanual/internal/tui"
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/modal"
+	ui "ditdah/internal/tui"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/modal"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

@@ -1,8 +1,8 @@
 package tui
 
 import (
-	"morsemanual/internal/tui/components"
-	"morsemanual/internal/tui/keybinding"
+	"ditdah/internal/tui/components"
+	"ditdah/internal/tui/keybinding"
 )
 
 const (

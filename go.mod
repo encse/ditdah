@@ -1,4 +1,4 @@
-module morsemanual
+module ditdah
 
 go 1.27.0
 

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"testing"
 
-	"morsemanual/internal/callsign"
+	"ditdah/internal/callsign"
 )
 
 func TestLookupCallsignLogsInAndMapsQRZRecord(t *testing.T) {

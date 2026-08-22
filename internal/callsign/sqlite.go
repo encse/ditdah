@@ -10,9 +10,9 @@ import (
 
 	"github.com/go-jet/jet/v2/qrm"
 	. "github.com/go-jet/jet/v2/sqlite"
-	dbmodel "morsemanual/internal/database/dbgen/model"
-	. "morsemanual/internal/database/dbgen/table"
-	"morsemanual/internal/optional"
+	dbmodel "ditdah/internal/database/dbgen/model"
+	. "ditdah/internal/database/dbgen/table"
+	"ditdah/internal/optional"
 )
 
 type sqliteStore struct {

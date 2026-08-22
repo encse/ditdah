@@ -3,10 +3,10 @@ package application
 import (
 	"database/sql"
 
-	"morsemanual/internal/audio"
-	"morsemanual/internal/callsign"
-	"morsemanual/internal/qrz"
-	"morsemanual/internal/stores"
+	"ditdah/internal/audio"
+	"ditdah/internal/callsign"
+	"ditdah/internal/qrz"
+	"ditdah/internal/stores"
 )
 
 type dependencies struct {

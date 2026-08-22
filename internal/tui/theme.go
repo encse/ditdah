@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"morsemanual/internal/tui/components"
+	"ditdah/internal/tui/components"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

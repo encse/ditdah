@@ -4,10 +4,10 @@ import (
 	"context"
 	"testing"
 
-	"morsemanual/internal/callsign"
-	"morsemanual/internal/logbook"
-	"morsemanual/internal/settings"
-	"morsemanual/internal/stores"
+	"ditdah/internal/callsign"
+	"ditdah/internal/logbook"
+	"ditdah/internal/settings"
+	"ditdah/internal/stores"
 )
 
 func TestTerminalApplicationCreatesInitialLogbookPage(t *testing.T) {

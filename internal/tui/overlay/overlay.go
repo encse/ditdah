@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/rivo/tview"
-	"morsemanual/internal/tui/components"
+	"ditdah/internal/tui/components"
 )
 
 // Host displays component overlays and exposes their shared tview root.

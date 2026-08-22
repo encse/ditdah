@@ -3,9 +3,9 @@ package decoder
 import (
 	"context"
 	"fmt"
-	"morsemanual/internal/audio"
-	"morsemanual/internal/decoder/model"
-	"morsemanual/internal/decoder/model/core"
+	"ditdah/internal/audio"
+	"ditdah/internal/decoder/model"
+	"ditdah/internal/decoder/model/core"
 )
 
 type AudioToken uint8

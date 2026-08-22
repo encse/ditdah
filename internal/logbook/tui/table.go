@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	domain "morsemanual/internal/logbook"
-	"morsemanual/internal/tui/components"
+	domain "ditdah/internal/logbook"
+	"ditdah/internal/tui/components"
 )
 
 type column struct {

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	domain "morsemanual/internal/logbook"
+	domain "ditdah/internal/logbook"
 )
 
 // Logbook uploads and removes QRZ Logbook records.
