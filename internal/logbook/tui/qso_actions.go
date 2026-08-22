@@ -37,7 +37,7 @@ func (p *page) confirmQRZSync() {
 	pending := p.pendingQRZCount()
 	modal.OpenConfirm(
 		p.host,
-		p.Content(),
+		p,
 		" Sync QRZ.com ",
 		fmt.Sprintf("Upload %d pending QSO(s) to QRZ.com?", pending),
 		"Replacement may reset the QRZ confirmation.",
@@ -47,7 +47,7 @@ func (p *page) confirmQRZSync() {
 }
 
 func (p *page) startQRZSync() {
-	p.host.Background(p.Content(), func(ctx context.Context) {
+	p.host.Background(p, func(ctx context.Context) {
 		if p.syncer == nil {
 			p.showActionError(errors.New("QRZ.com synchronization is unavailable"))
 			return
@@ -60,7 +60,7 @@ func (p *page) startQRZSync() {
 		if ctx.Err() != nil {
 			return
 		}
-		p.host.Update(p.Content(), func() {
+		p.host.Update(p, func() {
 			if err := errors.Join(syncErr, refreshErr); err != nil {
 				p.openActionError(err)
 				return
@@ -83,7 +83,7 @@ func (p *page) pendingQRZCount() int {
 
 func (p *page) openCreateQSO() {
 	if p.showNewQSOEditor != nil {
-		p.showNewQSOEditor(p.Content(), "")
+		p.showNewQSOEditor(p, "")
 	}
 }
 
@@ -93,7 +93,7 @@ func (p *page) openSelectedQSO() {
 		return
 	}
 	if p.showQSOEditor != nil {
-		p.showQSOEditor(p.Content(), qso)
+		p.showQSOEditor(p, qso)
 	}
 }
 
@@ -105,7 +105,7 @@ func (p *page) confirmDeleteQSO() {
 	nextSelectedID := p.selectionAfterDelete(qso.ID)
 	modal.OpenDangerConfirm(
 		p.host,
-		p.Content(),
+		p,
 		" Delete QSO ",
 		fmt.Sprintf("Delete QSO with %s?", qso.Callsign),
 		"This action cannot be undone.",
@@ -120,12 +120,12 @@ func (p *page) startDeleteQSO(
 	id string,
 	nextSelectedID string,
 ) {
-	p.host.Background(p.Content(), func(ctx context.Context) {
+	p.host.Background(p, func(ctx context.Context) {
 		err := p.store.Delete(ctx, id)
 		if ctx.Err() != nil {
 			return
 		}
-		p.host.Update(p.Content(), func() {
+		p.host.Update(p, func() {
 			if err != nil {
 				p.openActionError(fmt.Errorf("delete QSO: %w", err))
 				return
@@ -143,13 +143,13 @@ func (p *page) showActionError(err error) {
 	if err == nil {
 		return
 	}
-	p.host.Update(p.Content(), func() { p.openActionError(err) })
+	p.host.Update(p, func() { p.openActionError(err) })
 }
 
 func (p *page) openActionError(err error) {
 	modal.OpenError(
 		p.host,
-		p.Content(),
+		p,
 		" Error ",
 		"Error: "+err.Error(),
 	)

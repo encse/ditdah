@@ -651,7 +651,7 @@ func (h *testHost) SetFocus(tview.Primitive) {}
 
 func (h *testHost) Refresh() {}
 
-func (h *testHost) Update(_ tview.Primitive, update func()) bool {
+func (h *testHost) Update(_ ui.Owner, update func()) bool {
 	if update != nil {
 		update()
 	}
@@ -664,7 +664,7 @@ func (h *testHost) Update(_ tview.Primitive, update func()) bool {
 func (h *testHost) Components() components.Factory { return h.controls }
 
 func (h *testHost) OpenModal(
-	_ tview.Primitive,
+	_ ui.Owner,
 	dialog modal.Dialog,
 ) modal.Handle {
 	handle := &testHandle{}
@@ -680,7 +680,7 @@ func (h *testHost) OpenModalForCurrentLayer(
 }
 
 func (h *testHost) Background(
-	_ tview.Primitive,
+	_ ui.Owner,
 	work ui.BackgroundWork,
 ) bool {
 	work(context.Background())

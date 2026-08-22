@@ -23,7 +23,7 @@ func TestCreateBindingOpensNewQSOEditor(t *testing.T) {
 	if !page.createBinding().Handle(tcell.NewEventKey(tcell.KeyRune, 'n', 0)) {
 		t.Fatal("n was not handled")
 	}
-	if host.editors.createdOwner != page.Content() || host.editors.createdCallsign != "" {
+	if host.editors.createdOwner != page || host.editors.createdCallsign != "" {
 		t.Fatalf("create editor call = %p, %q", host.editors.createdOwner, host.editors.createdCallsign)
 	}
 }
@@ -36,7 +36,7 @@ func TestEditBindingOpensSelectedQSOEditor(t *testing.T) {
 	if !page.editBinding().Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
 		t.Fatal("Enter was not handled")
 	}
-	if host.editors.editedOwner != page.Content() || host.editors.editedQSO.ID != "qso-1" {
+	if host.editors.editedOwner != page || host.editors.editedQSO.ID != "qso-1" {
 		t.Fatalf("edit editor call = %p, %#v", host.editors.editedOwner, host.editors.editedQSO)
 	}
 }

@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"morsemanual/internal/syncutil"
+	"morsemanual/internal/tui/modal"
 
-	"github.com/rivo/tview"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -17,20 +17,13 @@ type layerRuntime struct {
 	changes   syncutil.Mailbox[layerState]
 	mu        sync.Mutex
 	requested []requestedLayer
-	running   map[*layerInstance]*runningLayer
+	running   map[modal.Owner]*runningLayer
 }
 
 type requestedLayer struct {
-	instance *layerInstance
-	owner    *layerInstance
-	page     Page
-	modal    *openedModal
-}
-
-// layerInstance is deliberately non-zero-sized so distinct allocations always
-// have distinct pointer identity.
-type layerInstance struct {
-	identity byte
+	parent modal.Owner
+	page   Page
+	modal  *openedModal
 }
 
 type layerState struct {
@@ -49,14 +42,14 @@ type runningLayer struct {
 }
 
 func newLayerRuntime() layerRuntime {
-	return layerRuntime{running: make(map[*layerInstance]*runningLayer)}
+	return layerRuntime{running: make(map[modal.Owner]*runningLayer)}
 }
 
 func (r *layerRuntime) initialize(initial requestedLayer) {
 	r.mu.Lock()
 	r.changes = syncutil.NewMailbox(layerState{layers: []requestedLayer{initial}})
 	r.requested = []requestedLayer{initial}
-	r.running = make(map[*layerInstance]*runningLayer)
+	r.running = make(map[modal.Owner]*runningLayer)
 	r.mu.Unlock()
 }
 
@@ -104,9 +97,9 @@ func (r *layerRuntime) start(
 		if !r.requestIsCurrent(request) {
 			break
 		}
-		if request.owner != nil &&
+		if request.parent != nil &&
 			(len(running) == 0 ||
-				running[len(running)-1].instance != request.owner) {
+				running[len(running)-1].identity() != request.parent) {
 			break
 		}
 		layerCtx, cancel := context.WithCancel(parentCtx)
@@ -155,7 +148,7 @@ func (r *layerRuntime) stop(
 	}
 	for index := len(running) - 1; index >= from; index-- {
 		_ = running[index].group.Wait()
-		r.unregister(running[index].instance)
+		r.unregister(running[index].identity())
 	}
 	app.update(func() {
 		for layerIndex := len(running) - 1; layerIndex >= from; layerIndex-- {
@@ -197,7 +190,7 @@ func (r *layerRuntime) requestPage(page Page) {
 }
 
 func (r *layerRuntime) requestModal(
-	owner tview.Primitive,
+	owner modal.Owner,
 	requireOwner bool,
 	opened *openedModal,
 ) {
@@ -207,14 +200,13 @@ func (r *layerRuntime) requestModal(
 		return
 	}
 	parent := r.requested[len(r.requested)-1]
-	if requireOwner && parent.content() != owner {
+	if requireOwner && parent.identity() != owner {
 		r.mu.Unlock()
 		return
 	}
 	r.requested = append(r.requested, requestedLayer{
-		instance: &layerInstance{},
-		owner:    parent.instance,
-		modal:    opened,
+		parent: parent.identity(),
+		modal:  opened,
 	})
 	state := r.stateLocked("")
 	r.mu.Unlock()
@@ -243,7 +235,7 @@ func (r *layerRuntime) requestModalClose(target *openedModal) {
 func (r *layerRuntime) requestLayerStopped(stopped requestedLayer) {
 	r.mu.Lock()
 	if len(r.requested) == 0 || r.requested[0].page == nil ||
-		r.requested[0].instance != stopped.instance {
+		r.requested[0].page != stopped.page {
 		r.mu.Unlock()
 		return
 	}
@@ -255,13 +247,13 @@ func (r *layerRuntime) requestLayerStopped(stopped requestedLayer) {
 
 func (r *layerRuntime) register(layer *runningLayer) {
 	r.mu.Lock()
-	r.running[layer.instance] = layer
+	r.running[layer.identity()] = layer
 	r.mu.Unlock()
 }
 
-func (r *layerRuntime) unregister(instance *layerInstance) {
+func (r *layerRuntime) unregister(owner modal.Owner) {
 	r.mu.Lock()
-	delete(r.running, instance)
+	delete(r.running, owner)
 	r.mu.Unlock()
 }
 
@@ -269,7 +261,7 @@ func (r *layerRuntime) requestIsCurrent(target requestedLayer) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, layer := range r.requested {
-		if layer.instance == target.instance {
+		if layer.identity() == target.identity() {
 			return true
 		}
 	}
@@ -277,7 +269,7 @@ func (r *layerRuntime) requestIsCurrent(target requestedLayer) bool {
 }
 
 func (r *layerRuntime) startTask(
-	owner tview.Primitive,
+	owner modal.Owner,
 	work func(*runningLayer) error,
 ) bool {
 	r.mu.Lock()
@@ -290,7 +282,7 @@ func (r *layerRuntime) startTask(
 }
 
 func (r *layerRuntime) startUpdate(
-	owner tview.Primitive,
+	owner modal.Owner,
 	update func(*runningLayer) error,
 ) bool {
 	r.mu.Lock()
@@ -303,12 +295,12 @@ func (r *layerRuntime) startUpdate(
 }
 
 func (r *layerRuntime) runningOwnerLocked(
-	owner tview.Primitive,
+	owner modal.Owner,
 ) *runningLayer {
 	for index := len(r.requested) - 1; index >= 0; index-- {
 		requested := r.requested[index]
-		if requested.content() == owner {
-			return r.running[requested.instance]
+		if requested.identity() == owner {
+			return r.running[owner]
 		}
 	}
 	return nil
@@ -318,8 +310,8 @@ func (r *layerRuntime) isRequested(target *runningLayer) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	for _, layer := range r.requested {
-		if layer.instance == target.instance {
-			return r.running[layer.instance] == target
+		if layer.identity() == target.identity() {
+			return r.running[layer.identity()] == target
 		}
 	}
 	return false
@@ -372,14 +364,14 @@ func (l *runningLayer) stopTasks() {
 }
 
 func newPageLayer(page Page) requestedLayer {
-	return requestedLayer{instance: &layerInstance{}, page: page}
+	return requestedLayer{page: page}
 }
 
-func (r requestedLayer) content() tview.Primitive {
+func (r requestedLayer) identity() modal.Owner {
 	if r.modal != nil {
-		return r.modal.dialog.Content()
+		return r.modal.dialog
 	}
-	return r.page.Content()
+	return r.page
 }
 
 func (r requestedLayer) run(ctx context.Context) {
@@ -396,7 +388,7 @@ func commonLayerPrefix(
 ) int {
 	limit := min(len(running), len(requested))
 	for index := 0; index < limit; index++ {
-		if running[index].instance != requested[index].instance {
+		if running[index].identity() != requested[index].identity() {
 			return index
 		}
 	}

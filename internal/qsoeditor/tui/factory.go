@@ -11,14 +11,12 @@ import (
 	domain "morsemanual/internal/logbook"
 	"morsemanual/internal/settings"
 	ui "morsemanual/internal/tui"
-
-	"github.com/rivo/tview"
 )
 
 // Factory opens QSO editors owned by a page.
 type Factory interface {
-	Create(owner tview.Primitive, callsign string)
-	Edit(owner tview.Primitive, qso domain.QSO)
+	Create(owner ui.Owner, callsign string)
+	Edit(owner ui.Owner, qso domain.QSO)
 }
 
 type factory struct {
@@ -43,7 +41,7 @@ func New(
 	}
 }
 
-func (f *factory) Create(owner tview.Primitive, contactedCallsign string) {
+func (f *factory) Create(owner ui.Owner, contactedCallsign string) {
 	qso := domain.QSO{
 		Callsign:  strings.ToUpper(strings.TrimSpace(contactedCallsign)),
 		StartedAt: time.Now(),
@@ -60,7 +58,7 @@ func (f *factory) Create(owner tview.Primitive, contactedCallsign string) {
 	})
 }
 
-func (f *factory) Edit(owner tview.Primitive, qso domain.QSO) {
+func (f *factory) Edit(owner ui.Owner, qso domain.QSO) {
 	f.open(owner, qso, f.update, nil)
 }
 
@@ -93,7 +91,7 @@ func (f *factory) resolveDraft(ctx context.Context, qso *domain.QSO) error {
 }
 
 func (f *factory) open(
-	owner tview.Primitive,
+	owner ui.Owner,
 	qso domain.QSO,
 	save saveQSOFunc,
 	err error,

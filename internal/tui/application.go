@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
@@ -15,15 +14,14 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-// Application owns the shared TUI infrastructure and registered pages.
+// Application owns the shared TUI infrastructure.
 type Application interface {
 	PageHost
 	OpenModalForCurrentLayer(dialog modal.Dialog) modal.Handle
 	AddMenuItem(label string, binding keybinding.Binding)
 	AddKeyBinding(binding keybinding.Binding)
-	Register(page Page) error
-	Show(pageID string) error
-	Run(ctx context.Context, initialPageID string) error
+	Show(page Page) error
+	Run(ctx context.Context, initialPage Page) error
 }
 
 type application struct {
@@ -32,8 +30,6 @@ type application struct {
 	overlays            overlay.Host
 	controls            components.Factory
 	theme               colorTheme
-	pages               map[string]Page
-	pageOrder           []Page
 	activePage          Page
 	globalBindings      []keybinding.Binding
 	applicationBindings []keybinding.Binding
@@ -91,7 +87,6 @@ func newApplication(theme colorTheme) Application {
 		overlays: overlays,
 		controls: controls,
 		theme:    theme,
-		pages:    make(map[string]Page),
 		layers:   newLayerRuntime(),
 	}
 	app.root = newMouseFocusGuard(overlays.Root(), app.mousePrimitiveAllowed)
@@ -115,10 +110,8 @@ func (a *application) AddKeyBinding(binding keybinding.Binding) {
 
 func (a *application) buildApplicationMenu() {
 	items := append([]components.MenuItem(nil), a.menuItems...)
-	if a.running {
-		for _, page := range a.pageOrder {
-			items = append(items, page.MenuItems()...)
-		}
+	if a.running && a.activePage != nil {
+		items = append(items, a.activePage.MenuItems()...)
 	}
 	if a.exitBindingSet {
 		items = append(items, components.MenuItem{
@@ -144,23 +137,9 @@ func (a *application) Components() components.Factory {
 	return a.controls
 }
 
-func (a *application) Register(page Page) error {
-	id := page.ID()
-	if id == "" {
-		return fmt.Errorf("register page: empty ID")
-	}
-	if _, exists := a.pages[id]; exists {
-		return fmt.Errorf("register page %q: duplicate ID", id)
-	}
-	a.pages[id] = page
-	a.pageOrder = append(a.pageOrder, page)
-	return nil
-}
-
-func (a *application) Show(pageID string) error {
-	page, exists := a.pages[pageID]
-	if !exists {
-		return fmt.Errorf("show page %q: not registered", pageID)
+func (a *application) Show(page Page) error {
+	if page == nil {
+		return errors.New("show page: nil page")
 	}
 	if !a.running {
 		return errors.New("show page: application is not running")
@@ -172,6 +151,7 @@ func (a *application) Show(pageID string) error {
 func (a *application) showPage(page Page) {
 	a.activePage = page
 	a.layout.Show(page)
+	a.buildApplicationMenu()
 	a.SetFocus(page.Content())
 }
 
@@ -181,7 +161,7 @@ func (a *application) SetFocus(primitive tview.Primitive) {
 }
 
 func (a *application) OpenModal(
-	owner tview.Primitive,
+	owner modal.Owner,
 	dialog modal.Dialog,
 ) modal.Handle {
 	return a.openModal(owner, true, dialog)
@@ -190,7 +170,7 @@ func (a *application) OpenModal(
 // Background starts lifecycle-bound work for a requested page or dialog. It
 // rejects stale callbacks whose exact owner layer is no longer requested.
 func (a *application) Background(
-	owner tview.Primitive,
+	owner modal.Owner,
 	work BackgroundWork,
 ) bool {
 	if owner == nil || work == nil {
@@ -213,7 +193,7 @@ func (a *application) OpenModalForCurrentLayer(
 }
 
 func (a *application) openModal(
-	owner tview.Primitive,
+	owner modal.Owner,
 	requireOwner bool,
 	dialog modal.Dialog,
 ) modal.Handle {
@@ -301,7 +281,7 @@ func (a *application) setKeyBindings(bindings []keybinding.Binding) {
 
 // Update schedules a layer-owned UI change with tview drawing.
 func (a *application) Update(
-	owner tview.Primitive,
+	owner modal.Owner,
 	update func(),
 ) bool {
 	if owner == nil || update == nil {
@@ -329,13 +309,9 @@ func (a *application) update(update func()) {
 	})
 }
 
-func (a *application) Run(ctx context.Context, initialPageID string) error {
-	initialPage, exists := a.pages[initialPageID]
-	if !exists {
-		return fmt.Errorf(
-			"run terminal application: page %q is not registered",
-			initialPageID,
-		)
+func (a *application) Run(ctx context.Context, initialPage Page) error {
+	if initialPage == nil {
+		return errors.New("run terminal application: nil initial page")
 	}
 	if ctx.Err() != nil {
 		return nil
@@ -533,7 +509,7 @@ func (a *application) requestPage(page Page) {
 }
 
 func (a *application) requestModal(
-	owner tview.Primitive,
+	owner modal.Owner,
 	requireOwner bool,
 	opened *openedModal,
 ) {

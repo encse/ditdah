@@ -63,7 +63,7 @@ func highlightDecodedCallsign(text, selected string) string {
 func (p *page) confirmClearLog() {
 	modal.OpenDangerConfirm(
 		p.host,
-		p.Content(),
+		p,
 		" Clear decoded log ",
 		"Clear the decoded log?",
 		"",

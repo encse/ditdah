@@ -45,7 +45,7 @@ type page struct {
 	details          components.TextView
 	statusText       string
 	lookups          syncutil.Mailbox[lookupRequest]
-	showNewQSOEditor func(tview.Primitive, string)
+	showNewQSOEditor func(ui.Owner, string)
 
 	callsigns        []string
 	selectedCallsign string
@@ -59,7 +59,7 @@ func New(
 	source audio.Source,
 	settingsStore settings.Store,
 	lookup callsign.Service,
-	showNewQSOEditor func(tview.Primitive, string),
+	showNewQSOEditor func(ui.Owner, string),
 ) ui.Page {
 	return newPage(
 		host,
@@ -76,7 +76,7 @@ func newPage(
 	source audio.Source,
 	settingsStore settings.Store,
 	lookup callsign.Service,
-	showNewQSOEditor func(tview.Primitive, string),
+	showNewQSOEditor func(ui.Owner, string),
 	newStream streamFactory,
 ) *page {
 	controls := host.Components()
@@ -151,7 +151,7 @@ func (p *page) Run(ctx context.Context) {
 	// Re-issue the current selection on every activation. If a lookup was
 	// cancelled when the page was hidden, the next Run retries it without
 	// retaining cross-run goroutines or reading UI state off the event loop.
-	p.host.Update(p.Content(), p.requestSelectedCallsign)
+	p.host.Update(p, p.requestSelectedCallsign)
 	var group errgroup.Group
 	group.Go(func() error {
 		p.runDecoder(ctx)
@@ -219,7 +219,7 @@ func (p *page) showLookupResult(
 	entry callsign.Entry,
 	err error,
 ) {
-	p.host.Update(p.Content(), func() {
+	p.host.Update(p, func() {
 		if request.generation != p.lookupGeneration ||
 			request.callsign != p.selectedCallsign {
 			return
@@ -238,7 +238,7 @@ func (p *page) openCreateQSO() {
 	if p.selectedCallsign == "" || p.showNewQSOEditor == nil {
 		return
 	}
-	p.showNewQSOEditor(p.Content(), p.selectedCallsign)
+	p.showNewQSOEditor(p, p.selectedCallsign)
 }
 
 func formatCallsignDetails(entry callsign.Entry) string {
@@ -331,7 +331,7 @@ func (p *page) appendDecoded(ctx context.Context, text string) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	p.host.Update(p.Content(), func() {
+	p.host.Update(p, func() {
 		wasAtEnd := p.output.AtEnd()
 		previousLength := p.decodedText.Len()
 		_, _ = p.decodedText.WriteString(text)
@@ -348,7 +348,7 @@ func (p *page) appendDecoded(ctx context.Context, text string) error {
 }
 
 func (p *page) setStatus(status string) {
-	p.host.Update(p.Content(), func() {
+	p.host.Update(p, func() {
 		p.statusText = status
 	})
 }

@@ -10,12 +10,10 @@ import (
 	"morsemanual/internal/settings"
 
 	"github.com/gdamore/tcell/v2"
-	"github.com/rivo/tview"
 )
 
 func TestFactoryCreatesResolvedQSOForOwner(t *testing.T) {
-	_, host := newTestPage(t)
-	owner := tview.NewBox()
+	owner, host := newTestPage(t)
 	store := &factoryStore{}
 	factory := New(
 		host,

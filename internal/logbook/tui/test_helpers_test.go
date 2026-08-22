@@ -34,18 +34,18 @@ func newTestPage(t *testing.T) (*page, *testHost) {
 }
 
 type testEditorFactory struct {
-	createdOwner    tview.Primitive
+	createdOwner    ui.Owner
 	createdCallsign string
-	editedOwner     tview.Primitive
+	editedOwner     ui.Owner
 	editedQSO       domain.QSO
 }
 
-func (f *testEditorFactory) Create(owner tview.Primitive, callsign string) {
+func (f *testEditorFactory) Create(owner ui.Owner, callsign string) {
 	f.createdOwner = owner
 	f.createdCallsign = callsign
 }
 
-func (f *testEditorFactory) Edit(owner tview.Primitive, qso domain.QSO) {
+func (f *testEditorFactory) Edit(owner ui.Owner, qso domain.QSO) {
 	f.editedOwner = owner
 	f.editedQSO = qso
 }
@@ -59,7 +59,7 @@ func (h *testHost) Refresh() {
 	h.refreshes++
 }
 
-func (h *testHost) Update(_ tview.Primitive, update func()) bool {
+func (h *testHost) Update(_ ui.Owner, update func()) bool {
 	if update != nil {
 		update()
 	}
@@ -74,7 +74,7 @@ func (h *testHost) Components() components.Factory {
 }
 
 func (h *testHost) OpenModal(
-	_ tview.Primitive,
+	_ ui.Owner,
 	dialog modal.Dialog,
 ) modal.Handle {
 	h.modal = dialog
@@ -83,7 +83,7 @@ func (h *testHost) OpenModal(
 }
 
 func (h *testHost) Background(
-	_ tview.Primitive,
+	_ ui.Owner,
 	work ui.BackgroundWork,
 ) bool {
 	ctx := h.backgroundContext

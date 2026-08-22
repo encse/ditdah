@@ -15,9 +15,14 @@ type Size struct {
 	Height int
 }
 
+// Owner identifies one page or dialog lifecycle.
+type Owner interface {
+	Content() tview.Primitive
+}
+
 // Dialog is self-contained application content displayed modally.
 type Dialog interface {
-	Content() tview.Primitive
+	Owner
 	Focusables() []tview.Primitive
 	KeyBindings() []keybinding.Binding
 	Size() Size

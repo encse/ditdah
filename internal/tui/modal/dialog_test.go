@@ -14,7 +14,7 @@ func TestConfirmClosesBeforeCallingConfirmedAction(t *testing.T) {
 	confirmed := false
 	dialog := OpenDangerConfirm(
 		host,
-		tview.NewBox(),
+		newDialogTestOwner(),
 		" Confirm ",
 		"Continue?",
 		"This cannot be undone.",
@@ -39,7 +39,7 @@ func TestConfirmCancelOnlyCloses(t *testing.T) {
 	confirmed := false
 	dialog := OpenConfirm(
 		host,
-		tview.NewBox(),
+		newDialogTestOwner(),
 		" Confirm ",
 		"Continue?",
 		"",
@@ -61,7 +61,7 @@ func TestErrorMessageClosesWithOK(t *testing.T) {
 	host := newDialogTestHost()
 	dialog := OpenError(
 		host,
-		tview.NewBox(),
+		newDialogTestOwner(),
 		" Error ",
 		"Error: disk failed",
 	)
@@ -101,12 +101,20 @@ func newDialogTestHost() *dialogTestHost {
 func (h *dialogTestHost) Components() components.Factory { return h.controls }
 
 func (h *dialogTestHost) OpenModal(
-	_ tview.Primitive,
+	_ Owner,
 	_ Dialog,
 ) Handle {
 	h.handle = &dialogTestHandle{}
 	return h.handle
 }
+
+type dialogTestOwner struct{ *tview.Box }
+
+func newDialogTestOwner() *dialogTestOwner {
+	return &dialogTestOwner{Box: tview.NewBox()}
+}
+
+func (o *dialogTestOwner) Content() tview.Primitive { return o.Box }
 
 type dialogTestHandle struct{ closed bool }
 

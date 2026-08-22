@@ -15,7 +15,7 @@ type messageDialog struct {
 
 func OpenError(
 	host Opener,
-	owner tview.Primitive,
+	owner Owner,
 	title string,
 	message string,
 ) Dialog {

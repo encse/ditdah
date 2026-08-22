@@ -152,12 +152,12 @@ func (e *qsoEditor) refreshCallsign() {
 		return
 	}
 
-	e.host.Background(e.Content(), func(ctx context.Context) {
+	e.host.Background(e, func(ctx context.Context) {
 		entry, err := e.lookup.Lookup(ctx, callsignValue)
 		if ctx.Err() != nil {
 			return
 		}
-		e.host.Update(e.Content(), func() {
+		e.host.Update(e, func() {
 			if e.lookedUpCallsign != callsignValue {
 				return
 			}
@@ -221,12 +221,12 @@ func (e *qsoEditor) submit() {
 		e.close()
 		return
 	}
-	e.host.Background(e.Content(), func(ctx context.Context) {
+	e.host.Background(e, func(ctx context.Context) {
 		saved, err := e.save(ctx, qso)
 		if ctx.Err() != nil {
 			return
 		}
-		e.host.Update(e.Content(), func() {
+		e.host.Update(e, func() {
 			if err != nil {
 				e.showError(err)
 				return

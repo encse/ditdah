@@ -9,7 +9,7 @@ import (
 
 type Opener interface {
 	Components() components.Factory
-	OpenModal(owner tview.Primitive, dialog Dialog) Handle
+	OpenModal(owner Owner, dialog Dialog) Handle
 }
 
 type confirmDialog struct {
@@ -22,7 +22,7 @@ type confirmDialog struct {
 
 func OpenConfirm(
 	host Opener,
-	owner tview.Primitive,
+	owner Owner,
 	title string,
 	message string,
 	detail string,
@@ -36,7 +36,7 @@ func OpenConfirm(
 
 func OpenDangerConfirm(
 	host Opener,
-	owner tview.Primitive,
+	owner Owner,
 	title string,
 	message string,
 	detail string,
@@ -50,7 +50,7 @@ func OpenDangerConfirm(
 
 func openConfirm(
 	host Opener,
-	owner tview.Primitive,
+	owner Owner,
 	title string,
 	message string,
 	detail string,

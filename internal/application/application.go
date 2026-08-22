@@ -37,11 +37,8 @@ func Run(ctx context.Context, databasePath string) (err error) {
 		err = errors.Join(err, deps.close())
 	}()
 
-	app, initialPageID, err := newTerminalApplication(deps)
-	if err != nil {
-		return err
-	}
-	if err := app.Run(ctx, initialPageID); err != nil {
+	app, initialPage := newTerminalApplication(deps)
+	if err := app.Run(ctx, initialPage); err != nil {
 		return fmt.Errorf("run terminal UI: %w", err)
 	}
 
@@ -50,7 +47,7 @@ func Run(ctx context.Context, databasePath string) (err error) {
 
 func newTerminalApplication(
 	deps dependencies,
-) (tui.Application, string, error) {
+) (tui.Application, tui.Page) {
 	app := tui.NewApplication()
 	qsoEditors := qsoeditor.New(
 		app,
@@ -58,34 +55,33 @@ func newTerminalApplication(
 		deps.stores.Settings,
 		deps.callsignLookup,
 	)
-	logbook := logbookpage.New(
-		app,
-		deps.stores.Logbook,
-		deps.qrzSync,
-		qsoEditors.Create,
-		qsoEditors.Edit,
-	)
-	decoder := decoderpage.New(
-		app,
-		deps.audio,
-		deps.stores.Settings,
-		deps.callsignLookup,
-		qsoEditors.Create,
-	)
-	for _, page := range []tui.Page{logbook, decoder} {
-		if err := app.Register(page); err != nil {
-			return nil, "", err
-		}
+	newLogbookPage := func() tui.Page {
+		return logbookpage.New(
+			app,
+			deps.stores.Logbook,
+			deps.qrzSync,
+			qsoEditors.Create,
+			qsoEditors.Edit,
+		)
+	}
+	newDecoderPage := func() tui.Page {
+		return decoderpage.New(
+			app,
+			deps.audio,
+			deps.stores.Settings,
+			deps.callsignLookup,
+			qsoEditors.Create,
+		)
 	}
 
 	app.AddKeyBinding(
 		keybinding.OnKey(tcell.KeyF1, "Logbook", func() {
-			_ = app.Show(logbook.ID())
+			_ = app.Show(newLogbookPage())
 		}),
 	)
 	app.AddKeyBinding(
 		keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {
-			_ = app.Show(decoder.ID())
+			_ = app.Show(newDecoderPage())
 		}),
 	)
 	app.AddMenuItem(
@@ -99,5 +95,5 @@ func newTerminalApplication(
 			)
 		}),
 	)
-	return app, logbook.ID(), nil
+	return app, newLogbookPage()
 }

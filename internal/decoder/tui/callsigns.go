@@ -87,7 +87,7 @@ func (p *page) openAddCallsign() {
 		"",
 		p.addCallsign,
 	)
-	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
+	dialog.setHandle(p.host.OpenModal(p, dialog))
 }
 
 func (p *page) openEditCallsign() {
@@ -102,7 +102,7 @@ func (p *page) openEditCallsign() {
 		value,
 		func(updated string) error { return p.updateCallsign(value, updated) },
 	)
-	dialog.setHandle(p.host.OpenModal(p.Content(), dialog))
+	dialog.setHandle(p.host.OpenModal(p, dialog))
 }
 
 func (p *page) addCallsign(value string) error {
@@ -154,7 +154,7 @@ func (p *page) confirmDeleteSelectedCallsign() {
 	}
 	modal.OpenDangerConfirm(
 		p.host,
-		p.Content(),
+		p,
 		" Delete callsign ",
 		fmt.Sprintf("Delete %s from the callsign list?", value),
 		"",

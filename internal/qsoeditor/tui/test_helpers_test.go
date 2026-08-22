@@ -14,15 +14,19 @@ import (
 
 type testHost struct {
 	controls        components.Factory
-	backgroundOwner tview.Primitive
-	modalOwner      tview.Primitive
+	backgroundOwner ui.Owner
+	modalOwner      ui.Owner
 	modal           modal.Dialog
 	modalHandle     *testModalHandle
 }
 
-func newTestPage(t *testing.T) (struct{}, *testHost) {
+type testOwner struct{ content tview.Primitive }
+
+func (o *testOwner) Content() tview.Primitive { return o.content }
+
+func newTestPage(t *testing.T) (*testOwner, *testHost) {
 	t.Helper()
-	return struct{}{}, &testHost{controls: components.New(components.Dependencies{
+	return &testOwner{content: tview.NewBox()}, &testHost{controls: components.New(components.Dependencies{
 		Theme: testTheme(),
 	})}
 }
@@ -30,7 +34,7 @@ func newTestPage(t *testing.T) (struct{}, *testHost) {
 func (h *testHost) SetFocus(tview.Primitive) {}
 func (h *testHost) Refresh()                 {}
 
-func (h *testHost) Update(_ tview.Primitive, update func()) bool {
+func (h *testHost) Update(_ ui.Owner, update func()) bool {
 	if update != nil {
 		update()
 	}
@@ -39,14 +43,14 @@ func (h *testHost) Update(_ tview.Primitive, update func()) bool {
 
 func (h *testHost) Components() components.Factory { return h.controls }
 
-func (h *testHost) OpenModal(owner tview.Primitive, dialog modal.Dialog) modal.Handle {
+func (h *testHost) OpenModal(owner ui.Owner, dialog modal.Dialog) modal.Handle {
 	h.modalOwner = owner
 	h.modal = dialog
 	h.modalHandle = &testModalHandle{}
 	return h.modalHandle
 }
 
-func (h *testHost) Background(owner tview.Primitive, work ui.BackgroundWork) bool {
+func (h *testHost) Background(owner ui.Owner, work ui.BackgroundWork) bool {
 	h.backgroundOwner = owner
 	work(context.Background())
 	return true

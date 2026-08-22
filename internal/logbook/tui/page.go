@@ -19,8 +19,8 @@ type page struct {
 	host             ui.PageHost
 	store            domain.Store
 	syncer           qrzSynchronizer
-	showNewQSOEditor func(tview.Primitive, string)
-	showQSOEditor    func(tview.Primitive, domain.QSO)
+	showNewQSOEditor func(ui.Owner, string)
+	showQSOEditor    func(ui.Owner, domain.QSO)
 
 	content tview.Primitive
 	search  components.InputField
@@ -37,8 +37,8 @@ func New(
 	host ui.PageHost,
 	store domain.Store,
 	syncer qrzSynchronizer,
-	showNewQSOEditor func(tview.Primitive, string),
-	showQSOEditor func(tview.Primitive, domain.QSO),
+	showNewQSOEditor func(ui.Owner, string),
+	showQSOEditor func(ui.Owner, domain.QSO),
 ) ui.Page {
 	return newPage(
 		host,
@@ -53,8 +53,8 @@ func newPage(
 	host ui.PageHost,
 	store domain.Store,
 	syncer qrzSynchronizer,
-	showNewQSOEditor func(tview.Primitive, string),
-	showQSOEditor func(tview.Primitive, domain.QSO),
+	showNewQSOEditor func(ui.Owner, string),
+	showQSOEditor func(ui.Owner, domain.QSO),
 ) *page {
 	controls := host.Components()
 	page := &page{
@@ -112,7 +112,7 @@ func (p *page) Run(ctx context.Context) {
 		if ctx.Err() != nil {
 			return
 		}
-		p.host.Update(p.Content(), func() {
+		p.host.Update(p, func() {
 			if err != nil {
 				p.details.setRows([]detailRow{{
 					left: detailField{value: "Error: " + err.Error()},

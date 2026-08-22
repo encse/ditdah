@@ -218,7 +218,7 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 	if !bindings[1].Handle(tcell.NewEventKey(tcell.KeyEnter, 0, 0)) {
 		t.Fatal("Enter new QSO binding was not handled")
 	}
-	if editors.createdOwner != page.Content() || editors.createdCallsign != "HA7NCS" {
+	if editors.createdOwner != page || editors.createdCallsign != "HA7NCS" {
 		t.Fatalf("create editor call = %p, %q", editors.createdOwner, editors.createdCallsign)
 	}
 	if err := page.updateCallsign("HA7NCS", " oe1xyz "); err != nil {
@@ -490,16 +490,16 @@ type testHost struct {
 }
 
 type recordingQSOEditors struct {
-	createdOwner    tview.Primitive
+	createdOwner    ui.Owner
 	createdCallsign string
 }
 
-func (f *recordingQSOEditors) Create(owner tview.Primitive, callsign string) {
+func (f *recordingQSOEditors) Create(owner ui.Owner, callsign string) {
 	f.createdOwner = owner
 	f.createdCallsign = callsign
 }
 
-func (f *recordingQSOEditors) Edit(tview.Primitive, logbookdomain.QSO) {}
+func (f *recordingQSOEditors) Edit(ui.Owner, logbookdomain.QSO) {}
 
 func newTestHost() *testHost {
 	theme := components.Theme{
@@ -556,7 +556,7 @@ func (h testHost) SetFocus(tview.Primitive) {}
 
 func (h testHost) Refresh() {}
 
-func (h testHost) Update(_ tview.Primitive, update func()) bool {
+func (h testHost) Update(_ ui.Owner, update func()) bool {
 	if update != nil {
 		update()
 	}
@@ -569,7 +569,7 @@ func (h testHost) Update(_ tview.Primitive, update func()) bool {
 func (h testHost) Components() components.Factory { return h.controls }
 
 func (h *testHost) OpenModal(
-	_ tview.Primitive,
+	_ ui.Owner,
 	dialog modal.Dialog,
 ) modal.Handle {
 	h.opened = dialog
@@ -577,7 +577,7 @@ func (h *testHost) OpenModal(
 }
 
 func (h *testHost) Background(
-	_ tview.Primitive,
+	_ ui.Owner,
 	_ ui.BackgroundWork,
 ) bool {
 	return false

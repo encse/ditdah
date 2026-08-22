@@ -14,20 +14,17 @@ import (
 	"github.com/rivo/tview"
 )
 
-func TestApplicationRegistersAndShowsPage(t *testing.T) {
+func TestApplicationRunsAndShowsInitialPage(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	content := tview.NewBox()
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		status:  "24 QSOs",
 		content: content,
 	}
 
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
 	if app.activePage.ID() != page.ID() {
@@ -41,15 +38,12 @@ func TestApplicationRegistersAndShowsPage(t *testing.T) {
 func TestHeaderStatusClickCannotStealPageFocusOrMouseCapture(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	content := tview.NewBox()
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:         "logbook",
 		title:      "Logbook",
 		status:     "(28/28)",
 		content:    content,
 		focusables: []tview.Primitive{content},
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
 	}
 	app.showPage(page)
 	app.Refresh()
@@ -87,13 +81,10 @@ func TestApplicationMenuItemHandlesPhysicalMouseClick(t *testing.T) {
 		"Settings",
 		keybinding.OnRune('s', "settings", func() { selected <- struct{}{} }),
 	)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
 	}
 
 	drawn := make(chan struct{}, 8)
@@ -117,7 +108,7 @@ func TestApplicationMenuItemHandlesPhysicalMouseClick(t *testing.T) {
 	app.engine.SetScreen(screen)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- app.Run(ctx, page.ID()) }()
+	go func() { done <- app.Run(ctx, page) }()
 	waitForApplicationSignal(t, drawn, "initial application draw")
 
 	// One physical click on the hamburger.
@@ -132,21 +123,18 @@ func TestApplicationMenuItemHandlesPhysicalMouseClick(t *testing.T) {
 	finishTestApplication(t, cancel, done)
 }
 
-func TestApplicationRejectsDuplicateAndUnknownPages(t *testing.T) {
+func TestApplicationRejectsNilPageAndShowBeforeRun(t *testing.T) {
 	app := newApplication(nordTheme)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
+	if err := app.Show(nil); err == nil {
+		t.Fatal("showing a nil page succeeded")
 	}
-	if err := app.Register(page); err == nil {
-		t.Fatal("duplicate page registration succeeded")
-	}
-	if err := app.Show("missing"); err == nil {
-		t.Fatal("showing unknown page succeeded")
+	if err := app.Show(page); err == nil {
+		t.Fatal("showing a page before Run succeeded")
 	}
 }
 
@@ -169,7 +157,7 @@ func TestApplicationOwnsQuitBinding(t *testing.T) {
 	}
 }
 
-func TestApplicationMenuItemsAlsoRegisterGlobalBindings(t *testing.T) {
+func TestApplicationMenuItemsAlsoProvideGlobalBindings(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	opened := 0
 	app.AddMenuItem(
@@ -196,13 +184,10 @@ func TestApplicationMenuItemsAlsoRegisterGlobalBindings(t *testing.T) {
 
 func TestApplicationPlacesFunctionBindingsOnlyInHeader(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
 	}
 	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Logbook", func() {}))
 	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {}))
@@ -227,10 +212,10 @@ func TestApplicationPlacesFunctionBindingsOnlyInHeader(t *testing.T) {
 	}
 }
 
-func TestRegisteredPageContributesApplicationMenuItems(t *testing.T) {
+func TestActivePageContributesApplicationMenuItems(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	handled := 0
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "decoder",
 		title:   "Decoder",
 		content: tview.NewBox(),
@@ -242,11 +227,8 @@ func TestRegisteredPageContributesApplicationMenuItems(t *testing.T) {
 		}},
 	}
 
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
-	}
 	app.running = true
-	app.buildApplicationMenu()
+	app.showPage(page)
 	if len(app.globalBindings) != 1 {
 		t.Fatalf("global bindings = %d, want 1", len(app.globalBindings))
 	}
@@ -267,7 +249,7 @@ func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	pageHandled := 0
 	globalHandled := 0
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
@@ -275,12 +257,7 @@ func TestApplicationDispatchesBindingsByContext(t *testing.T) {
 			bindingForRune("page", 'p', &pageHandled),
 		},
 	}
-	app.globalBindings = []keybinding.Binding{
-		bindingForRune("global", 'q', &globalHandled),
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
-	}
+	app.AddKeyBinding(bindingForRune("global", 'q', &globalHandled))
 	app.showPage(page)
 
 	if got := app.captureKey(tcell.NewEventKey(tcell.KeyRune, 'p', 0)); got != nil {
@@ -334,14 +311,11 @@ func TestApplicationMovesFocusWithTabAndBacktab(t *testing.T) {
 	first := tview.NewBox()
 	second := tview.NewBox()
 	third := tview.NewBox()
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:         "logbook",
 		title:      "Logbook",
 		content:    first,
 		focusables: []tview.Primitive{first, second, third},
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
 	}
 	app.showPage(page)
 
@@ -382,14 +356,11 @@ func TestApplicationMovesFocusPastOpenSelectPopup(t *testing.T) {
 		24,
 	)
 	next := tview.NewBox()
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:         "logbook",
 		title:      "Logbook",
 		content:    selectField,
 		focusables: []tview.Primitive{selectField, next},
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
 	}
 	app.showPage(page)
 
@@ -413,7 +384,7 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	pageContent := tview.NewBox()
 	pageHandled := 0
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: pageContent,
@@ -421,16 +392,13 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 			bindingForRune("page", 'p', &pageHandled),
 		},
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
 	first := tview.NewBox()
 	second := tview.NewBox()
 	modalHandled := 0
-	dialog := applicationTestModal{
+	dialog := &applicationTestModal{
 		content:    tview.NewFlex().AddItem(first, 0, 1, true),
 		focusables: []tview.Primitive{first, second},
 		bindings: []keybinding.Binding{
@@ -508,19 +476,16 @@ func TestApplicationIsolatesModalInputAndRestoresFocus(t *testing.T) {
 
 func TestApplicationFocusesModalContentWithoutFocusableControls(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
 	content := tview.NewBox()
-	app.OpenModalForCurrentLayer(applicationTestModal{content: content})
+	app.OpenModalForCurrentLayer(&applicationTestModal{content: content})
 	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
 	if got := onApplication(app, app.engine.GetFocus); got != content {
 		t.Fatalf("modal focus = %T, want modal content", got)
@@ -533,7 +498,7 @@ func TestApplicationCancelsModalRunWhenModalCloses(t *testing.T) {
 	defer finishTestApplication(t, cancel, runDone)
 	started := make(chan struct{}, 1)
 	stopped := make(chan struct{}, 1)
-	handle := app.OpenModalForCurrentLayer(applicationTestModal{
+	handle := app.OpenModalForCurrentLayer(&applicationTestModal{
 		content: tview.NewBox(),
 		run: func(ctx context.Context) {
 			started <- struct{}{}
@@ -565,7 +530,7 @@ func TestModalVisibilityFollowsRunLifecycle(t *testing.T) {
 			close(release)
 		}
 	}()
-	app.OpenModalForCurrentLayer(applicationTestModal{
+	app.OpenModalForCurrentLayer(&applicationTestModal{
 		content: tview.NewBox(),
 		run: func(context.Context) {
 			started <- struct{}{}
@@ -595,10 +560,7 @@ func TestApplicationWaitsForModalRunBeforeHidingItAndKeepsPageRunning(
 		started: make(chan struct{}, 1),
 		stopped: make(chan struct{}, 1),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 	waitForApplicationSignal(t, page.started, "decoder page start")
 
@@ -610,7 +572,7 @@ func TestApplicationWaitsForModalRunBeforeHidingItAndKeepsPageRunning(
 			close(releaseModal)
 		}
 	}()
-	handle := app.OpenModalForCurrentLayer(applicationTestModal{
+	handle := app.OpenModalForCurrentLayer(&applicationTestModal{
 		content: tview.NewBox(),
 		run: func(ctx context.Context) {
 			<-ctx.Done()
@@ -647,7 +609,7 @@ func TestApplicationCancelsDescendantModalRunsWhenParentCloses(t *testing.T) {
 	parentStopped := make(chan struct{}, 1)
 	childStarted := make(chan struct{}, 1)
 	childStopped := make(chan struct{}, 1)
-	parent := app.OpenModalForCurrentLayer(applicationTestModal{
+	parent := app.OpenModalForCurrentLayer(&applicationTestModal{
 		content: tview.NewBox(),
 		run: func(ctx context.Context) {
 			parentStarted <- struct{}{}
@@ -655,7 +617,7 @@ func TestApplicationCancelsDescendantModalRunsWhenParentCloses(t *testing.T) {
 			parentStopped <- struct{}{}
 		},
 	})
-	app.OpenModalForCurrentLayer(applicationTestModal{
+	app.OpenModalForCurrentLayer(&applicationTestModal{
 		content: tview.NewBox(),
 		run: func(ctx context.Context) {
 			childStarted <- struct{}{}
@@ -680,28 +642,22 @@ func TestApplicationCancelsDescendantModalRunsWhenParentCloses(t *testing.T) {
 
 func TestApplicationRejectsModalRequestedByNonTopLayer(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	logbook := applicationTestPage{
+	logbook := &applicationTestPage{
 		id: "logbook", title: "Logbook", content: tview.NewBox(),
 	}
-	decoder := applicationTestPage{
+	decoder := &applicationTestPage{
 		id: "decoder", title: "Decoder", content: tview.NewBox(),
 	}
-	if err := app.Register(logbook); err != nil {
-		t.Fatal(err)
-	}
-	if err := app.Register(decoder); err != nil {
-		t.Fatal(err)
-	}
-	cancel, runDone := startTestApplication(t, app, logbook.ID())
+	cancel, runDone := startTestApplication(t, app, logbook)
 	defer finishTestApplication(t, cancel, runDone)
-	if err := app.Show(decoder.ID()); err != nil {
+	if err := app.Show(decoder); err != nil {
 		t.Fatal(err)
 	}
 	waitForApplicationCondition(t, app, "decoder page", func() bool {
 		return app.activePage != nil && app.activePage.ID() == decoder.ID()
 	})
 
-	app.OpenModal(logbook.Content(), applicationTestModal{
+	app.OpenModal(logbook, &applicationTestModal{
 		content: tview.NewBox(),
 	})
 	requestedCount := app.layers.requestedCount()
@@ -716,26 +672,23 @@ func TestApplicationRejectsModalRequestedByNonTopLayer(t *testing.T) {
 
 func TestApplicationRunsBackgroundWorkForTopLayer(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id: "logbook", title: "Logbook", content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
 	workStarted := make(chan struct{})
 	releaseWork := make(chan struct{})
 	updated := make(chan struct{})
-	accepted := app.Background(page.Content(), func(ctx context.Context) {
+	accepted := app.Background(page, func(ctx context.Context) {
 		close(workStarted)
 		select {
 		case <-releaseWork:
 		case <-ctx.Done():
 			return
 		}
-		app.Update(page.Content(), func() { close(updated) })
+		app.Update(page, func() { close(updated) })
 	})
 	if !accepted {
 		t.Fatal("Background() rejected work for the top page")
@@ -747,22 +700,19 @@ func TestApplicationRunsBackgroundWorkForTopLayer(t *testing.T) {
 
 func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id: "logbook", title: "Logbook", content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
-	dialog := applicationTestModal{content: tview.NewBox()}
-	handle := app.OpenModal(page.Content(), dialog)
+	dialog := &applicationTestModal{content: tview.NewBox()}
+	handle := app.OpenModal(page, dialog)
 	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
 	pageWorkStarted := make(chan struct{})
 	releasePageWork := make(chan struct{})
 	pageWorkDone := make(chan struct{})
-	if !app.Background(page.Content(), func(ctx context.Context) {
+	if !app.Background(page, func(ctx context.Context) {
 		close(pageWorkStarted)
 		select {
 		case <-releasePageWork:
@@ -774,7 +724,7 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 	}
 	waitForApplicationSignal(t, pageWorkStarted, "covered page background work")
 	pageUpdated := make(chan struct{})
-	if !app.Update(page.Content(), func() { close(pageUpdated) }) {
+	if !app.Update(page, func() { close(pageUpdated) }) {
 		t.Fatal("Update() rejected work for a covered page")
 	}
 	waitForApplicationSignal(t, pageUpdated, "covered page UI update")
@@ -783,13 +733,13 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 	workCancelled := make(chan struct{})
 	releaseWork := make(chan struct{})
 	updated := make(chan struct{}, 1)
-	accepted := app.Background(dialog.Content(), func(ctx context.Context) {
+	accepted := app.Background(dialog, func(ctx context.Context) {
 		close(workStarted)
 		<-ctx.Done()
 		close(workCancelled)
 		<-releaseWork
 		if ctx.Err() == nil {
-			app.Update(dialog.Content(), func() { updated <- struct{}{} })
+			app.Update(dialog, func() { updated <- struct{}{} })
 		}
 	})
 	if !accepted {
@@ -822,27 +772,24 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 
 func TestApplicationDropsQueuedUpdateAfterOwnerCloses(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id: "logbook", title: "Logbook", content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
-	dialog := applicationTestModal{content: tview.NewBox()}
-	handle := app.OpenModal(page.Content(), dialog)
+	dialog := &applicationTestModal{content: tview.NewBox()}
+	handle := app.OpenModal(page, dialog)
 	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
 	app.layers.mu.Lock()
 	modalRequest := app.layers.requested[len(app.layers.requested)-1]
-	modalLayer := app.layers.running[modalRequest.instance]
+	modalLayer := app.layers.running[modalRequest.identity()]
 	app.layers.mu.Unlock()
 	if modalLayer == nil {
 		t.Fatal("modal layer is not running")
 	}
 	layerCancelled := make(chan struct{})
-	if !app.Background(dialog.Content(), func(ctx context.Context) {
+	if !app.Background(dialog, func(ctx context.Context) {
 		<-ctx.Done()
 		close(layerCancelled)
 	}) {
@@ -862,13 +809,13 @@ func TestApplicationDropsQueuedUpdateAfterOwnerCloses(t *testing.T) {
 	waitForApplicationSignal(t, uiBlocked, "blocked UI callback")
 
 	updated := make(chan struct{})
-	if !app.Update(dialog.Content(), func() { close(updated) }) {
+	if !app.Update(dialog, func() { close(updated) }) {
 		t.Fatal("Update() rejected work for the top modal")
 	}
 	handle.Close()
 	waitForApplicationSignal(t, layerCancelled, "modal layer cancellation")
 	app.layers.mu.Lock()
-	stillRunning := app.layers.running[modalRequest.instance] == modalLayer
+	stillRunning := app.layers.running[modalRequest.identity()] == modalLayer
 	app.layers.mu.Unlock()
 	if !stillRunning {
 		t.Fatal("modal layer was removed while its queued UI update was pending")
@@ -888,19 +835,16 @@ func TestApplicationDropsQueuedUpdateAfterOwnerCloses(t *testing.T) {
 
 func TestApplicationForwardsTypedRunesToFocusedModalInput(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
 	input := app.controls.Modal().InputField("Callsign", "")
-	app.OpenModalForCurrentLayer(applicationTestModal{
+	app.OpenModalForCurrentLayer(&applicationTestModal{
 		content:    input,
 		focusables: []tview.Primitive{input},
 	})
@@ -943,19 +887,16 @@ func TestApplicationForwardsTypedRunesToFocusedModalInput(t *testing.T) {
 
 func TestApplicationModalEscapePrecedesDialogBindings(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
 	handled := 0
-	dialog := applicationTestModal{
+	dialog := &applicationTestModal{
 		content: tview.NewBox(),
 		bindings: []keybinding.Binding{keybinding.OnKey(
 			tcell.KeyEscape,
@@ -990,19 +931,16 @@ func TestApplicationModalEscapePrecedesDialogBindings(t *testing.T) {
 
 func TestApplicationLetsPopupAboveModalOwnInput(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
-	}
-	cancel, runDone := startTestApplication(t, app, page.ID())
+	cancel, runDone := startTestApplication(t, app, page)
 	defer finishTestApplication(t, cancel, runDone)
 
 	modalHandled := 0
-	dialog := applicationTestModal{
+	dialog := &applicationTestModal{
 		content: tview.NewBox(),
 		bindings: []keybinding.Binding{
 			bindingForRune("modal", 'm', &modalHandled),
@@ -1050,7 +988,7 @@ func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 			bindingForRune("control", 'x', &controlHandled),
 		},
 	}
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		status:  "24 QSOs",
@@ -1059,12 +997,7 @@ func TestApplicationComposesFocusPageAndGlobalHints(t *testing.T) {
 			bindingForRune("page", 'p', &pageHandled),
 		},
 	}
-	app.globalBindings = []keybinding.Binding{
-		bindingForRune("global", 'q', &globalHandled),
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
-	}
+	app.AddKeyBinding(bindingForRune("global", 'q', &globalHandled))
 	app.showPage(page)
 
 	line := drawApplicationFooter(t, app)
@@ -1119,13 +1052,10 @@ func TestApplicationDoesNotAdvertiseNativeControlKeys(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
 	table := app.controls.Table("QSOs")
 	table.SetRect(0, 0, 40, 5)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: table,
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
 	}
 	app.showPage(page)
 
@@ -1163,29 +1093,35 @@ func TestPageLifecycleFollowsVisibility(t *testing.T) {
 		started: make(chan struct{}, 1),
 		stopped: make(chan struct{}, 1),
 	}
-	if err := app.Register(logbook); err != nil {
-		t.Fatal(err)
+	nextLogbook := &lifecycleApplicationTestPage{
+		applicationTestPage: applicationTestPage{
+			id:      "logbook",
+			title:   "Logbook",
+			content: tview.NewBox(),
+		},
+		started: make(chan struct{}, 1),
+		stopped: make(chan struct{}, 1),
 	}
-	if err := app.Register(decoder); err != nil {
-		t.Fatal(err)
-	}
-	cancel, runDone := startTestApplication(t, app, logbook.ID())
+	cancel, runDone := startTestApplication(t, app, logbook)
 	defer finishTestApplication(t, cancel, runDone)
 	waitForApplicationSignal(t, logbook.started, "logbook start")
 
 	if len(decoder.started) != 0 {
 		t.Fatal("hidden decoder page was activated")
 	}
-	if err := app.Show(decoder.ID()); err != nil {
+	if err := app.Show(decoder); err != nil {
 		t.Fatal(err)
 	}
 	waitForApplicationSignal(t, decoder.started, "decoder start")
 	waitForApplicationSignal(t, logbook.stopped, "logbook stop")
-	if err := app.Show(logbook.ID()); err != nil {
+	if err := app.Show(nextLogbook); err != nil {
 		t.Fatal(err)
 	}
 	waitForApplicationSignal(t, decoder.stopped, "decoder stop")
-	waitForApplicationSignal(t, logbook.started, "restarted logbook")
+	waitForApplicationSignal(t, nextLogbook.started, "new logbook start")
+	if app.activePage != nextLogbook {
+		t.Fatal("application did not show the new logbook page object")
+	}
 }
 
 func TestApplicationWaitsForPageRunBeforeShowingNextPage(t *testing.T) {
@@ -1208,16 +1144,10 @@ func TestApplicationWaitsForPageRunBeforeShowingNextPage(t *testing.T) {
 		started: make(chan struct{}, 1),
 		stopped: make(chan struct{}, 1),
 	}
-	if err := app.Register(current); err != nil {
-		t.Fatal(err)
-	}
-	if err := app.Register(next); err != nil {
-		t.Fatal(err)
-	}
-	cancel, runDone := startTestApplication(t, app, current.ID())
+	cancel, runDone := startTestApplication(t, app, current)
 	defer finishTestApplication(t, cancel, runDone)
 
-	if err := app.Show(next.ID()); err != nil {
+	if err := app.Show(next); err != nil {
 		t.Fatal(err)
 	}
 	waitForApplicationSignal(t, current.waitStarted, "current page cancellation")
@@ -1237,21 +1167,18 @@ func startApplicationWithDefaultPage(
 	app *application,
 ) (context.CancelFunc, <-chan error) {
 	t.Helper()
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
-	}
-	return startTestApplication(t, app, page.ID())
+	return startTestApplication(t, app, page)
 }
 
 func startTestApplication(
 	t *testing.T,
 	app *application,
-	initialPageID string,
+	initialPage Page,
 ) (context.CancelFunc, <-chan error) {
 	t.Helper()
 	drawn := make(chan struct{})
@@ -1266,10 +1193,10 @@ func startTestApplication(
 	app.engine.SetScreen(tcell.NewSimulationScreen("UTF-8"))
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- app.Run(ctx, initialPageID) }()
+	go func() { done <- app.Run(ctx, initialPage) }()
 	waitForApplicationSignal(t, drawn, "application draw")
 	waitForApplicationCondition(t, app, "initial page", func() bool {
-		return app.activePage != nil && app.activePage.ID() == initialPageID
+		return app.activePage == initialPage
 	})
 	return cancel, done
 }
@@ -1318,20 +1245,17 @@ func finishTestApplication(
 
 func TestApplicationRequiresActivePageBeforeRun(t *testing.T) {
 	app := newApplication(nordTheme)
-	if err := app.Run(context.Background(), "missing"); err == nil {
+	if err := app.Run(context.Background(), nil); err == nil {
 		t.Fatal("application ran without an active page")
 	}
 }
 
 func TestApplicationRunWaitsForContextShutdown(t *testing.T) {
 	app := newApplication(nordTheme).(*application)
-	page := applicationTestPage{
+	page := &applicationTestPage{
 		id:      "logbook",
 		title:   "Logbook",
 		content: tview.NewBox(),
-	}
-	if err := app.Register(page); err != nil {
-		t.Fatalf("register page: %v", err)
 	}
 	started := make(chan struct{})
 	app.engine.SetBeforeDrawFunc(func(tcell.Screen) bool {
@@ -1347,7 +1271,7 @@ func TestApplicationRunWaitsForContextShutdown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	runDone := make(chan error, 1)
 	go func() {
-		runDone <- app.Run(ctx, page.ID())
+		runDone <- app.Run(ctx, page)
 	}()
 
 	select {
@@ -1380,9 +1304,6 @@ func TestApplicationQuitWaitsForActivePageShutdown(t *testing.T) {
 		waitStarted: make(chan struct{}, 1),
 		release:     make(chan struct{}),
 	}
-	if err := app.Register(page); err != nil {
-		t.Fatal(err)
-	}
 	drawn := make(chan struct{})
 	app.engine.SetBeforeDrawFunc(func(tcell.Screen) bool {
 		select {
@@ -1394,7 +1315,7 @@ func TestApplicationQuitWaitsForActivePageShutdown(t *testing.T) {
 	})
 	app.engine.SetScreen(tcell.NewSimulationScreen("UTF-8"))
 	runDone := make(chan error, 1)
-	go func() { runDone <- app.Run(t.Context(), page.ID()) }()
+	go func() { runDone <- app.Run(t.Context(), page) }()
 	waitForApplicationSignal(t, drawn, "application draw")
 
 	if !app.exitBinding.Handle(tcell.NewEventKey(tcell.KeyRune, 'q', 0)) {
@@ -1455,35 +1376,35 @@ func (p *blockingLifecyclePage) Run(ctx context.Context) {
 	<-p.release
 }
 
-func (p applicationTestPage) ID() string {
+func (p *applicationTestPage) ID() string {
 	return p.id
 }
 
-func (p applicationTestPage) Title() string {
+func (p *applicationTestPage) Title() string {
 	return p.title
 }
 
-func (p applicationTestPage) Status() string {
+func (p *applicationTestPage) Status() string {
 	return p.status
 }
 
-func (p applicationTestPage) Content() tview.Primitive {
+func (p *applicationTestPage) Content() tview.Primitive {
 	return p.content
 }
 
-func (p applicationTestPage) Focusables() []tview.Primitive {
+func (p *applicationTestPage) Focusables() []tview.Primitive {
 	return p.focusables
 }
 
-func (p applicationTestPage) KeyBindings() []keybinding.Binding {
+func (p *applicationTestPage) KeyBindings() []keybinding.Binding {
 	return p.bindings
 }
 
-func (p applicationTestPage) MenuItems() []components.MenuItem {
+func (p *applicationTestPage) MenuItems() []components.MenuItem {
 	return p.menuItems
 }
 
-func (p applicationTestPage) Run(ctx context.Context) { <-ctx.Done() }
+func (p *applicationTestPage) Run(ctx context.Context) { <-ctx.Done() }
 
 type bindingPrimitive struct {
 	*tview.Box
@@ -1497,23 +1418,23 @@ type applicationTestModal struct {
 	run        func(context.Context)
 }
 
-func (m applicationTestModal) Content() tview.Primitive {
+func (m *applicationTestModal) Content() tview.Primitive {
 	return m.content
 }
 
-func (m applicationTestModal) Focusables() []tview.Primitive {
+func (m *applicationTestModal) Focusables() []tview.Primitive {
 	return m.focusables
 }
 
-func (m applicationTestModal) KeyBindings() []keybinding.Binding {
+func (m *applicationTestModal) KeyBindings() []keybinding.Binding {
 	return m.bindings
 }
 
-func (m applicationTestModal) Size() modal.Size {
+func (m *applicationTestModal) Size() modal.Size {
 	return modal.Size{Width: 30, Height: 10}
 }
 
-func (m applicationTestModal) Run(ctx context.Context) {
+func (m *applicationTestModal) Run(ctx context.Context) {
 	if m.run != nil {
 		m.run(ctx)
 		return

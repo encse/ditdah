@@ -10,22 +10,19 @@ import (
 	"morsemanual/internal/stores"
 )
 
-func TestTerminalApplicationRegistersLogbookAndDecoderPages(t *testing.T) {
-	terminal, initialPageID, err := newTerminalApplication(dependencies{
+func TestTerminalApplicationCreatesInitialLogbookPage(t *testing.T) {
+	terminal, initialPage := newTerminalApplication(dependencies{
 		stores: stores.Stores{
 			Logbook:  emptyLogbookStore{},
 			Settings: emptySettingsStore{},
 		},
 		qrz: unusedQRZService{},
 	})
-	if err != nil {
-		t.Fatalf("newTerminalApplication() error = %v", err)
-	}
 	if terminal == nil {
 		t.Fatal("newTerminalApplication() returned nil")
 	}
-	if initialPageID != "logbook" {
-		t.Fatalf("initial page ID = %q, want logbook", initialPageID)
+	if initialPage == nil || initialPage.ID() != "logbook" {
+		t.Fatalf("initial page = %v, want logbook", initialPage)
 	}
 }
 
