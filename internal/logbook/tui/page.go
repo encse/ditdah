@@ -32,11 +32,6 @@ type page struct {
 	selectedID   string
 }
 
-type Page interface {
-	ui.Page
-	QSOChanged(domain.QSO)
-}
-
 // New creates the logbook page.
 func New(
 	host ui.PageHost,
@@ -44,7 +39,7 @@ func New(
 	syncer qrzSynchronizer,
 	showNewQSOEditor func(tview.Primitive, string),
 	showQSOEditor func(tview.Primitive, domain.QSO),
-) Page {
+) ui.Page {
 	return newPage(
 		host,
 		store,
@@ -109,21 +104,28 @@ func (p *page) KeyBindings() []keybinding.Binding {
 func (p *page) MenuItems() []components.MenuItem { return nil }
 
 func (p *page) Run(ctx context.Context) {
-	qsos, err := p.list(ctx)
-	if ctx.Err() != nil {
-		return
-	}
-	p.host.Update(p.Content(), func() {
-		if err != nil {
-			p.details.setRows([]detailRow{{
-				left: detailField{value: "Error: " + err.Error()},
-			}})
+	changes := p.store.Subscribe()
+	defer changes.Close()
+
+	for ctx.Err() == nil {
+		qsos, err := p.list(ctx)
+		if ctx.Err() != nil {
 			return
 		}
-		p.qsos = qsos
-		p.applyFilter()
-	})
-	<-ctx.Done()
+		p.host.Update(p.Content(), func() {
+			if err != nil {
+				p.details.setRows([]detailRow{{
+					left: detailField{value: "Error: " + err.Error()},
+				}})
+				return
+			}
+			p.qsos = qsos
+			p.applyFilter()
+		})
+		if err := changes.Wait(ctx); err != nil {
+			return
+		}
+	}
 }
 
 func (p *page) Status() string {

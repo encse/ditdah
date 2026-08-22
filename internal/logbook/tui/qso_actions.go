@@ -116,20 +116,6 @@ func (p *page) confirmDeleteQSO() {
 	)
 }
 
-func (p *page) QSOChanged(qso domain.QSO) {
-	for index := range p.qsos {
-		if p.qsos[index].ID == qso.ID {
-			p.qsos[index] = qso
-			p.selectedID = qso.ID
-			p.applyFilter()
-			return
-		}
-	}
-	p.qsos = append(p.qsos, qso)
-	p.selectedID = qso.ID
-	p.applyFilter()
-}
-
 func (p *page) startDeleteQSO(
 	id string,
 	nextSelectedID string,

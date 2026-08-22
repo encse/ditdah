@@ -41,17 +41,6 @@ func TestEditBindingOpensSelectedQSOEditor(t *testing.T) {
 	}
 }
 
-func TestPageAddsCreatedQSOToView(t *testing.T) {
-	page, _ := newTestPage(t)
-	page.QSOChanged(domain.QSO{ID: "new-qso", Callsign: "DL1ABC"})
-	if len(page.qsos) != 1 || page.qsos[0].ID != "new-qso" {
-		t.Fatalf("page QSOs = %#v", page.qsos)
-	}
-	if page.selectedID != "new-qso" {
-		t.Fatalf("selected ID = %q, want new-qso", page.selectedID)
-	}
-}
-
 func TestDeleteBindingConfirmsAndDeletesSelectedQSO(t *testing.T) {
 	page, host := newTestPage(t)
 	backgroundCtx := context.WithValue(context.Background(), "source", "background")

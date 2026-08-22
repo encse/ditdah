@@ -9,7 +9,6 @@ import (
 
 	"morsemanual/internal/database"
 	decoderpage "morsemanual/internal/decoder/tui"
-	logbookdomain "morsemanual/internal/logbook"
 	logbookpage "morsemanual/internal/logbook/tui"
 	qsoeditor "morsemanual/internal/qsoeditor/tui"
 	settingspage "morsemanual/internal/settings/tui"
@@ -53,19 +52,13 @@ func newTerminalApplication(
 	deps dependencies,
 ) (tui.Application, string, error) {
 	app := tui.NewApplication()
-	var logbook logbookpage.Page
 	qsoEditors := qsoeditor.New(
 		app,
 		deps.stores.Logbook,
 		deps.stores.Settings,
 		deps.callsignLookup,
-		func(qso logbookdomain.QSO) {
-			if logbook != nil {
-				logbook.QSOChanged(qso)
-			}
-		},
 	)
-	logbook = logbookpage.New(
+	logbook := logbookpage.New(
 		app,
 		deps.stores.Logbook,
 		deps.qrzSync,

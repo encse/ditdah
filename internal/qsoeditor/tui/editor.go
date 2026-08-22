@@ -34,9 +34,8 @@ var qsoEditorModes = []string{
 
 type qsoEditor struct {
 	modal.Layout
-	qso   domain.QSO
-	save  saveQSOFunc
-	saved func(domain.QSO)
+	qso  domain.QSO
+	save saveQSOFunc
 
 	stationCallsign  components.InputField
 	callsign         components.InputField
@@ -233,9 +232,6 @@ func (e *qsoEditor) submit() {
 				return
 			}
 			e.qso = saved
-			if e.saved != nil {
-				e.saved(saved)
-			}
 			e.close()
 		})
 	})

@@ -48,7 +48,7 @@ This document records implementation decisions and future technical work.
 - [x] Bind background work and queued UI updates to the exact requested owner layer, including owners covered by child modals; pin both in the owner task group, discard updates after that layer leaves the requested stack, and wait for running UI callbacks during shutdown.
 - [x] Share confirmation and message dialogs from the modal package; confirmation closes and invokes its callback only on OK, Cancel and Escape only close, and the owning page starts work and presents operation errors separately.
 - [x] Keep trigger, latest-value mailbox, and multi-subscriber broadcaster helpers together in `internal/syncutil`; notifications remain non-blocking and coalesced without starting goroutines.
-- [x] Let settings and logbook store consumers subscribe to coalesced change notifications emitted after successful mutations.
+- [x] Let the decoder and logbook page subscribe directly, for the duration of `Run`, to coalesced store change notifications emitted after successful mutations; do not forward those changes through application callbacks.
 - [x] Coordinate page changes through an initialized, latest-value mailbox inside the application run loop; scope each page and mailbox receiver to one local `errgroup` and wait for both before switching.
 - [x] Pass the initial page ID directly to `Application.Run`; create the page mailbox there so startup and later navigation use the same data path.
 - [x] Let pages contribute their own application-menu items when registered.

@@ -17,7 +17,6 @@ func TestFactoryCreatesResolvedQSOForOwner(t *testing.T) {
 	_, host := newTestPage(t)
 	owner := tview.NewBox()
 	store := &factoryStore{}
-	var changed domain.QSO
 	factory := New(
 		host,
 		store,
@@ -26,7 +25,6 @@ func TestFactoryCreatesResolvedQSOForOwner(t *testing.T) {
 			Name: optional.Some("Jane Doe"),
 			QTH:  optional.Some("Berlin"),
 		})}},
-		func(qso domain.QSO) { changed = qso },
 	)
 
 	factory.Create(owner, " dl1abc ")
@@ -47,8 +45,8 @@ func TestFactoryCreatesResolvedQSOForOwner(t *testing.T) {
 
 	editor.ok.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
 
-	if store.added.Callsign != "DL1ABC" || changed.ID != "new-qso" {
-		t.Fatalf("saved QSO = %#v, changed QSO = %#v", store.added, changed)
+	if store.added.Callsign != "DL1ABC" {
+		t.Fatalf("saved QSO = %#v", store.added)
 	}
 	if host.modalHandle == nil || !host.modalHandle.closed {
 		t.Fatal("successful create did not close the editor")

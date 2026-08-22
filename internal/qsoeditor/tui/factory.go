@@ -26,7 +26,6 @@ type factory struct {
 	store    domain.Store
 	settings settings.Store
 	lookup   callsign.Service
-	changed  func(domain.QSO)
 }
 
 // New creates a QSO editor factory.
@@ -35,14 +34,12 @@ func New(
 	store domain.Store,
 	settingsStore settings.Store,
 	lookup callsign.Service,
-	changed func(domain.QSO),
 ) Factory {
 	return &factory{
 		host:     host,
 		store:    store,
 		settings: settingsStore,
 		lookup:   lookup,
-		changed:  changed,
 	}
 }
 
@@ -102,7 +99,6 @@ func (f *factory) open(
 	err error,
 ) {
 	editor := newQSOEditor(f.host, qso, save, f.lookup)
-	editor.saved = f.changed
 	if err != nil {
 		editor.showError(err)
 	}
