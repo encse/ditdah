@@ -785,11 +785,25 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 	dialog := applicationTestModal{content: tview.NewBox()}
 	handle := app.OpenModal(page.Content(), dialog)
 	waitForApplicationCondition(t, app, "modal open", app.overlays.Active)
-	if app.Background(page.Content(), func(context.Context) {
-		t.Error("background work ran for a covered page")
+	pageWorkStarted := make(chan struct{})
+	releasePageWork := make(chan struct{})
+	pageWorkDone := make(chan struct{})
+	if !app.Background(page.Content(), func(ctx context.Context) {
+		close(pageWorkStarted)
+		select {
+		case <-releasePageWork:
+		case <-ctx.Done():
+		}
+		close(pageWorkDone)
 	}) {
-		t.Fatal("Background() accepted work for a non-top page")
+		t.Fatal("Background() rejected work for a covered page")
 	}
+	waitForApplicationSignal(t, pageWorkStarted, "covered page background work")
+	pageUpdated := make(chan struct{})
+	if !app.Update(page.Content(), func() { close(pageUpdated) }) {
+		t.Fatal("Update() rejected work for a covered page")
+	}
+	waitForApplicationSignal(t, pageUpdated, "covered page UI update")
 
 	workStarted := make(chan struct{})
 	workCancelled := make(chan struct{})
@@ -823,6 +837,13 @@ func TestApplicationScopesBackgroundWorkToModalLifecycle(t *testing.T) {
 		t.Fatal("cancelled modal background work updated the UI")
 	default:
 	}
+	select {
+	case <-pageWorkDone:
+		t.Fatal("closing child modal cancelled parent page background work")
+	default:
+	}
+	close(releasePageWork)
+	waitForApplicationSignal(t, pageWorkDone, "parent page background completion")
 }
 
 func TestApplicationDropsQueuedUpdateAfterOwnerCloses(t *testing.T) {

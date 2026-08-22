@@ -282,14 +282,7 @@ func (r *layerRuntime) startTask(
 ) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if len(r.requested) == 0 {
-		return false
-	}
-	requested := r.requested[len(r.requested)-1]
-	if requested.content() != owner {
-		return false
-	}
-	layer := r.running[requested.instance]
+	layer := r.runningOwnerLocked(owner)
 	if layer == nil {
 		return false
 	}
@@ -302,18 +295,23 @@ func (r *layerRuntime) startUpdate(
 ) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	if len(r.requested) == 0 {
-		return false
-	}
-	requested := r.requested[len(r.requested)-1]
-	if requested.content() != owner {
-		return false
-	}
-	layer := r.running[requested.instance]
+	layer := r.runningOwnerLocked(owner)
 	if layer == nil {
 		return false
 	}
 	return layer.startUpdate(func() error { return update(layer) })
+}
+
+func (r *layerRuntime) runningOwnerLocked(
+	owner tview.Primitive,
+) *runningLayer {
+	for index := len(r.requested) - 1; index >= 0; index-- {
+		requested := r.requested[index]
+		if requested.content() == owner {
+			return r.running[requested.instance]
+		}
+	}
+	return nil
 }
 
 func (r *layerRuntime) isRequested(target *runningLayer) bool {

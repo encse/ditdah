@@ -196,8 +196,8 @@ func (a *application) OpenModal(
 	return a.openModal(owner, true, dialog)
 }
 
-// Background starts lifecycle-bound work for the top page or dialog. It
-// rejects stale callbacks whose owner is no longer the top running layer.
+// Background starts lifecycle-bound work for a requested page or dialog. It
+// rejects stale callbacks whose exact owner layer is no longer requested.
 func (a *application) Background(
 	owner tview.Primitive,
 	work BackgroundWork,
