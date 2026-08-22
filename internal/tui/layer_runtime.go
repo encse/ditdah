@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"sync"
 
-	"morsemanual/internal/mailbox"
+	"morsemanual/internal/syncutil"
 
 	"github.com/rivo/tview"
 	"golang.org/x/sync/errgroup"
@@ -14,7 +14,7 @@ import (
 // layerRuntime coordinates requested layers with their running lifecycles.
 // It owns the synchronization required by UI callbacks and the layer runner.
 type layerRuntime struct {
-	changes   mailbox.Mailbox[layerState]
+	changes   syncutil.Mailbox[layerState]
 	mu        sync.Mutex
 	requested []requestedLayer
 	running   map[*layerInstance]*runningLayer
@@ -54,7 +54,7 @@ func newLayerRuntime() layerRuntime {
 
 func (r *layerRuntime) initialize(initial requestedLayer) {
 	r.mu.Lock()
-	r.changes = mailbox.New(layerState{layers: []requestedLayer{initial}})
+	r.changes = syncutil.NewMailbox(layerState{layers: []requestedLayer{initial}})
 	r.requested = []requestedLayer{initial}
 	r.running = make(map[*layerInstance]*runningLayer)
 	r.mu.Unlock()

@@ -1,4 +1,4 @@
-package trigger
+package syncutil
 
 import (
 	"context"
@@ -6,16 +6,16 @@ import (
 	"time"
 )
 
-func TestActivateWakesWait(t *testing.T) {
-	trigger := New()
+func TestTriggerActivateWakesWait(t *testing.T) {
+	trigger := NewTrigger()
 	trigger.Activate()
 	if err := trigger.Wait(t.Context()); err != nil {
 		t.Fatalf("Wait() = %v", err)
 	}
 }
 
-func TestActivateCoalescesPendingSignals(t *testing.T) {
-	trigger := New()
+func TestTriggerCoalescesPendingActivations(t *testing.T) {
+	trigger := NewTrigger()
 	trigger.Activate()
 	trigger.Activate()
 	if err := trigger.Wait(t.Context()); err != nil {
@@ -28,10 +28,10 @@ func TestActivateCoalescesPendingSignals(t *testing.T) {
 	}
 }
 
-func TestWaitReturnsContextError(t *testing.T) {
+func TestTriggerWaitReturnsContextError(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
-	if err := New().Wait(ctx); err != context.Canceled {
+	if err := NewTrigger().Wait(ctx); err != context.Canceled {
 		t.Fatalf("Wait() = %v, want context canceled", err)
 	}
 }

@@ -1,4 +1,4 @@
-package mailbox
+package syncutil
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-func TestReceiveReturnsSentValue(t *testing.T) {
-	mailbox := New("initial")
+func TestMailboxReceiveReturnsSentValue(t *testing.T) {
+	mailbox := NewMailbox("initial")
 	initial, err := mailbox.Receive(t.Context())
 	if err != nil || initial != "initial" {
 		t.Fatalf("initial Receive() = (%q, %v)", initial, err)
@@ -23,8 +23,8 @@ func TestReceiveReturnsSentValue(t *testing.T) {
 	}
 }
 
-func TestSendCoalescesToLatestPendingValue(t *testing.T) {
-	mailbox := New("initial")
+func TestMailboxSendCoalescesToLatestPendingValue(t *testing.T) {
+	mailbox := NewMailbox("initial")
 	mailbox.Send("logbook")
 	mailbox.Send("decoder")
 
@@ -42,11 +42,11 @@ func TestSendCoalescesToLatestPendingValue(t *testing.T) {
 	}
 }
 
-func TestReceiveReturnsContextError(t *testing.T) {
+func TestMailboxReceiveReturnsContextError(t *testing.T) {
 	ctx, cancel := context.WithCancel(t.Context())
 	cancel()
 
-	mailbox := New(42)
+	mailbox := NewMailbox(42)
 	if _, err := mailbox.Receive(ctx); err != context.Canceled {
 		t.Fatalf("Receive() = %v, want context canceled", err)
 	}

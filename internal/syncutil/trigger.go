@@ -1,5 +1,5 @@
-// Package trigger provides a coalescing wake-up signal.
-package trigger
+// Package syncutil provides lifecycle-aware synchronization helpers.
+package syncutil
 
 import "context"
 
@@ -13,8 +13,8 @@ type trigger struct {
 	activated chan struct{}
 }
 
-// New creates an inactive trigger.
-func New() Trigger {
+// NewTrigger creates an inactive trigger.
+func NewTrigger() Trigger {
 	return &trigger{activated: make(chan struct{}, 1)}
 }
 

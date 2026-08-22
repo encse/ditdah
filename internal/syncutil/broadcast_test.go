@@ -1,4 +1,4 @@
-package broadcast
+package syncutil
 
 import (
 	"context"
@@ -6,8 +6,8 @@ import (
 	"time"
 )
 
-func TestActivateWakesEverySubscription(t *testing.T) {
-	broadcaster := New()
+func TestBroadcasterActivateWakesEverySubscription(t *testing.T) {
+	broadcaster := NewBroadcaster()
 	first := broadcaster.Subscribe()
 	defer first.Close()
 	second := broadcaster.Subscribe()
@@ -23,8 +23,8 @@ func TestActivateWakesEverySubscription(t *testing.T) {
 	}
 }
 
-func TestActivateCoalescesForEachSubscription(t *testing.T) {
-	broadcaster := New()
+func TestBroadcasterActivateCoalescesForEachSubscription(t *testing.T) {
+	broadcaster := NewBroadcaster()
 	subscription := broadcaster.Subscribe()
 	defer subscription.Close()
 	broadcaster.Activate()
@@ -40,8 +40,8 @@ func TestActivateCoalescesForEachSubscription(t *testing.T) {
 	}
 }
 
-func TestCloseUnsubscribes(t *testing.T) {
-	broadcaster := New()
+func TestBroadcasterCloseUnsubscribes(t *testing.T) {
+	broadcaster := NewBroadcaster()
 	subscription := broadcaster.Subscribe()
 	subscription.Close()
 	subscription.Close()
@@ -55,8 +55,8 @@ func TestCloseUnsubscribes(t *testing.T) {
 	}
 }
 
-func TestSlowSubscriptionDoesNotBlockActivate(t *testing.T) {
-	broadcaster := New()
+func TestBroadcasterSlowSubscriptionDoesNotBlockActivate(t *testing.T) {
+	broadcaster := NewBroadcaster()
 	subscription := broadcaster.Subscribe()
 	defer subscription.Close()
 

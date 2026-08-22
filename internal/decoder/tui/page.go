@@ -10,10 +10,9 @@ import (
 	"morsemanual/internal/audio"
 	"morsemanual/internal/callsign"
 	domain "morsemanual/internal/decoder"
-	"morsemanual/internal/mailbox"
 	"morsemanual/internal/optional"
 	"morsemanual/internal/settings"
-	"morsemanual/internal/trigger"
+	"morsemanual/internal/syncutil"
 	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
@@ -45,8 +44,8 @@ type page struct {
 	callsignList     components.Table
 	details          components.TextView
 	statusText       string
-	settingsChanged  trigger.Trigger
-	lookups          mailbox.Mailbox[lookupRequest]
+	settingsChanged  syncutil.Trigger
+	lookups          syncutil.Mailbox[lookupRequest]
 	showNewQSOEditor func(tview.Primitive, string)
 
 	callsigns        []string
@@ -88,8 +87,8 @@ func newPage(
 		settings:         settingsStore,
 		lookup:           lookup,
 		newStream:        newStream,
-		settingsChanged:  trigger.New(),
-		lookups:          mailbox.New(lookupRequest{}),
+		settingsChanged:  syncutil.NewTrigger(),
+		lookups:          syncutil.NewMailbox(lookupRequest{}),
 		showNewQSOEditor: showNewQSOEditor,
 		statusText:       "Paused",
 	}

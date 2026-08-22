@@ -9,9 +9,9 @@ import (
 	"sync/atomic"
 
 	"morsemanual/internal/audio"
-	"morsemanual/internal/mailbox"
 	"morsemanual/internal/qrz"
 	domain "morsemanual/internal/settings"
+	"morsemanual/internal/syncutil"
 	ui "morsemanual/internal/tui"
 	"morsemanual/internal/tui/components"
 	"morsemanual/internal/tui/keybinding"
@@ -49,7 +49,7 @@ type dialog struct {
 	ok               components.Button
 	cancel           components.Button
 	focusables       []tview.Primitive
-	loginChecks      mailbox.Mailbox[loginValidationRequest]
+	loginChecks      syncutil.Mailbox[loginValidationRequest]
 	loginGeneration  atomic.Uint64
 	apiKeyGeneration atomic.Uint64
 }
@@ -100,7 +100,7 @@ func newDialog(
 	)
 	dialog.loginGeneration.Store(1)
 	dialog.apiKeyGeneration.Store(1)
-	dialog.loginChecks = mailbox.New(loginValidationRequest{
+	dialog.loginChecks = syncutil.NewMailbox(loginValidationRequest{
 		generation: 1,
 	})
 	dialog.stationCallsign.SetChangedFunc(dialog.callsignChanged)

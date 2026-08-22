@@ -1,5 +1,4 @@
-// Package mailbox provides latest-value, coalescing delivery.
-package mailbox
+package syncutil
 
 import (
 	"context"
@@ -19,8 +18,8 @@ type mailbox[T any] struct {
 	pending bool
 }
 
-// New creates a mailbox containing initialValue.
-func New[T any](initialValue T) Mailbox[T] {
+// NewMailbox creates a mailbox containing initialValue.
+func NewMailbox[T any](initialValue T) Mailbox[T] {
 	mailbox := &mailbox[T]{
 		ready:   make(chan struct{}, 1),
 		value:   initialValue,

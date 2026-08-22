@@ -1,11 +1,8 @@
-// Package broadcast provides coalescing notifications to multiple subscribers.
-package broadcast
+package syncutil
 
 import (
 	"context"
 	"sync"
-
-	"morsemanual/internal/trigger"
 )
 
 // Broadcaster sends an activation to every current subscription.
@@ -27,12 +24,12 @@ type broadcaster struct {
 
 type subscription struct {
 	broadcaster *broadcaster
-	trigger     trigger.Trigger
+	trigger     Trigger
 	closeOnce   sync.Once
 }
 
-// New creates a broadcaster without subscriptions.
-func New() Broadcaster {
+// NewBroadcaster creates a broadcaster without subscriptions.
+func NewBroadcaster() Broadcaster {
 	return &broadcaster{
 		subscriptions: make(map[*subscription]struct{}),
 	}
@@ -49,7 +46,7 @@ func (b *broadcaster) Activate() {
 func (b *broadcaster) Subscribe() Subscription {
 	subscription := &subscription{
 		broadcaster: b,
-		trigger:     trigger.New(),
+		trigger:     NewTrigger(),
 	}
 	b.mu.Lock()
 	b.subscriptions[subscription] = struct{}{}
