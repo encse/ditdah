@@ -108,8 +108,6 @@ func (p *page) KeyBindings() []keybinding.Binding {
 
 func (p *page) MenuItems() []components.MenuItem { return nil }
 
-func (p *page) SettingsChanged() {}
-
 func (p *page) Run(ctx context.Context) {
 	qsos, err := p.list(ctx)
 	if ctx.Err() != nil {

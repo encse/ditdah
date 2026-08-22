@@ -111,7 +111,6 @@ func TestPageRestartsCaptureWhenSettingsChange(t *testing.T) {
 
 	waitForAudioStart(t, source.starts, first.ID)
 	store.setInput(second.ID)
-	page.SettingsChanged()
 	waitForAudioStart(t, source.starts, second.ID)
 	if page.Status() != "Listening: Second input" {
 		t.Fatalf("Status() = %q", page.Status())
@@ -165,7 +164,6 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 
 	waitForSignal(t, store.loads, "missing input settings load")
 	store.setInput(device.ID)
-	page.SettingsChanged()
 	waitForAudioStart(t, source.starts, device.ID)
 
 	cancel()
@@ -391,9 +389,10 @@ func (s *recordingAudioSource) Run(
 func (s *recordingAudioSource) Close() error { return nil }
 
 type decoderSettingsStore struct {
-	mu     sync.Mutex
-	values settings.Settings
-	loads  chan struct{}
+	mu      sync.Mutex
+	values  settings.Settings
+	loads   chan struct{}
+	changes syncutil.Broadcaster
 }
 
 func (s *decoderSettingsStore) Load(context.Context) (settings.Settings, error) {
@@ -411,19 +410,33 @@ func (s *decoderSettingsStore) Save(
 	values settings.Settings,
 ) (settings.Settings, error) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.values = values
+	changes := s.changesLocked()
+	s.mu.Unlock()
+	changes.Activate()
 	return values, nil
 }
 
 func (s *decoderSettingsStore) Subscribe() syncutil.Subscription {
-	return syncutil.NewBroadcaster().Subscribe()
+	s.mu.Lock()
+	changes := s.changesLocked()
+	s.mu.Unlock()
+	return changes.Subscribe()
 }
 
 func (s *decoderSettingsStore) setInput(id string) {
 	s.mu.Lock()
 	s.values.MorseInputDeviceID = id
+	changes := s.changesLocked()
 	s.mu.Unlock()
+	changes.Activate()
+}
+
+func (s *decoderSettingsStore) changesLocked() syncutil.Broadcaster {
+	if s.changes == nil {
+		s.changes = syncutil.NewBroadcaster()
+	}
+	return s.changes
 }
 
 func waitForAudioStart(t *testing.T, starts <-chan string, want string) {

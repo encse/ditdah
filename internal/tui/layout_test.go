@@ -86,8 +86,6 @@ func (p testPage) KeyBindings() []keybinding.Binding {
 
 func (p testPage) MenuItems() []components.MenuItem { return nil }
 
-func (p testPage) SettingsChanged() {}
-
 func (p testPage) Run(ctx context.Context) { <-ctx.Done() }
 
 func newLayoutTestScreen(t *testing.T) tcell.SimulationScreen {

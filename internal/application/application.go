@@ -103,7 +103,6 @@ func newTerminalApplication(
 				deps.stores.Settings,
 				deps.qrz,
 				deps.audio,
-				app.NotifySettingsChanged,
 			)
 		}),
 	)

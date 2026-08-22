@@ -25,17 +25,15 @@ const settingsLabelWidth = 20
 
 type dialog struct {
 	modal.Layout
-	host            ui.PageHost
-	store           domain.Store
-	qrz             qrz.Service
-	values          domain.Settings
-	handle          modal.Handle
-	devices         []audio.Device
-	loadErr         error
-	devicesErr      error
-	inputs          audio.DeviceLister
-	onChanged       func()
-	persistedValues domain.Settings
+	host       ui.PageHost
+	store      domain.Store
+	qrz        qrz.Service
+	values     domain.Settings
+	handle     modal.Handle
+	devices    []audio.Device
+	loadErr    error
+	devicesErr error
+	inputs     audio.DeviceLister
 
 	stationCallsign  components.InputField
 	morseInput       components.SelectField
@@ -72,9 +70,8 @@ func Open(
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
-	onChanged func(),
 ) {
-	dialog := newDialog(host, store, qrzService, inputs, onChanged)
+	dialog := newDialog(host, store, qrzService, inputs)
 	dialog.handle = host.OpenModalForCurrentLayer(dialog)
 }
 
@@ -83,15 +80,13 @@ func newDialog(
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
-	onChanged func(),
 ) *dialog {
 	controls := host.Components().Modal()
 	dialog := &dialog{
-		host:      host,
-		store:     store,
-		qrz:       qrzService,
-		inputs:    inputs,
-		onChanged: onChanged,
+		host:   host,
+		store:  store,
+		qrz:    qrzService,
+		inputs: inputs,
 	}
 	dialog.stationCallsign = dialog.input(
 		controls,
@@ -181,7 +176,6 @@ func (d *dialog) load(ctx context.Context) (string, bool) {
 	}
 	d.host.Update(d.Content(), func() {
 		d.values = values
-		d.persistedValues = values
 		d.devices = append(d.devices[:0], devices...)
 		d.loadErr = loadErr
 		d.devicesErr = devicesErr
@@ -383,10 +377,6 @@ func (d *dialog) finishSave(saved domain.Settings, err error) {
 	}
 	d.values = saved
 	d.message.SetText("")
-	if saved != d.persistedValues && d.onChanged != nil {
-		d.onChanged()
-	}
-	d.persistedValues = saved
 	d.close()
 }
 

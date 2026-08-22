@@ -44,7 +44,6 @@ type page struct {
 	callsignList     components.Table
 	details          components.TextView
 	statusText       string
-	settingsChanged  syncutil.Trigger
 	lookups          syncutil.Mailbox[lookupRequest]
 	showNewQSOEditor func(tview.Primitive, string)
 
@@ -87,7 +86,6 @@ func newPage(
 		settings:         settingsStore,
 		lookup:           lookup,
 		newStream:        newStream,
-		settingsChanged:  syncutil.NewTrigger(),
 		lookups:          syncutil.NewMailbox(lookupRequest{}),
 		showNewQSOEditor: showNewQSOEditor,
 		statusText:       "Paused",
@@ -145,8 +143,6 @@ func (p *page) KeyBindings() []keybinding.Binding {
 
 func (p *page) MenuItems() []components.MenuItem { return nil }
 
-func (p *page) SettingsChanged() { p.settingsChanged.Activate() }
-
 func (p *page) Status() string { return p.statusText }
 
 // Run decodes audio while the page is visible. Input changes end only the
@@ -169,9 +165,16 @@ func (p *page) Run(ctx context.Context) {
 }
 
 func (p *page) runDecoder(ctx context.Context) {
+	if p.settings == nil {
+		p.setStatus("Error: settings are unavailable")
+		return
+	}
+	settingsChanges := p.settings.Subscribe()
+	defer settingsChanges.Close()
+
 	for ctx.Err() == nil {
 		p.setStatus("Starting decoder...")
-		err := p.runSession(ctx)
+		err := p.runSession(ctx, settingsChanges)
 		if ctx.Err() != nil {
 			return
 		}
@@ -182,7 +185,7 @@ func (p *page) runDecoder(ctx context.Context) {
 			err = errAudioStopped
 		}
 		p.setStatus("Error: " + err.Error())
-		if err := p.settingsChanged.Wait(ctx); err != nil {
+		if err := settingsChanges.Wait(ctx); err != nil {
 			return
 		}
 	}
@@ -264,7 +267,10 @@ func formatCallsignDetails(entry callsign.Entry) string {
 	return strings.Join(lines, "\n")
 }
 
-func (p *page) runSession(ctx context.Context) error {
+func (p *page) runSession(
+	ctx context.Context,
+	settingsChanges syncutil.Subscription,
+) error {
 	if p.source == nil {
 		return errors.New("audio input is unavailable")
 	}
@@ -313,7 +319,7 @@ func (p *page) runSession(ctx context.Context) error {
 		return err
 	})
 	group.Go(func() error {
-		if err := p.settingsChanged.Wait(sessionCtx); err != nil {
+		if err := settingsChanges.Wait(sessionCtx); err != nil {
 			return err
 		}
 		return errSettingsChanged
