@@ -1,237 +1,456 @@
 <!doctype html>
 <html lang="en">
-  <head>
+
+<head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="#0b1020">
-    <meta
-      name="description"
-      content="DitDah is a decoding companion for newer CW operators: listen along, fill the gaps, log relaxed QSOs, and optionally synchronize them to QRZ.com."
-    >
+    <meta name="description"
+        content="DitDah is a decoding companion for beginner CW operators: listen along, fill the gaps, log relaxed QSOs, and optionally synchronize them to QRZ.com.">
     <title>DitDah — A CW decoding companion for learning Morse</title>
     <link rel="icon" href="icon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="styles.css">
-  </head>
-  <body>
+
+    <style>
+        .install {
+            padding-top: 5rem;
+            padding-bottom: 5rem;
+        }
+
+        .install-card {
+            border: 1px solid rgba(77, 69, 54, 0.15);
+            border-radius: 1.25rem;
+            background: #eee8dc;
+            box-shadow: 0 18px 48px rgba(60, 52, 39, 0.08);
+            overflow: hidden;
+            color: #232622;
+        }
+
+        .platform-tabs {
+            display: flex;
+            gap: .45rem;
+            padding: .75rem;
+            border-bottom: 1px solid rgba(77, 69, 54, 0.13);
+            background: #e7dfd0;
+            overflow-x: auto;
+        }
+
+        .platform-tabs button {
+            appearance: none;
+            border: 1px solid transparent;
+            border-radius: .72rem;
+            padding: .68rem 1rem;
+            background: transparent;
+            color: #55564f;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            opacity: .78;
+            transition:
+                opacity .16s ease,
+                background-color .16s ease,
+                border-color .16s ease;
+        }
+
+        .platform-tabs button:hover {
+            opacity: 1;
+            background: rgba(167, 112, 27, 0.06);
+        }
+
+        .platform-tabs button[aria-selected="true"] {
+            border-color: rgba(167, 112, 27, 0.24);
+            background: rgba(167, 112, 27, 0.10);
+            color: #242620;
+            opacity: 1;
+        }
+
+        .platform-panel {
+            padding: 2rem;
+        }
+
+        .platform-panel h3 {
+            margin-top: .25rem;
+            margin-bottom: 1rem;
+            color: #232622;
+        }
+
+        .install-label {
+            margin: 0;
+            color: #a46d1d;
+            text-transform: uppercase;
+            letter-spacing: .12em;
+            font-size: .75rem;
+            font-weight: 800;
+        }
+
+        .install-note {
+            max-width: 45rem;
+            color: #62635d;
+        }
+
+        .install-command {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            max-width: 42rem;
+            margin: 1.25rem 0;
+            padding: .95rem 1rem;
+            border: 1px solid rgba(0, 0, 0, 0.10);
+            border-radius: .8rem;
+            background: #2d332f;
+            box-shadow: 0 9px 22px rgba(44, 40, 31, 0.10);
+        }
+
+        .install-command code {
+            flex: 1;
+            overflow-x: auto;
+            white-space: nowrap;
+            color: #efc86f;
+        }
+
+        .copy-command {
+            border: 1px solid rgba(239, 200, 111, 0.24);
+            border-radius: .55rem;
+            padding: .55rem .78rem;
+            background: rgba(239, 200, 111, 0.08);
+            color: #f3d58d;
+            font: inherit;
+            font-weight: 700;
+            cursor: pointer;
+            transition:
+                background-color .16s ease,
+                border-color .16s ease;
+        }
+
+        .copy-command:hover {
+            border-color: rgba(239, 200, 111, 0.40);
+            background: rgba(239, 200, 111, 0.14);
+        }
+
+        @media (max-width: 640px) {
+            .platform-panel {
+                padding: 1.25rem;
+            }
+
+            .install-command {
+                align-items: stretch;
+                flex-direction: column;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
     <header class="site-header">
-      <a class="brand" href="#top" aria-label="DitDah home">
-        <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
-        <span>DitDah</span>
-      </a>
-      <nav aria-label="Main navigation">
-        <a href="#features">Features</a>
-        <a href="#workflow">Workflow</a>
-        <a href="https://github.com/encse/ditdah">GitHub</a>
-        <a class="nav-download" href="https://github.com/encse/ditdah/releases/latest">Download</a>
-      </nav>
+        <a class="brand" href="#top" aria-label="DitDah home">
+            <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
+            <span>DitDah</span>
+        </a>
+        <nav aria-label="Main navigation">
+            <a href="#features">Features</a>
+            <a href="https://github.com/encse/ditdah">GitHub</a>
+            <a class="nav-download" href="#install">Install</a>
+        </nav>
     </header>
 
     <main id="top">
-      <section class="hero shell">
-        <div class="hero-copy">
-          <div class="eyebrow"><span></span> A companion for learning CW</div>
-          <h1>Listen along.<br><em>Get a little help.</em></h1>
-          <p class="hero-lead">
-            DitDah is for newer CW operators who are starting to copy real
-            QSOs and still miss a few characters. It writes along with the
-            signal, then helps you put the contact in your log and optionally
-            sync it to QRZ.com.
-          </p>
-          <div class="hero-actions">
-            <a class="button primary" href="https://github.com/encse/ditdah/releases/latest">
-              Download DitDah
-              <span aria-hidden="true">↓</span>
-            </a>
-            <a class="button secondary" href="https://github.com/encse/ditdah">
-              View source
-              <span aria-hidden="true">↗</span>
-            </a>
-          </div>
-          <div class="platforms" aria-label="Supported platforms">
-            <span>macOS</span><span>Linux</span><span>Windows</span>
-            <small>Local-first · Open source</small>
-          </div>
-        </div>
+        <section class="hero shell">
+            <div class="hero-copy">
+                <div class="eyebrow"><span></span> A companion for learning CW</div>
+                <h1>Listen along.<br><em>Get a little help.</em></h1>
+                <p class="hero-lead">
+                    DitDah is a terminal-based CW companion written in Go, built for beginner operators who are starting
+                    to make real QSOs but still miss a few characters. It writes along with the signal, then helps you
+                    put the contact in your log and optionally sync it to QRZ.com.
+                </p>
+                <div class="hero-actions">
+                    <a class="button primary" href="#install">
+                        Install DitDah
+                        <span aria-hidden="true">↓</span>
+                    </a>
+                    <a class="button secondary" href="https://github.com/encse/ditdah">
+                        View source
+                        <span aria-hidden="true">↗</span>
+                    </a>
+                </div>
+                <div class="platforms" aria-label="Supported platforms">
+                    <span>macOS</span><span>Linux</span><span>Windows</span>
+                    <small>Terminal UI · Written in Go · Open source</small>
+                </div>
+            </div>
 
-        <div class="signal-card" aria-hidden="true">
-          <div class="signal-glow"></div>
-          <div class="signal-top">
-            <span>14.025 MHz</span>
-            <span class="live"><i></i> LIVE</span>
-          </div>
-          <div class="waveform">
-            <span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span>
-            <span></span><span></span><span></span><span></span><span></span>
-          </div>
-          <div class="decoded-line">
-            <span>CQ CQ DE</span> <strong>HA7NCS</strong> <span>HA7NCS K</span>
-          </div>
-          <div class="morse-line">−·−· −−·− &nbsp; −·· · &nbsp; ···· ·- --··· -· -·-· ··· &nbsp; ···· ·- --··· -· -·-· ··· &nbsp; -·-</div>
-          <div class="signal-footer">
-            <span>Decoder ready</span>
-            <span>18 WPM</span>
-          </div>
-        </div>
-      </section>
+            <div class="signal-card" aria-hidden="true">
+                <div class="signal-glow"></div>
+                <div class="signal-top">
+                    <span>14.025 MHz</span>
+                    <span class="live"><i></i> LIVE</span>
+                </div>
+                <div class="waveform">
+                    <span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span>
+                    <span></span><span></span><span></span><span></span><span></span>
+                </div>
+                <div class="decoded-line">
+                    <span>CQ CQ DE</span> <strong>HA7NCS</strong> <span>HA7NCS K</span>
+                </div>
+                <div class="morse-line">−·−· −−·− &nbsp; −·· · &nbsp; ···· ·- --··· -· -·-· ··· &nbsp; ···· ·- --··· -·
+                    -·-· ··· &nbsp; -·-</div>
+                <div class="signal-footer">
+                    <span>Decoder ready</span>
+                    <span>18 WPM</span>
+                </div>
+            </div>
+        </section>
 
-      <section class="proof-strip" aria-label="Product highlights">
-        <div><strong>About 10–40 WPM</strong><span>A useful learning range</span></div>
-        <div><strong>Some noise is okay</strong><span>Clearer is still better</span></div>
-        <div><strong>Flexible audio</strong><span>Radio, microphone, or SDR</span></div>
-        <div><strong>Easy follow-through</strong><span>Local log + QRZ.com sync</span></div>
-      </section>
+        <section class="section shell" id="features">
+            <div class="section-heading">
+                <div>
+                    <p class="kicker">A quiet evening on the bands</p>
+                    <h2>From signal to text.<br>Without breaking your flow.</h2>
+                </div>
+                <p>
+                    Find a signal on your radio, tune it carefully, and narrow the
+                    filter until the beeps are easy to hear. DitDah listens to the same
+                    audio and gives you a readable second opinion while you copy it
+                    yourself.
+                </p>
+            </div>
 
-      <section class="section shell" id="features">
-        <div class="section-heading">
-          <div>
-            <p class="kicker">A quiet evening on the bands</p>
-            <h2>Tune one station.<br>DitDah writes along.</h2>
-          </div>
-          <p>
-            Find a signal on your radio, tune it carefully, and narrow the
-            filter until the code is easy to hear. DitDah listens to the same
-            audio and gives you a readable second opinion while you copy it
-            yourself.
-          </p>
-        </div>
+            <article class="showcase logbook-showcase">
+                <div class="showcase-copy">
+                    <span class="feature-number">02</span>
+                    <p class="kicker">Logbook + QSO editor</p>
+                    <h3>Log the contact when you make it.</h3>
+                    <p>
+                        Move the callsign straight into a new QSO, fill in the report and
+                        anything else you want to remember, then save it locally. If you
+                        use QRZ.com, completed contacts can be synchronized from the same
+                        logbook.
+                    </p>
+                    <ul>
+                        <li>Prefilled QSO from the decoded callsign</li>
+                        <li>Simple local logbook with search</li>
+                        <li>Optional QRZ.com lookup and synchronization</li>
+                    </ul>
+                </div>
 
-        <article class="showcase logbook-showcase">
-          <div class="showcase-copy">
-            <span class="feature-number">02</span>
-            <p class="kicker">Logbook + QSO editor</p>
-            <h3>When you make the contact, log it.</h3>
-            <p>
-              Move the callsign straight into a new QSO, fill in the report and
-              anything else you want to remember, then save it locally. If you
-              use QRZ.com, completed contacts can be synchronized from the same
-              logbook.
-            </p>
-            <ul>
-              <li>Prefilled QSO from the decoded callsign</li>
-              <li>Simple local logbook with search</li>
-              <li>Optional QRZ.com lookup and synchronization</li>
-            </ul>
-          </div>
+                <div class="screenshot-stack">
+                    <figure class="app-shot logbook-shot">
+                        <img src="screenshots/logbook.svg"
+                            alt="DitDah logbook populated with CW contacts and details for the selected QSO">
+                        <figcaption>Searchable local logbook with QRZ synchronization status.</figcaption>
+                    </figure>
+                    <figure class="app-shot editor-shot">
+                        <img src="screenshots/new-qso.svg" alt="DitDah New QSO editor filled with a contact">
+                        <figcaption>The QSO editor keeps the details of the contact together.</figcaption>
+                    </figure>
+                </div>
+            </article>
 
-          <div class="screenshot-stack">
-            <figure class="app-shot logbook-shot">
-              <img
-                src="screenshots/logbook.svg"
-                alt="DitDah logbook populated with CW contacts and details for the selected QSO"
-              >
-              <figcaption>Searchable local logbook with QRZ synchronization status.</figcaption>
-            </figure>
-            <figure class="app-shot editor-shot">
-              <img
-                src="screenshots/new-qso.svg"
-                alt="DitDah New QSO editor filled with a contact"
-              >
-              <figcaption>The QSO editor keeps the details of the contact together.</figcaption>
-            </figure>
-          </div>
-        </article>
+            <article class="showcase decoder-showcase">
+                <figure class="app-shot decoder-shot">
+                    <img src="screenshots/morse-decoder.svg"
+                        alt="DitDah Morse decoder with decoded QSO text, a populated callsign list, and QRZ details">
+                    <figcaption>Decoded text, callsigns, and station details in one view.</figcaption>
+                </figure>
 
-        <article class="showcase decoder-showcase">
-          <figure class="app-shot decoder-shot">
-            <img
-              src="screenshots/morse-decoder.svg"
-              alt="DitDah Morse decoder with decoded QSO text, a populated callsign list, and QRZ details"
-            >
-            <figcaption>Decoded text, useful callsigns, and station details in one view.</figcaption>
-          </figure>
+                <div class="showcase-copy">
+                    <span class="feature-number">01</span>
+                    <p class="kicker">Live Morse decoder</p>
+                    <h3>Start with a signal</h3>
+                    <p>
+                        DitDah uses a neural network trained to decode Morse between 10 and 40 WPM. It is reasonably
+                        tolerant of background noise, but a well-tuned, filtered signal helps the decoder just as
+                        much as it helps your ears.
+                    </p>
+                    <ul>
+                        <li>Use your transciever's USB audio interface or a microphone when the source is loud and clear
+                            enough</li>
+                        <li>Route audio from an SDR or WebSDR through a virtual input such as BlackHole on macOS</li>
+                        <li>Keep callsigns and QRZ details beside the decoded text</li>
+                    </ul>
+                </div>
+            </article>
+        </section>
 
-          <div class="showcase-copy">
-            <span class="feature-number">01</span>
-            <p class="kicker">Live Morse decoder</p>
-            <h3>Start with a signal you can hear.</h3>
-            <p>
-              DitDah is designed for roughly 10 to 40 WPM and is reasonably
-              tolerant of background noise. A well-tuned, well-filtered signal
-              still gives it the best chance—just as it gives your ears the
-              best chance.
-            </p>
-            <ul>
-              <li>Use your radio's audio interface or a microphone when the source is loud and clear enough</li>
-              <li>Route audio from an SDR or WebSDR through a virtual input such as BlackHole on macOS</li>
-              <li>Keep useful callsigns and QRZ details beside the decoded text</li>
-            </ul>
-          </div>
-        </article>
-      </section>
+        <section class="fit shell" aria-labelledby="fit-heading">
+            <div class="fit-intro">
+                <p class="kicker">Designed for relaxed operating</p>
+                <h2 id="fit-heading">A helper, not an autopilot.</h2>
+                <p>
+                    DitDah is meant to sit beside you while your Morse ear develops.
+                    Listen first, glance at the text when you need it, and take your
+                    time with the contact.
+                </p>
+            </div>
+            <div class="fit-card good-fit">
+                <span>Good fit</span>
+                <h3>One clear signal and an unhurried QSO.</h3>
+                <p>Calling CQ, answering a station, casual conversations, and listening practice at a comfortable speed.
+                </p>
+            </div>
+            <div class="fit-card limits">
+                <span>Not for</span>
+                <h3>Pileups, contests, or separating several stations.</h3>
+                <p>DitDah does not replace careful tuning, contest software, or your own judgment about what was
+                    actually sent.</p>
+            </div>
+        </section>
 
-      <section class="fit shell" aria-labelledby="fit-heading">
-        <div class="fit-intro">
-          <p class="kicker">Designed for relaxed operating</p>
-          <h2 id="fit-heading">A helper, not an autopilot.</h2>
-          <p>
-            DitDah is meant to sit beside you while your Morse ear develops.
-            Listen first, glance at the text when you need it, and take your
-            time with the contact.
-          </p>
-        </div>
-        <div class="fit-card good-fit">
-          <span>Good fit</span>
-          <h3>One clear signal and an unhurried QSO.</h3>
-          <p>Calling CQ, answering a station, casual conversations, and listening practice at a comfortable speed.</p>
-        </div>
-        <div class="fit-card limits">
-          <span>Not for</span>
-          <h3>Pileups, contests, or separating several stations.</h3>
-          <p>DitDah does not replace careful tuning, contest software, or your own judgment about what was actually sent.</p>
-        </div>
-      </section>
+        <section class="install shell" id="install" aria-labelledby="install-heading">
+            <div class="section-heading">
+                <div>
+                    <p class="kicker">Installation</p>
+                    <h2 id="install-heading">Your next QSO starts<br>with a dit and a dah.</h2>
+                </div>
+            </div>
 
-      <section class="workflow" id="workflow">
-        <div class="shell">
-          <p class="kicker">A simple operating loop</p>
-          <h2>Settle in and follow the QSO.</h2>
-          <div class="workflow-steps">
-            <div><span>01</span><strong>Tune</strong><p>Choose one station and adjust the radio and filter until it sounds clear.</p></div>
-            <div><span>02</span><strong>Listen</strong><p>Copy along at your own pace and use the decoded text when you need help.</p></div>
-            <div><span>03</span><strong>Log</strong><p>Open a prefilled QSO, complete the report, and save locally.</p></div>
-            <div><span>04</span><strong>Sync</strong><p>Optionally send the finished contact to QRZ Logbook when you are ready.</p></div>
-          </div>
-        </div>
-      </section>
+            <p class="platform-prompt">Choose your platform.</p>
 
-      <section class="principles shell">
-        <div class="principle-card accent-card">
-          <span class="card-icon">⌁</span>
-          <h3>A second pair of ears.</h3>
-          <p>DitDah is there to fill the occasional gap while you continue listening and building confidence in your own copy.</p>
-        </div>
-        <div class="principle-card">
-          <span class="card-icon">⌁</span>
-          <h3>Bring the audio you have.</h3>
-          <p>Use a radio interface, microphone, SDR, or virtual audio route—as long as the computer receives a clear enough signal.</p>
-        </div>
-        <div class="principle-card">
-          <span class="card-icon">↗</span>
-          <h3>Local until you choose otherwise.</h3>
-          <p>Your logbook stays in a local SQLite database. QRZ.com lookup and synchronization are optional extras.</p>
-        </div>
-      </section>
+            <div class="install-card">
+                <div class="platform-tabs" role="tablist" aria-label="Choose operating system">
+                    <button type="button" role="tab" data-platform-tab="macos" aria-selected="false">macOS</button>
+                    <button type="button" role="tab" data-platform-tab="linux" aria-selected="false">Linux</button>
+                    <button type="button" role="tab" data-platform-tab="windows" aria-selected="false">Windows</button>
+                </div>
 
-      <section class="cta shell">
-        <div>
-          <p class="kicker">Take your time. Enjoy the contact.</p>
-          <h2>Your next QSO starts<br>with a dit and a dah.</h2>
-        </div>
-        <div class="cta-actions">
-          <a class="button primary" href="https://github.com/encse/ditdah/releases/latest">Get the latest release <span>↓</span></a>
-          <p>Available for macOS, Linux, and Windows.</p>
-        </div>
-      </section>
+                <div class="platform-panel" data-platform-panel="macos" hidden>
+                    <p class="install-label">Recommended on macOS</p>
+                    <h3>Install with Homebrew</h3>
+                    <div class="install-command">
+                        <code>brew install encse/tap/ditdah</code>
+                        <button type="button" class="copy-command"
+                            data-copy="brew install encse/tap/ditdah">Copy</button>
+                    </div>
+                    <p class="install-note">
+                        Homebrew is the preferred installation method on macOS.
+                    </p>
+                </div>
+
+                <div class="platform-panel" data-platform-panel="linux" hidden>
+                    <p class="install-label">Linux</p>
+                    <h3>Download the release archive</h3>
+                    <p class="install-note">
+                        Download the Linux build for your architecture from the latest GitHub release,
+                        extract it, and run <code>ditdah</code>.
+                    </p>
+                    <a class="button secondary" href="https://github.com/encse/ditdah/releases/latest">
+                        Latest Linux release <span aria-hidden="true">↗</span>
+                    </a>
+                </div>
+
+                <div class="platform-panel" data-platform-panel="windows" hidden>
+                    <p class="install-label">Windows</p>
+                    <h3>Download and run DitDah</h3>
+                    <p class="install-note">
+                        Download the Windows ZIP from the latest GitHub release, extract it,
+                        and run <code>ditdah.exe</code>.
+                    </p>
+                    <a class="button secondary" href="https://github.com/encse/ditdah/releases/latest">
+                        Latest Windows release <span aria-hidden="true">↗</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <footer class="site-footer shell">
-      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><b></b></span><span>DitDah</span></a>
-      <p>A small helper for relaxed CW operating.</p>
-      <div><a href="https://github.com/encse/ditdah">Source</a><a href="https://github.com/encse/ditdah/releases">Releases</a></div>
+        <a class="brand" href="#top"><span class="brand-mark"
+                aria-hidden="true"><i></i><b></b></span><span>DitDah</span></a>
+        <p>A small helper for relaxed CW operating.</p>
+        <div><a href="https://github.com/encse/ditdah">Source</a><a
+                href="https://github.com/encse/ditdah/releases">Releases</a></div>
     </footer>
-  </body>
+
+    <script>
+        (() => {
+            const tabs = [...document.querySelectorAll("[data-platform-tab]")];
+            const panels = [...document.querySelectorAll("[data-platform-panel]")];
+
+            function detectPlatform() {
+                const ua = navigator.userAgent.toLowerCase();
+                const platform = (navigator.userAgentData?.platform || navigator.platform || "").toLowerCase();
+
+                if (platform.includes("mac") || ua.includes("macintosh")) return "macos";
+                if (platform.includes("win") || ua.includes("windows")) return "windows";
+                if (platform.includes("linux") || ua.includes("linux")) return "linux";
+                return "macos";
+            }
+
+            function selectPlatform(platform) {
+                tabs.forEach((tab) => {
+                    const selected = tab.dataset.platformTab === platform;
+                    tab.setAttribute("aria-selected", String(selected));
+                    tab.tabIndex = selected ? 0 : -1;
+                });
+
+                panels.forEach((panel) => {
+                    panel.hidden = panel.dataset.platformPanel !== platform;
+                });
+            }
+
+            tabs.forEach((tab) => {
+                tab.addEventListener("click", () => selectPlatform(tab.dataset.platformTab));
+            });
+
+            async function copyText(text) {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                }
+
+                const textarea = document.createElement("textarea");
+                textarea.value = text;
+                textarea.setAttribute("readonly", "");
+                textarea.style.position = "fixed";
+                textarea.style.opacity = "0";
+                textarea.style.pointerEvents = "none";
+                document.body.appendChild(textarea);
+                textarea.select();
+                textarea.setSelectionRange(0, textarea.value.length);
+
+                const copied = document.execCommand("copy");
+                textarea.remove();
+
+                if (!copied) {
+                    throw new Error("Copy failed");
+                }
+            }
+
+            document.querySelectorAll(".copy-command").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const original = button.textContent;
+
+                    try {
+                        await copyText(button.dataset.copy);
+                        button.textContent = "Copied";
+                    } catch {
+                        button.textContent = "Select & copy";
+                        const code = button.closest(".install-command")?.querySelector("code");
+                        if (code) {
+                            const range = document.createRange();
+                            range.selectNodeContents(code);
+                            const selection = window.getSelection();
+                            selection.removeAllRanges();
+                            selection.addRange(range);
+                        }
+                    }
+
+                    setTimeout(() => {
+                        button.textContent = original;
+                    }, 1400);
+                });
+            });
+
+            selectPlatform(detectPlatform());
+        })();
+    </script>
+
+</body>
+
 </html>
