@@ -1,352 +1,1344 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <meta content="#0b1020" name="theme-color"/>
+  <meta content="DitDah is a decoding companion for beginner CW operators: listen along, fill the gaps, log relaxed QSOs, and optionally synchronize them to QRZ.com." name="description"/>
+  <title>
+   DitDah — A CW decoding companion for learning Morse
+  </title>
+  <link href="icon.svg" rel="icon" type="image/svg+xml"/>
+  <style>
+   :root {
+    color-scheme: light;
+    --bg: #f3f1ea;
+    --line: #c7c3b6;
+    --line-soft: rgba(52, 59, 54, 0.16);
+    --text: #252925;
+    --muted: #676a65;
+    --faint: #85877f;
+    --cyan: #9a6c22;
+    --cyan-bright: #78571f;
+    --yellow: #b9822a;
+    --max: 1180px;
+    font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-synthesis: none;
+}
 
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="theme-color" content="#0b1020">
-    <meta name="description"
-        content="DitDah is a decoding companion for beginner CW operators: listen along, fill the gaps, log relaxed QSOs, and optionally synchronize them to QRZ.com.">
-    <title>DitDah — A CW decoding companion for learning Morse</title>
-    <link rel="icon" href="icon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="styles.css">
+* {
+    box-sizing: border-box;
+}
 
-    <style>
-        .install {
-            padding-top: 5rem;
-            padding-bottom: 5rem;
-        }
+html {
+    scroll-behavior: smooth;
+}
 
-        .install-card {
-            border: 1px solid rgba(77, 69, 54, 0.15);
-            border-radius: 1.25rem;
-            background: #eee8dc;
-            box-shadow: 0 18px 48px rgba(60, 52, 39, 0.08);
-            overflow: hidden;
-            color: #232622;
-        }
+body {
+    margin: 0;
+    overflow-x: hidden;
+    color: var(--text);
+    background: radial-gradient(circle at 82% 2%, rgba(220, 173, 85, 0.10), transparent 26rem),
+        radial-gradient(circle at 12% 24%, rgba(112, 119, 108, 0.06), transparent 30rem),
+        var(--bg);
+}
 
-        .platform-tabs {
-            display: flex;
-            gap: .45rem;
-            padding: .75rem;
-            border-bottom: 1px solid rgba(77, 69, 54, 0.13);
-            background: #e7dfd0;
-            overflow-x: auto;
-        }
+body::before {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    content: "";
+    opacity: 0.24;
+    background-image: linear-gradient(rgba(48, 56, 53, .025) 1px, transparent 1px), linear-gradient(90deg, rgba(48, 56, 53, .025) 1px, transparent 1px);
+    background-size: 48px 48px;
+    mask-image: linear-gradient(to bottom, black, transparent 70%);
+}
 
-        .platform-tabs button {
-            appearance: none;
-            border: 1px solid transparent;
-            border-radius: .72rem;
-            padding: .68rem 1rem;
-            background: transparent;
-            color: #55564f;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            opacity: .78;
-            transition:
-                opacity .16s ease,
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.shell {
+    width: min(calc(100% - 48px), var(--max));
+    margin-inline: auto;
+}
+
+.site-header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(calc(100% - 48px), var(--max));
+    height: 82px;
+    margin-inline: auto;
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 11px;
+    font-size: 19px;
+    font-weight: 760;
+    letter-spacing: -0.02em;
+}
+
+.brand-mark {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    width: 30px;
+    height: 22px;
+}
+
+.brand-mark i {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 18px rgba(185, 130, 42, .28);
+}
+
+.brand-mark b {
+    width: 17px;
+    height: 8px;
+    border-radius: 5px;
+    background: var(--cyan);
+    box-shadow: 0 0 18px rgba(185, 130, 42, .22);
+}
+
+nav {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 550;
+}
+
+nav a {
+    transition: color .2s ease;
+}
+
+nav a:hover {
+    color: var(--text);
+}
+
+.nav-download {
+    padding: 10px 16px;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, .32);
+}
+
+.hero {
+    display: grid;
+    grid-template-columns: .88fr 1.12fr;
+    align-items: center;
+    gap: 68px;
+    min-height: 690px;
+    padding-block: 80px 96px;
+}
+
+.hero-copy {
+    position: relative;
+    z-index: 2;
+}
+
+.eyebrow,
+.kicker {
+    margin: 0 0 19px;
+    color: var(--cyan);
+    font-size: 12px;
+    font-weight: 750;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+}
+
+.eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.eyebrow span {
+    width: 27px;
+    height: 1px;
+    background: var(--cyan);
+}
+
+h1,
+h2,
+h3,
+p {
+    margin-top: 0;
+}
+
+h1 {
+    margin-bottom: 25px;
+    font-size: clamp(50px, 6vw, 76px);
+    line-height: .99;
+    letter-spacing: -.055em;
+}
+
+h1 em {
+    color: var(--cyan-bright);
+    font-style: normal;
+    font-weight: 560;
+}
+
+.hero-lead {
+    max-width: 590px;
+    margin-bottom: 34px;
+    color: var(--muted);
+    font-size: 19px;
+    line-height: 1.65;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 13px;
+    min-height: 48px;
+    padding: 0 20px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 720;
+    transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.button:hover {
+    transform: translateY(-2px);
+}
+
+.button.primary {
+    color: #fffaf0;
+    border-color: var(--cyan);
+    background: var(--cyan);
+    box-shadow: 0 10px 35px rgba(105, 76, 27, .16);
+}
+
+.button.primary:hover {
+    border-color: var(--cyan-bright);
+    background: var(--cyan-bright);
+}
+
+.button.secondary {
+    background: rgba(255, 255, 255, .28);
+}
+
+.button.secondary:hover {
+    border-color: #989486;
+    background: rgba(255, 255, 255, .55);
+}
+
+.platforms {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 28px;
+    color: var(--faint);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+}
+
+.platforms span {
+    padding: 5px 8px;
+    border: 1px solid var(--line-soft);
+    border-radius: 5px;
+}
+
+.platforms small {
+    margin-left: 6px;
+    font-size: inherit;
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    padding-block: 140px 70px;
+}
+
+.section-heading {
+    display: grid;
+    grid-template-columns: 1fr 420px;
+    gap: 80px;
+    align-items: end;
+    margin-bottom: 105px;
+}
+
+.section-heading h2 {
+    margin-bottom: 0;
+    font-size: clamp(38px, 4.5vw, 58px);
+    line-height: 1.08;
+    letter-spacing: -.045em;
+}
+
+.section-heading>p {
+    margin-bottom: 4px;
+    color: var(--muted);
+    font-size: 16px;
+    line-height: 1.75;
+}
+
+.showcase {
+    display: grid;
+    grid-template-columns: 330px minmax(0, 1fr);
+    gap: 78px;
+    align-items: center;
+    margin-bottom: 150px;
+}
+
+.logbook-showcase {
+    order: 2;
+}
+
+.decoder-showcase {
+    order: 1;
+    grid-template-columns: minmax(0, 1fr) 330px;
+}
+
+.showcase-copy {
+    position: relative;
+}
+
+.feature-number {
+    position: absolute;
+    top: -67px;
+    color: #d4d0c4;
+    font-family: "SFMono-Regular", Consolas, monospace;
+    font-size: 43px;
+    font-weight: 800;
+}
+
+.showcase-copy h3 {
+    margin-bottom: 18px;
+    font-size: 30px;
+    line-height: 1.15;
+    letter-spacing: -.035em;
+}
+
+.showcase-copy>p:not(.kicker) {
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.75;
+}
+
+.showcase-copy ul {
+    display: grid;
+    gap: 10px;
+    margin: 25px 0 0;
+    padding: 0;
+    list-style: none;
+    color: #50554f;
+    font-size: 13px;
+}
+
+.showcase-copy li::before {
+    margin-right: 10px;
+    color: var(--cyan);
+    content: "—";
+}
+
+.screenshot-stack {
+    display: grid;
+    justify-self: center;
+    width: 100%;
+    max-width: 620px;
+    min-width: 0;
+}
+
+.app-shot {
+    justify-self: center;
+    width: 100%;
+    max-width: 620px;
+    min-width: 0;
+    margin: 0;
+}
+
+.app-shot img {
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 25px 32px rgba(0, 0, 0, .28));
+}
+
+.app-shot figcaption {
+    margin: 7px 18px 0;
+    color: var(--faint);
+    font-size: 10px;
+    line-height: 1.5;
+    text-align: right;
+}
+
+.editor-shot {
+    justify-self: end;
+    width: 58%;
+    margin-top: -145px;
+    margin-right: 18px;
+}
+
+.editor-shot img {
+    filter: drop-shadow(0 28px 35px rgba(0, 0, 0, .48));
+}
+
+.fit {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr 1fr;
+    gap: 16px;
+    padding-bottom: 120px;
+}
+
+.fit-intro {
+    padding: 28px 42px 28px 0;
+}
+
+.fit-intro h2 {
+    margin-bottom: 20px;
+    font-size: clamp(34px, 4vw, 49px);
+    line-height: 1.08;
+    letter-spacing: -.045em;
+}
+
+.fit-intro>p:last-child {
+    margin: 0;
+    color: var(--muted);
+    font-size: 15px;
+    line-height: 1.75;
+}
+
+.fit-card {
+    min-height: 285px;
+    padding: 31px;
+    border: 1px solid var(--line-soft);
+    border-radius: 12px;
+    background: rgba(235, 232, 223, .68);
+}
+
+.fit-card>span {
+    display: inline-block;
+    margin-bottom: 55px;
+    padding: 5px 8px;
+    color: var(--cyan);
+    border: 1px solid #bcb6a7;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 750;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+}
+
+.fit-card.limits>span {
+    color: var(--yellow);
+}
+
+.fit-card h3 {
+    margin-bottom: 15px;
+    font-size: 20px;
+    line-height: 1.35;
+    letter-spacing: -.025em;
+}
+
+.fit-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+.install-intro {
+    padding: 28px 42px 28px 0;
+}
+
+.install-intro h2 {
+    margin-bottom: 20px;
+    font-size: clamp(34px, 4vw, 49px);
+    line-height: 1.08;
+    letter-spacing: -.045em;
+}
+
+.site-footer {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    min-height: 110px;
+    color: var(--faint);
+    border-top: 1px solid var(--line-soft);
+    font-size: 12px;
+}
+
+.site-footer p {
+    margin: 0;
+}
+
+.site-footer>div {
+    display: flex;
+    justify-content: flex-end;
+    gap: 22px;
+}
+
+.site-footer a:hover {
+    color: var(--text);
+}
+
+@media (max-width: 980px) {
+    .hero {
+        grid-template-columns: 1fr;
+        min-height: auto;
+    }
+
+    .hero-copy {
+        max-width: 720px;
+    }
+
+    .signal-card {
+        width: min(100%, 720px);
+        transform: none;
+    }
+
+    .section-heading {
+        grid-template-columns: 1fr;
+        gap: 28px;
+    }
+
+    .section-heading>p {
+        max-width: 650px;
+    }
+
+    .showcase,
+    .decoder-showcase {
+        grid-template-columns: 1fr;
+        gap: 44px;
+    }
+
+    .decoder-showcase .app-shot {
+        order: 2;
+    }
+
+    .decoder-showcase .showcase-copy {
+        order: 1;
+    }
+
+    .showcase-copy {
+        max-width: 620px;
+    }
+
+    .fit {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .fit-intro {
+        grid-column: 1 / -1;
+        max-width: 720px;
+    }
+}
+
+@media (max-width: 680px) {
+    .shell,
+    .site-header {
+        width: min(calc(100% - 30px), var(--max));
+    }
+
+    .site-header {
+        height: 70px;
+    }
+
+    nav a:not(.nav-download) {
+        display: none;
+    }
+
+    .hero {
+        gap: 50px;
+        padding-block: 70px;
+    }
+
+    h1 {
+        font-size: 48px;
+    }
+
+    .hero-lead {
+        font-size: 17px;
+    }
+
+    .platforms {
+        flex-wrap: wrap;
+    }
+
+    .platforms small {
+        width: 100%;
+        margin: 4px 0 0;
+    }
+
+    .signal-card {
+        padding: 20px;
+    }
+
+    .section {
+        padding-top: 90px;
+    }
+
+    .section-heading {
+        margin-bottom: 80px;
+    }
+
+    .showcase {
+        margin-bottom: 110px;
+    }
+
+    .editor-shot {
+        width: 68%;
+        margin-top: -80px;
+        margin-right: 8px;
+    }
+
+    .fit {
+        grid-template-columns: 1fr;
+        padding-bottom: 90px;
+    }
+
+    .fit-intro {
+        grid-column: auto;
+        padding-right: 0;
+    }
+
+    .fit-card {
+        min-height: 0;
+    }
+
+    .fit-card>span {
+        margin-bottom: 30px;
+    }
+
+    .site-footer {
+        grid-template-columns: 1fr auto;
+    }
+
+    .site-footer p {
+        display: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
+
+.install {
+    padding-top: 5rem;
+    padding-bottom: 5rem;
+}
+
+.install-card {
+    border: 1px solid rgba(77, 69, 54, 0.15);
+    border-radius: 1.25rem;
+    background: rgba(235, 232, 223, .68);
+    box-shadow: none;
+    overflow: hidden;
+    color: #232622;
+}
+
+.platform-tabs {
+    display: flex;
+    gap: .45rem;
+    padding: .75rem;
+    border-bottom: 1px solid rgba(77, 69, 54, 0.13);
+    background: rgba(223, 219, 208, .48);
+    overflow-x: auto;
+}
+
+.platform-tabs button {
+    appearance: none;
+    border: 1px solid transparent;
+    border-radius: .72rem;
+    padding: .68rem 1rem;
+    background: transparent;
+    color: #55564f;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    opacity: .78;
+    transition: opacity .16s ease,
                 background-color .16s ease,
                 border-color .16s ease;
-        }
+}
 
-        .platform-tabs button:hover {
-            opacity: 1;
-            background: rgba(167, 112, 27, 0.06);
-        }
+.platform-tabs button:hover {
+    opacity: 1;
+    background: rgba(167, 112, 27, 0.06);
+}
 
-        .platform-tabs button[aria-selected="true"] {
-            border-color: rgba(167, 112, 27, 0.24);
-            background: rgba(167, 112, 27, 0.10);
-            color: #242620;
-            opacity: 1;
-        }
+.platform-tabs button[aria-selected="true"] {
+    border-color: rgba(167, 112, 27, 0.24);
+    background: rgba(167, 112, 27, 0.10);
+    color: #242620;
+    opacity: 1;
+}
 
-        .platform-panel {
-            padding: 2rem;
-        }
+.platform-panel {
+    padding: 2rem;
+}
 
-        .platform-panel h3 {
-            margin-top: .25rem;
-            margin-bottom: 1rem;
-            color: #232622;
-        }
+.platform-panel h3 {
+    margin-top: .25rem;
+    margin-bottom: 1rem;
+    color: #232622;
+}
 
-        .install-label {
-            margin: 0;
-            color: #a46d1d;
-            text-transform: uppercase;
-            letter-spacing: .12em;
-            font-size: .75rem;
-            font-weight: 800;
-        }
+.install-label {
+    margin: 0;
+    color: #a46d1d;
+    text-transform: uppercase;
+    letter-spacing: .12em;
+    font-size: .75rem;
+    font-weight: 800;
+}
 
-        .install-note {
-            max-width: 45rem;
-            color: #62635d;
-        }
+.install-note {
+    max-width: 45rem;
+    color: #62635d;
+}
 
-        .install-command {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            max-width: 42rem;
-            margin: 1.25rem 0;
-            padding: .95rem 1rem;
-            border: 1px solid rgba(0, 0, 0, 0.10);
-            border-radius: .8rem;
-            background: #2d332f;
-            box-shadow: 0 9px 22px rgba(44, 40, 31, 0.10);
-        }
+.install-command {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 42rem;
+    margin: 1.25rem 0;
+    padding: .95rem 1rem;
+    border: 1px solid rgba(0, 0, 0, 0.10);
+    border-radius: .8rem;
+    background: #2d332f;
+    box-shadow: 0 9px 22px rgba(44, 40, 31, 0.10);
+}
 
-        .install-command code {
-            flex: 1;
-            overflow-x: auto;
-            white-space: nowrap;
-            color: #efc86f;
-        }
+.install-command code {
+    flex: 1;
+    overflow-x: auto;
+    white-space: nowrap;
+    color: #efc86f;
+}
 
-        .copy-command {
-            border: 1px solid rgba(239, 200, 111, 0.24);
-            border-radius: .55rem;
-            padding: .55rem .78rem;
-            background: rgba(239, 200, 111, 0.08);
-            color: #f3d58d;
-            font: inherit;
-            font-weight: 700;
-            cursor: pointer;
-            transition:
-                background-color .16s ease,
+.copy-command {
+    border: 1px solid rgba(239, 200, 111, 0.24);
+    border-radius: .55rem;
+    padding: .55rem .78rem;
+    background: rgba(239, 200, 111, 0.08);
+    color: #f3d58d;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color .16s ease,
                 border-color .16s ease;
-        }
+}
 
-        .copy-command:hover {
-            border-color: rgba(239, 200, 111, 0.40);
-            background: rgba(239, 200, 111, 0.14);
-        }
+.copy-command:hover {
+    border-color: rgba(239, 200, 111, 0.40);
+    background: rgba(239, 200, 111, 0.14);
+}
 
-        @media (max-width: 640px) {
-            .platform-panel {
-                padding: 1.25rem;
-            }
+.getting-started {
+    padding-top: 1rem;
+    padding-bottom: 6rem;
+}
 
-            .install-command {
-                align-items: stretch;
-                flex-direction: column;
-            }
-        }
-    </style>
+.getting-started-intro {
+    max-width: 48rem;
+    margin-bottom: 2rem;
+}
 
-</head>
+.getting-started-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.5rem;
+}
 
-<body>
-    <header class="site-header">
-        <a class="brand" href="#top" aria-label="DitDah home">
-            <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
-            <span>DitDah</span>
-        </a>
-        <nav aria-label="Main navigation">
-            <a href="#features">Features</a>
-            <a href="https://github.com/encse/ditdah">GitHub</a>
-            <a class="nav-download" href="#install">Install</a>
-        </nav>
-    </header>
+.getting-started-card {
+    padding: 1.75rem;
+    border: 1px solid var(--line-soft);
+    border-radius: 1.1rem;
+    background: rgba(235, 232, 223, .68);
+    box-shadow: none;
+    color: #232622;
+}
 
-    <main id="top">
-        <section class="hero shell">
-            <div class="hero-copy">
-                <div class="eyebrow"><span></span> A companion for learning CW</div>
-                <h1>Listen along.<br><em>Get a little help.</em></h1>
-                <p class="hero-lead">
-                    DitDah is a terminal-based CW companion written in Go, built for beginner operators who are starting
+.getting-started-card h3 {
+    margin: .2rem 0 .8rem;
+    color: #232622;
+}
+
+.getting-started-card p {
+    color: #62635d;
+}
+
+.getting-started-card > p:last-child {
+    margin-bottom: 0;
+}
+
+.getting-started-card a {
+    color: #8b5d19;
+    font-weight: 700;
+}
+
+
+.getting-started-card ul {
+    display: grid;
+    gap: 10px;
+    margin: 1.25rem 0 1.5rem;
+    padding: 0;
+    list-style: none;
+    color: #50554f;
+    font-size: 13px;
+}
+
+.getting-started-card li::before {
+    margin-right: 10px;
+    color: var(--cyan);
+    content: "—";
+}
+
+.first-run ol {
+    margin-bottom: 0;
+}
+
+.first-run {
+    padding: 2rem;
+    border: 1px solid var(--line-soft);
+    border-radius: 1.1rem;
+    background: rgba(235, 232, 223, .68);
+    color: #232622;
+}
+
+.first-run h3 {
+    margin-top: .2rem;
+    color: #232622;
+}
+
+.first-run code {
+    padding: .08rem .32rem;
+    border-radius: .3rem;
+    background: rgba(45, 51, 47, 0.08);
+}
+
+.first-run-note {
+    margin-top: 1.25rem;
+    color: #62635d;
+}
+
+@media (max-width: 760px) {
+    .getting-started-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .platform-panel {
+        padding: 1.25rem;
+    }
+
+    .install-command {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+.signal-card img {
+    display: block;
+    width: 600px;
+    max-width: 100%;
+    height: auto;
+}
+  </style>
+ </head>
+ <body>
+  <header class="site-header">
+   <a aria-label="DitDah home" class="brand" href="#top">
+    <span aria-hidden="true" class="brand-mark">
+     <i>
+     </i>
+     <b>
+     </b>
+    </span>
+    <span>
+     DitDah
+    </span>
+   </a>
+   <nav aria-label="Main navigation">
+    <a href="#features">
+     Features
+    </a>
+    <a href="#getting-started">
+     Getting started
+    </a>
+    <a href="https://github.com/encse/ditdah">
+     GitHub
+    </a>
+    <a class="nav-download" href="#install">
+     Install
+    </a>
+   </nav>
+  </header>
+  <main id="top">
+   <section class="hero shell">
+    <div class="hero-copy">
+     <div class="eyebrow">
+      <span>
+      </span>
+      A companion for learning CW
+     </div>
+     <h1>
+      Listen along.
+      <br/>
+      <em>
+       Get a little help.
+      </em>
+     </h1>
+     <p class="hero-lead">
+      DitDah is a terminal-based CW companion written in Go, built for beginner operators who are starting
                     to make real QSOs but still miss a few characters. It writes along with the signal, then helps you
                     put the contact in your log and optionally sync it to QRZ.com.
-                </p>
-                <div class="hero-actions">
-                    <a class="button primary" href="#install">
-                        Install DitDah
-                        <span aria-hidden="true">↓</span>
-                    </a>
-                    <a class="button secondary" href="https://github.com/encse/ditdah">
-                        View source
-                        <span aria-hidden="true">↗</span>
-                    </a>
-                </div>
-                <div class="platforms" aria-label="Supported platforms">
-                    <span>macOS</span><span>Linux</span><span>Windows</span>
-                    <small>Terminal UI · Written in Go · Open source</small>
-                </div>
-            </div>
-
-            <div class="signal-card" aria-hidden="true">
-                <img src="heading.png" style="width: 600px" />
-            </div>
-        </section>
-
-        <section class="section shell" id="features">
-            <div class="section-heading">
-                <div>
-                    <p class="kicker">A quiet evening on the bands</p>
-                    <h2>From signal to text.<br>Without breaking your flow.</h2>
-                </div>
-                <p>
-                    Find a signal on your radio, tune it carefully, and narrow the
+     </p>
+     <div class="hero-actions">
+      <a class="button primary" href="#install">
+       Install DitDah
+       <span aria-hidden="true">
+        ↓
+       </span>
+      </a>
+      <a class="button secondary" href="https://github.com/encse/ditdah">
+       View source
+       <span aria-hidden="true">
+        ↗
+       </span>
+      </a>
+     </div>
+     <div aria-label="Supported platforms" class="platforms">
+      <span>
+       macOS
+      </span>
+      <span>
+       Linux
+      </span>
+      <span>
+       Windows
+      </span>
+      <small>
+       Terminal UI · Written in Go · Open source
+      </small>
+     </div>
+    </div>
+    <div aria-hidden="true" class="signal-card">
+     <img src="heading.png"/>
+    </div>
+   </section>
+   <section class="section shell" id="features">
+    <div class="section-heading">
+     <div>
+      <p class="kicker">
+       A quiet evening on the bands
+      </p>
+      <h2>
+       From signal to text.
+       <br/>
+       Without breaking your flow.
+      </h2>
+     </div>
+     <p>
+      Find a signal on your radio, tune it carefully, and narrow the
                     filter until the beeps are easy to hear. DitDah listens to the same
                     audio and gives you a readable second opinion while you copy it
                     yourself.
-                </p>
-            </div>
-
-            <article class="showcase logbook-showcase">
-                <div class="showcase-copy">
-                    <span class="feature-number">02</span>
-                    <p class="kicker">Logbook + QSO editor</p>
-                    <h3>Log the contact when you make it.</h3>
-                    <p>
-                        Move the callsign straight into a new QSO, fill in the report and
+     </p>
+    </div>
+    <article class="showcase logbook-showcase">
+     <div class="showcase-copy">
+      <span class="feature-number">
+       02
+      </span>
+      <p class="kicker">
+       Logbook + QSO editor
+      </p>
+      <h3>
+       Log the contact when you make it.
+      </h3>
+      <p>
+       Move the callsign straight into a new QSO, fill in the report and
                         anything else you want to remember, then save it locally. If you
                         use QRZ.com, completed contacts can be synchronized from the same
                         logbook.
-                    </p>
-                    <ul>
-                        <li>Prefilled QSO from the decoded callsign</li>
-                        <li>Simple local logbook with search</li>
-                        <li>Optional QRZ.com lookup and synchronization</li>
-                    </ul>
-                </div>
-
-                <div class="screenshot-stack">
-                    <figure class="app-shot logbook-shot">
-                        <img src="screenshots/logbook.svg"
-                            alt="DitDah logbook populated with CW contacts and details for the selected QSO">
-                        <figcaption>Searchable local logbook with QRZ synchronization status.</figcaption>
-                    </figure>
-                    <figure class="app-shot editor-shot">
-                        <img src="screenshots/new-qso.svg" alt="DitDah New QSO editor filled with a contact">
-                        <figcaption>The QSO editor keeps the details of the contact together.</figcaption>
-                    </figure>
-                </div>
-            </article>
-
-            <article class="showcase decoder-showcase">
-                <figure class="app-shot decoder-shot">
-                    <img src="screenshots/morse-decoder.svg"
-                        alt="DitDah Morse decoder with decoded QSO text, a populated callsign list, and QRZ details">
-                    <figcaption>Decoded text, callsigns, and station details in one view.</figcaption>
-                </figure>
-
-                <div class="showcase-copy">
-                    <span class="feature-number">01</span>
-                    <p class="kicker">Live Morse decoder</p>
-                    <h3>Start with a signal</h3>
-                    <p>
-                        DitDah uses a neural network trained to decode Morse between 10 and 40 WPM. It is reasonably
+      </p>
+      <ul>
+       <li>
+        Prefilled QSO from the decoded callsign
+       </li>
+       <li>
+        Simple local logbook with search
+       </li>
+       <li>
+        Optional QRZ.com lookup and synchronization
+       </li>
+      </ul>
+     </div>
+     <div class="screenshot-stack">
+      <figure class="app-shot logbook-shot">
+       <img alt="DitDah logbook populated with CW contacts and details for the selected QSO" src="screenshots/logbook.svg"/>
+       <figcaption>
+        Searchable local logbook with QRZ synchronization status.
+       </figcaption>
+      </figure>
+      <figure class="app-shot editor-shot">
+       <img alt="DitDah New QSO editor filled with a contact" src="screenshots/new-qso.svg"/>
+       <figcaption>
+        The QSO editor keeps the details of the contact together.
+       </figcaption>
+      </figure>
+     </div>
+    </article>
+    <article class="showcase decoder-showcase">
+     <figure class="app-shot decoder-shot">
+      <img alt="DitDah Morse decoder with decoded QSO text, a populated callsign list, and QRZ details" src="screenshots/morse-decoder.svg"/>
+      <figcaption>
+       Decoded text, callsigns, and station details in one view.
+      </figcaption>
+     </figure>
+     <div class="showcase-copy">
+      <span class="feature-number">
+       01
+      </span>
+      <p class="kicker">
+       Live Morse decoder
+      </p>
+      <h3>
+       Start with a signal
+      </h3>
+      <p>
+       DitDah uses a neural network trained to decode Morse between 10 and 40 WPM. It is reasonably
                         tolerant of background noise, but a well-tuned, filtered signal helps the decoder just as
                         much as it helps your ears.
-                    </p>
-                    <ul>
-                        <li>Use your transciever's USB audio interface or a microphone when the source is loud and clear
-                            enough</li>
-                        <li>Route audio from an SDR or WebSDR through a virtual input such as BlackHole on macOS</li>
-                        <li>Keep callsigns and QRZ details beside the decoded text</li>
-                    </ul>
-                </div>
-            </article>
-        </section>
-
-        <section class="fit shell" aria-labelledby="fit-heading">
-            <div class="fit-intro">
-                <p class="kicker">Designed for relaxed operating</p>
-                <h2 id="fit-heading">A helper, not an autopilot.</h2>
-                <p>
-                    DitDah is meant to sit beside you while your Morse ear develops.
+      </p>
+      <ul>
+       <li>
+        Use your transciever's USB audio interface or a microphone when the source is loud and clear
+                            enough
+       </li>
+       <li>
+        Route audio from an SDR or WebSDR through a virtual input such as BlackHole on macOS
+       </li>
+       <li>
+        Keep callsigns and QRZ details beside the decoded text
+       </li>
+      </ul>
+     </div>
+    </article>
+   </section>
+   <section aria-labelledby="fit-heading" class="fit shell">
+    <div class="fit-intro">
+     <p class="kicker">
+      Designed for relaxed operating
+     </p>
+     <h2 id="fit-heading">
+      A helper, not an autopilot.
+     </h2>
+     <p>
+      DitDah is meant to sit beside you while your Morse ear develops.
                     Listen first, glance at the text when you need it, and take your
                     time with the contact.
-                </p>
-            </div>
-            <div class="fit-card good-fit">
-                <span>Good fit</span>
-                <h3>One clear signal and an unhurried QSO.</h3>
-                <p>Calling CQ, answering a station, casual conversations, and listening practice at a comfortable speed.
-                </p>
-            </div>
-            <div class="fit-card limits">
-                <span>Not for</span>
-                <h3>Pileups, contests, or separating several stations.</h3>
-                <p>DitDah does not replace careful tuning, contest software, or your own judgment about what was
-                    actually sent.</p>
-            </div>
-        </section>
-
-        <section class="install shell" id="install" aria-labelledby="install-heading">
-            <div class="install-intro">
-                <p class="kicker">Installation</p>
-                <h2 id="install-heading">Your next QSO starts<br>with a dit and a dah.</h2>
-                <p>
-                    Choose your platform.
-                </p>
-            </div>
-
-            <div class="install-card">
-                <div class="platform-tabs" role="tablist" aria-label="Choose operating system">
-                    <button type="button" role="tab" data-platform-tab="macos" aria-selected="false">macOS</button>
-                    <button type="button" role="tab" data-platform-tab="linux" aria-selected="false">Linux</button>
-                    <button type="button" role="tab" data-platform-tab="windows" aria-selected="false">Windows</button>
-                </div>
-
-                <div class="platform-panel" data-platform-panel="macos" hidden>
-                    <p class="install-label">Recommended on macOS</p>
-                    <h3>Install with Homebrew</h3>
-                    <div class="install-command">
-                        <code>brew install encse/tap/ditdah</code>
-                        <button type="button" class="copy-command"
-                            data-copy="brew install encse/tap/ditdah">Copy</button>
-                    </div>
-                    <p class="install-note">
-                        Homebrew is the preferred installation method on macOS.
-                    </p>
-                </div>
-
-                <div class="platform-panel" data-platform-panel="linux" hidden>
-                    <p class="install-label">Linux</p>
-                    <h3>Download the release archive</h3>
-                    <p class="install-note">
-                        Download the Linux build for your architecture from the latest GitHub release,
-                        extract it, and run <code>ditdah</code>.
-                    </p>
-                    <a class="button secondary" href="https://github.com/encse/ditdah/releases/latest">
-                        Latest Linux release <span aria-hidden="true">↗</span>
-                    </a>
-                </div>
-
-                <div class="platform-panel" data-platform-panel="windows" hidden>
-                    <p class="install-label">Windows</p>
-                    <h3>Download and run DitDah</h3>
-                    <p class="install-note">
-                        Download the Windows ZIP from the latest GitHub release, extract it,
-                        and run <code>ditdah.exe</code>.
-                    </p>
-                    <a class="button secondary" href="https://github.com/encse/ditdah/releases/latest">
-                        Latest Windows release <span aria-hidden="true">↗</span>
-                    </a>
-                </div>
-            </div>
-        </section>
-
-    </main>
-
-    <footer class="site-footer shell">
-        <a class="brand" href="#top"><span class="brand-mark"
-                aria-hidden="true"><i></i><b></b></span><span>DitDah</span></a>
-        <p>A small helper for relaxed CW operating.</p>
-        <div><a href="https://github.com/encse/ditdah">Source</a><a
-                href="https://github.com/encse/ditdah/releases">Releases</a></div>
-    </footer>
-
-    <script>
-        (() => {
+     </p>
+    </div>
+    <div class="fit-card good-fit">
+     <span>
+      Good fit
+     </span>
+     <h3>
+      One clear signal and an unhurried QSO.
+     </h3>
+     <p>
+      Calling CQ, answering a station, casual conversations, and listening practice at a comfortable speed.
+     </p>
+    </div>
+    <div class="fit-card limits">
+     <span>
+      Not for
+     </span>
+     <h3>
+      Pileups, contests, or separating several stations.
+     </h3>
+     <p>
+      DitDah does not replace careful tuning, contest software, or your own judgment about what was
+                    actually sent.
+     </p>
+    </div>
+   </section>
+   <section aria-labelledby="install-heading" class="install shell" id="install">
+    <div class="install-intro">
+     <p class="kicker">
+      Installation
+     </p>
+     <h2 id="install-heading">
+      Your next QSO starts
+      <br/>
+      with a dit and a dah.
+     </h2>
+     <p>
+      Choose your platform.
+     </p>
+    </div>
+    <div class="install-card">
+     <div aria-label="Choose operating system" class="platform-tabs" role="tablist">
+      <button aria-selected="false" data-platform-tab="macos" role="tab" type="button">
+       macOS
+      </button>
+      <button aria-selected="false" data-platform-tab="linux" role="tab" type="button">
+       Linux
+      </button>
+      <button aria-selected="false" data-platform-tab="windows" role="tab" type="button">
+       Windows
+      </button>
+     </div>
+     <div class="platform-panel" data-platform-panel="macos" hidden="">
+      <p class="install-label">
+       Recommended on macOS
+      </p>
+      <h3>
+       Install with Homebrew
+      </h3>
+      <div class="install-command">
+       <code>
+        brew install encse/tap/ditdah
+       </code>
+       <button class="copy-command" data-copy="brew install encse/tap/ditdah" type="button">
+        Copy
+       </button>
+      </div>
+      <p class="install-note">
+       Homebrew is the preferred installation method on macOS.
+      </p>
+     </div>
+     <div class="platform-panel" data-platform-panel="linux" hidden="">
+      <p class="install-label">
+       Linux
+      </p>
+      <h3>
+       Download the release archive
+      </h3>
+      <p class="install-note">
+       Download the Linux build for your architecture from the latest GitHub release,
+                        extract it, and run
+       <code>
+        ditdah
+       </code>
+       .
+      </p>
+      <a class="button secondary" href="https://github.com/encse/ditdah/releases/latest">
+       Latest Linux release
+       <span aria-hidden="true">
+        ↗
+       </span>
+      </a>
+     </div>
+     <div class="platform-panel" data-platform-panel="windows" hidden="">
+      <p class="install-label">
+       Windows
+      </p>
+      <h3>
+       Download and run DitDah
+      </h3>
+      <p class="install-note">
+       Download the Windows ZIP from the latest GitHub release, extract it,
+                        and run
+       <code>
+        ditdah.exe
+       </code>
+       .
+      </p>
+      <a class="button secondary" href="https://github.com/encse/ditdah/releases/latest">
+       Latest Windows release
+       <span aria-hidden="true">
+        ↗
+       </span>
+      </a>
+     </div>
+    </div>
+   </section>
+   <section aria-labelledby="getting-started-heading" class="getting-started shell" id="getting-started">
+    <div class="getting-started-intro">
+     <p class="kicker">
+      Getting started
+     </p>
+     <h2 id="getting-started-heading">
+      Get your receiver audio into DitDah.
+     </h2>
+     <p>
+      DitDah decodes the audio you hear from your receiver, so the first step is to make that audio
+                    available as an input on your computer.
+     </p>
+    </div>
+    <div class="getting-started-grid">
+     <article class="getting-started-card">
+      <p class="install-label">
+       Physical radio
+      </p>
+      <h3>
+       Connect your receiver
+      </h3>
+      <p>
+       Many modern transceivers provide received audio directly over USB. Connect the radio to your
+                        computer, then select the radio's USB audio device as the input in DitDah.
+      </p>
+      <p>
+       If your radio does not provide USB audio, use a suitable analog audio output from the receiver
+                        and connect it to an audio input on the computer or to an external USB audio interface.
+      </p>
+     </article>
+     <article class="getting-started-card">
+      <p class="install-label">
+       SDR &amp; WebSDR
+      </p>
+      <h3>
+       Route audio between applications
+      </h3>
+      <p>
+       Audio can also come from SDR software, a browser-based WebSDR, or another application. This is
+                        especially useful for receive-only operation. For example, when casually listening around the
+                        bands as an SWL (shortwave listener) and you do not intend to transmit. A virtual audio device
+                        lets the source application send its output directly to DitDah.
+      </p>
+      <ul>
+       <li>
+        <strong>
+         macOS:
+        </strong>
+        <a href="https://existential.audio/blackhole/">
+         BlackHole
+        </a>
+       </li>
+       <li>
+        <strong>
+         Windows:
+        </strong>
+        <a href="https://vb-audio.com/Cable/">
+         VB-CABLE
+        </a>
+       </li>
+       <li>
+        <strong>
+         Linux:
+        </strong>
+        <a href="https://pipewire.pages.freedesktop.org/pipewire/page_module_loopback.html">
+         PipeWire loopback
+        </a>
+       </li>
+      </ul>
+      <p>
+       Set the virtual device as the output of your SDR or browser audio, then select the same virtual
+                        device as the input in DitDah.
+      </p>
+     </article>
+    </div>
+    <div class="first-run" id="first-run">
+     <p class="install-label">
+      First run
+     </p>
+     <h3>
+      Choose your input and start listening
+     </h3>
+     <ol>
+      <li>
+       Start DitDah in a terminal.
+      </li>
+      <li>
+       Open the
+       <code>
+        [=]
+       </code>
+       menu and select
+       <strong>
+        Settings
+       </strong>
+       .
+      </li>
+      <li>
+       Enter your station callsign.
+      </li>
+      <li>
+       Select the audio input carrying your receiver, SDR, or WebSDR audio.
+      </li>
+      <li>
+       Optionally configure your QRZ.com credentials.
+      </li>
+      <li>
+       Press
+       <code>
+        F1
+       </code>
+       to open the logbook or
+       <code>
+        F2
+       </code>
+       to open the Morse decoder.
+      </li>
+     </ol>
+     <p class="first-run-note">
+      Your terminal may ask for microphone permission the first time you open the decoder. This allows
+                    DitDah to access the selected audio input. Your settings are stored in
+      <code>
+       logbook.db
+      </code>
+      and
+                    restored the next time you start DitDah.
+     </p>
+    </div>
+   </section>
+  </main>
+  <footer class="site-footer shell">
+   <a class="brand" href="#top">
+    <span aria-hidden="true" class="brand-mark">
+     <i>
+     </i>
+     <b>
+     </b>
+    </span>
+    <span>
+     DitDah
+    </span>
+   </a>
+   <p>
+    A small helper for relaxed CW operating.
+   </p>
+   <div>
+    <a href="https://github.com/encse/ditdah">
+     Source
+    </a>
+    <a href="https://github.com/encse/ditdah/releases">
+     Releases
+    </a>
+   </div>
+  </footer>
+  <script>
+   (() => {
             const tabs = [...document.querySelectorAll("[data-platform-tab]")];
             const panels = [...document.querySelectorAll("[data-platform-panel]")];
 
@@ -427,8 +1419,6 @@
 
             selectPlatform(detectPlatform());
         })();
-    </script>
-
-</body>
-
+  </script>
+ </body>
 </html>
