@@ -38,11 +38,11 @@ func Run(ctx context.Context, databasePath string) (err error) {
 		err = errors.Join(err, deps.close())
 	}()
 
-	terminal, initialPageID, err := newTerminalApplication(deps)
+	app, initialPageID, err := newTerminalApplication(deps)
 	if err != nil {
 		return err
 	}
-	if err := terminal.Run(ctx, initialPageID); err != nil {
+	if err := app.Run(ctx, initialPageID); err != nil {
 		return fmt.Errorf("run terminal UI: %w", err)
 	}
 
@@ -52,10 +52,10 @@ func Run(ctx context.Context, databasePath string) (err error) {
 func newTerminalApplication(
 	deps dependencies,
 ) (tui.Application, string, error) {
-	terminal := tui.NewApplication()
+	app := tui.NewApplication()
 	var logbook logbookpage.Page
 	qsoEditors := qsoeditor.New(
-		terminal,
+		app,
 		deps.stores.Logbook,
 		deps.stores.Settings,
 		deps.callsignLookup,
@@ -66,46 +66,46 @@ func newTerminalApplication(
 		},
 	)
 	logbook = logbookpage.New(
-		terminal,
+		app,
 		deps.stores.Logbook,
 		deps.qrzSync,
 		qsoEditors.Create,
 		qsoEditors.Edit,
 	)
 	decoder := decoderpage.New(
-		terminal,
+		app,
 		deps.audio,
 		deps.stores.Settings,
 		deps.callsignLookup,
 		qsoEditors.Create,
 	)
 	for _, page := range []tui.Page{logbook, decoder} {
-		if err := terminal.Register(page); err != nil {
+		if err := app.Register(page); err != nil {
 			return nil, "", err
 		}
 	}
 
-	terminal.AddKeyBinding(
+	app.AddKeyBinding(
 		keybinding.OnKey(tcell.KeyF1, "Logbook", func() {
-			_ = terminal.Show(logbook.ID())
+			_ = app.Show(logbook.ID())
 		}),
 	)
-	terminal.AddKeyBinding(
+	app.AddKeyBinding(
 		keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {
-			_ = terminal.Show(decoder.ID())
+			_ = app.Show(decoder.ID())
 		}),
 	)
-	terminal.AddMenuItem(
+	app.AddMenuItem(
 		"Settings",
 		keybinding.OnRune('s', "settings", func() {
 			settingspage.Open(
-				terminal,
+				app,
 				deps.stores.Settings,
 				deps.qrz,
 				deps.audio,
-				terminal.NotifySettingsChanged,
+				app.NotifySettingsChanged,
 			)
 		}),
 	)
-	return terminal, logbook.ID(), nil
+	return app, logbook.ID(), nil
 }
