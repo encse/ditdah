@@ -5,6 +5,10 @@ It combines a searchable QSO logbook with live Morse decoding, callsign lookup,
 and optional QRZ.com synchronization in one keyboard- and mouse-friendly
 interface.
 
+[Website](https://encse.github.io/morse-go/) ·
+[Downloads](https://github.com/encse/morse-go/releases) ·
+[Roadmap](ROADMAP.md)
+
 ## Features
 
 - Create, edit, search, and delete QSOs.
@@ -83,6 +87,13 @@ Run concurrency-sensitive tests with the race detector:
 
 ```bash
 go test -race ./...
+```
+
+Regenerate the application screenshots used by the website:
+
+```bash
+go test -count=1 -tags screenshots -run '^TestScreenshot' \
+  ./internal/logbook/tui ./internal/qsoeditor/tui ./internal/decoder/tui
 ```
 
 Database changes are versioned in `internal/database/migrations`. After adding a

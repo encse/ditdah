@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#0b1020">
+    <meta
+      name="description"
+      content="DitDah is a decoding companion for newer CW operators: listen along, fill the gaps, log relaxed QSOs, and optionally synchronize them to QRZ.com."
+    >
+    <title>DitDah — A CW decoding companion for learning Morse</title>
+    <link rel="icon" href="icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="DitDah home">
+        <span class="brand-mark" aria-hidden="true"><i></i><b></b></span>
+        <span>DitDah</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#features">Features</a>
+        <a href="#workflow">Workflow</a>
+        <a href="https://github.com/encse/morse-go">GitHub</a>
+        <a class="nav-download" href="https://github.com/encse/morse-go/releases/latest">Download</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero shell">
+        <div class="hero-copy">
+          <div class="eyebrow"><span></span> A companion for learning CW</div>
+          <h1>Listen along.<br><em>Get a little help.</em></h1>
+          <p class="hero-lead">
+            DitDah is for newer CW operators who are starting to copy real
+            QSOs and still miss a few characters. It writes along with the
+            signal, then helps you put the contact in your log and optionally
+            sync it to QRZ.com.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="https://github.com/encse/morse-go/releases/latest">
+              Download DitDah
+              <span aria-hidden="true">↓</span>
+            </a>
+            <a class="button secondary" href="https://github.com/encse/morse-go">
+              View source
+              <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <div class="platforms" aria-label="Supported platforms">
+            <span>macOS</span><span>Linux</span><span>Windows</span>
+            <small>Local-first · Open source</small>
+          </div>
+        </div>
+
+        <div class="signal-card" aria-hidden="true">
+          <div class="signal-glow"></div>
+          <div class="signal-top">
+            <span>14.025 MHz</span>
+            <span class="live"><i></i> LIVE</span>
+          </div>
+          <div class="waveform">
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span>
+          </div>
+          <div class="decoded-line">
+            <span>CQ CQ DE</span> <strong>HA7NCS</strong> <span>HA7NCS K</span>
+          </div>
+          <div class="morse-line">−·−· −−·− &nbsp; −·· · &nbsp; ···· ·- --··· -· -·-· ··· &nbsp; ···· ·- --··· -· -·-· ··· &nbsp; -·-</div>
+          <div class="signal-footer">
+            <span>Decoder ready</span>
+            <span>18 WPM</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="proof-strip" aria-label="Product highlights">
+        <div><strong>About 10–40 WPM</strong><span>A useful learning range</span></div>
+        <div><strong>Some noise is okay</strong><span>Clearer is still better</span></div>
+        <div><strong>Flexible audio</strong><span>Radio, microphone, or SDR</span></div>
+        <div><strong>Easy follow-through</strong><span>Local log + QRZ.com sync</span></div>
+      </section>
+
+      <section class="section shell" id="features">
+        <div class="section-heading">
+          <div>
+            <p class="kicker">A quiet evening on the bands</p>
+            <h2>Tune one station.<br>DitDah writes along.</h2>
+          </div>
+          <p>
+            Find a signal on your radio, tune it carefully, and narrow the
+            filter until the code is easy to hear. DitDah listens to the same
+            audio and gives you a readable second opinion while you copy it
+            yourself.
+          </p>
+        </div>
+
+        <article class="showcase logbook-showcase">
+          <div class="showcase-copy">
+            <span class="feature-number">02</span>
+            <p class="kicker">Logbook + QSO editor</p>
+            <h3>When you make the contact, log it.</h3>
+            <p>
+              Move the callsign straight into a new QSO, fill in the report and
+              anything else you want to remember, then save it locally. If you
+              use QRZ.com, completed contacts can be synchronized from the same
+              logbook.
+            </p>
+            <ul>
+              <li>Prefilled QSO from the decoded callsign</li>
+              <li>Simple local logbook with search</li>
+              <li>Optional QRZ.com lookup and synchronization</li>
+            </ul>
+          </div>
+
+          <div class="screenshot-stack">
+            <figure class="app-shot logbook-shot">
+              <img
+                src="screenshots/logbook.svg"
+                alt="DitDah logbook populated with CW contacts and details for the selected QSO"
+              >
+              <figcaption>Searchable local logbook with QRZ synchronization status.</figcaption>
+            </figure>
+            <figure class="app-shot editor-shot">
+              <img
+                src="screenshots/new-qso.svg"
+                alt="DitDah New QSO editor filled with a contact"
+              >
+              <figcaption>The QSO editor keeps the details of the contact together.</figcaption>
+            </figure>
+          </div>
+        </article>
+
+        <article class="showcase decoder-showcase">
+          <figure class="app-shot decoder-shot">
+            <img
+              src="screenshots/morse-decoder.svg"
+              alt="DitDah Morse decoder with decoded QSO text, a populated callsign list, and QRZ details"
+            >
+            <figcaption>Decoded text, useful callsigns, and station details in one view.</figcaption>
+          </figure>
+
+          <div class="showcase-copy">
+            <span class="feature-number">01</span>
+            <p class="kicker">Live Morse decoder</p>
+            <h3>Start with a signal you can hear.</h3>
+            <p>
+              DitDah is designed for roughly 10 to 40 WPM and is reasonably
+              tolerant of background noise. A well-tuned, well-filtered signal
+              still gives it the best chance—just as it gives your ears the
+              best chance.
+            </p>
+            <ul>
+              <li>Use your radio's audio interface or a microphone when the source is loud and clear enough</li>
+              <li>Route audio from an SDR or WebSDR through a virtual input such as BlackHole on macOS</li>
+              <li>Keep useful callsigns and QRZ details beside the decoded text</li>
+            </ul>
+          </div>
+        </article>
+      </section>
+
+      <section class="fit shell" aria-labelledby="fit-heading">
+        <div class="fit-intro">
+          <p class="kicker">Designed for relaxed operating</p>
+          <h2 id="fit-heading">A helper, not an autopilot.</h2>
+          <p>
+            DitDah is meant to sit beside you while your Morse ear develops.
+            Listen first, glance at the text when you need it, and take your
+            time with the contact.
+          </p>
+        </div>
+        <div class="fit-card good-fit">
+          <span>Good fit</span>
+          <h3>One clear signal and an unhurried QSO.</h3>
+          <p>Calling CQ, answering a station, casual conversations, and listening practice at a comfortable speed.</p>
+        </div>
+        <div class="fit-card limits">
+          <span>Not for</span>
+          <h3>Pileups, contests, or separating several stations.</h3>
+          <p>DitDah does not replace careful tuning, contest software, or your own judgment about what was actually sent.</p>
+        </div>
+      </section>
+
+      <section class="workflow" id="workflow">
+        <div class="shell">
+          <p class="kicker">A simple operating loop</p>
+          <h2>Settle in and follow the QSO.</h2>
+          <div class="workflow-steps">
+            <div><span>01</span><strong>Tune</strong><p>Choose one station and adjust the radio and filter until it sounds clear.</p></div>
+            <div><span>02</span><strong>Listen</strong><p>Copy along at your own pace and use the decoded text when you need help.</p></div>
+            <div><span>03</span><strong>Log</strong><p>Open a prefilled QSO, complete the report, and save locally.</p></div>
+            <div><span>04</span><strong>Sync</strong><p>Optionally send the finished contact to QRZ Logbook when you are ready.</p></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="principles shell">
+        <div class="principle-card accent-card">
+          <span class="card-icon">⌁</span>
+          <h3>A second pair of ears.</h3>
+          <p>DitDah is there to fill the occasional gap while you continue listening and building confidence in your own copy.</p>
+        </div>
+        <div class="principle-card">
+          <span class="card-icon">⌁</span>
+          <h3>Bring the audio you have.</h3>
+          <p>Use a radio interface, microphone, SDR, or virtual audio route—as long as the computer receives a clear enough signal.</p>
+        </div>
+        <div class="principle-card">
+          <span class="card-icon">↗</span>
+          <h3>Local until you choose otherwise.</h3>
+          <p>Your logbook stays in a local SQLite database. QRZ.com lookup and synchronization are optional extras.</p>
+        </div>
+      </section>
+
+      <section class="cta shell">
+        <div>
+          <p class="kicker">Take your time. Enjoy the contact.</p>
+          <h2>Your next QSO starts<br>with a dit and a dah.</h2>
+        </div>
+        <div class="cta-actions">
+          <a class="button primary" href="https://github.com/encse/morse-go/releases/latest">Get the latest release <span>↓</span></a>
+          <p>Available for macOS, Linux, and Windows.</p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer shell">
+      <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"><i></i><b></b></span><span>DitDah</span></a>
+      <p>A small helper for relaxed CW operating.</p>
+      <div><a href="https://github.com/encse/morse-go">Source</a><a href="https://github.com/encse/morse-go/releases">Releases</a></div>
+    </footer>
+  </body>
+</html>
