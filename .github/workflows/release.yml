@@ -106,3 +106,89 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "${GITHUB_REF_NAME}" release/* --verify-tag --generate-notes --title "${GITHUB_REF_NAME}"
+      
+      - name: Calculate Homebrew checksums
+        id: brew
+        shell: bash
+        run: |
+          echo "arm64_sha=$(sha256sum release/ditdah-macos-arm64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+          echo "amd64_sha=$(sha256sum release/ditdah-macos-amd64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Check out Homebrew tap
+        uses: actions/checkout@v6
+        with:
+          repository: encse/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: homebrew-tap
+
+      - name: Update Homebrew formula
+        shell: bash
+        env:
+          VERSION: ${{ github.ref_name }}
+          ARM64_SHA: ${{ steps.brew.outputs.arm64_sha }}
+          AMD64_SHA: ${{ steps.brew.outputs.amd64_sha }}
+        run: |
+          VERSION_NUMBER="${VERSION#v}"
+
+          python3 - <<'PY'
+          import os
+          import re
+          from pathlib import Path
+
+          path = Path("homebrew-tap/Formula/ditdah.rb")
+          text = path.read_text()
+
+          version = os.environ["VERSION"]
+          version_number = version.removeprefix("v")
+          arm64_sha = os.environ["ARM64_SHA"]
+          amd64_sha = os.environ["AMD64_SHA"]
+
+          text = re.sub(
+              r'version "[^"]+"',
+              f'version "{version_number}"',
+              text,
+          )
+
+          text = re.sub(
+              r'https://github\.com/encse/ditdah/releases/download/v[^/]+/ditdah-macos-arm64\.tar\.gz',
+              f'https://github.com/encse/ditdah/releases/download/{version}/ditdah-macos-arm64.tar.gz',
+              text,
+          )
+
+          text = re.sub(
+              r'https://github\.com/encse/ditdah/releases/download/v[^/]+/ditdah-macos-amd64\.tar\.gz',
+              f'https://github.com/encse/ditdah/releases/download/{version}/ditdah-macos-amd64.tar.gz',
+              text,
+          )
+
+          text = re.sub(
+              r'(ditdah-macos-arm64\.tar\.gz"\n\s+sha256 ")[^"]+',
+              rf'\g<1>{arm64_sha}',
+              text,
+          )
+
+          text = re.sub(
+              r'(ditdah-macos-amd64\.tar\.gz"\n\s+sha256 ")[^"]+',
+              rf'\g<1>{amd64_sha}',
+              text,
+          )
+
+          path.write_text(text)
+          PY
+
+      - name: Commit Homebrew formula
+        working-directory: homebrew-tap
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add Formula/ditdah.rb
+
+          if git diff --cached --quiet; then
+            echo "Formula is already up to date."
+            exit 0
+          fi
+
+          git commit -m "ditdah ${GITHUB_REF_NAME}"
+          git push
