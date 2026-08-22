@@ -5,8 +5,8 @@ It combines a searchable QSO logbook with live Morse decoding, callsign lookup,
 and optional QRZ.com synchronization in one keyboard- and mouse-friendly
 interface.
 
-[Website](https://encse.github.io/morse-go/) ·
-[Downloads](https://github.com/encse/morse-go/releases) ·
+[Website](https://encse.github.io/ditdah/) ·
+[Downloads](https://github.com/encse/ditdah/releases) ·
 [Roadmap](ROADMAP.md)
 
 ## Features
@@ -28,7 +28,7 @@ interface.
 ### Download a release
 
 Download the archive for your operating system from
-[GitHub Releases](https://github.com/encse/morse-go/releases), extract it, and
+[GitHub Releases](https://github.com/encse/ditdah/releases), extract it, and
 run `ditdah` from a terminal.
 
 Linux and Windows releases target x86-64. macOS releases are available for both
@@ -49,8 +49,8 @@ Building requires:
 - a working system audio input backend.
 
 ```bash
-git clone https://github.com/encse/morse-go.git
-cd morse-go
+git clone https://github.com/encse/ditdah.git
+cd ditdah
 go build -o ditdah .
 ./ditdah
 ```
