@@ -146,6 +146,10 @@ h1 em { color: var(--cyan-bright); font-style: normal; font-weight: 560; }
 .fit-card h3 { margin-bottom: 15px; font-size: 20px; line-height: 1.35; letter-spacing: -.025em; }
 .fit-card p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.7; }
 
+.install-intro { padding: 28px 42px 28px 0; }
+.install-intro h2 { margin-bottom: 20px; font-size: clamp(34px, 4vw, 49px); line-height: 1.08; letter-spacing: -.045em; }
+
+
 .principles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-block: 110px; }.principle-card { min-height: 285px; padding: 32px; border: 1px solid var(--line-soft); border-radius: 12px; background: rgba(235,232,223,.68); }.principle-card.accent-card { background: linear-gradient(145deg, rgba(220,173,85,.12), rgba(235,232,223,.78)); }.card-icon { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 55px; color: var(--cyan); border: 1px solid #bcb6a7; border-radius: 8px; background: #e4e0d5; font-size: 20px; }.principle-card h3 { font-size: 22px; }.principle-card p { margin: 0; color: var(--muted); font-size: 14px; line-height: 1.7; }
 
 .cta { display: flex; align-items: end; justify-content: space-between; gap: 50px; margin-bottom: 95px; padding: 72px; border: 1px solid #c7c0af; border-radius: 16px; background: radial-gradient(circle at 80% 20%, rgba(220,173,85,.16), transparent 24rem), #e9e5db; box-shadow: 0 30px 80px rgba(64,59,48,.12); }.cta-actions { display: flex; flex-direction: column; align-items: center; gap: 13px; }.cta-actions p { margin: 0; color: var(--faint); font-size: 11px; }
