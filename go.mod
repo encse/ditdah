@@ -3,6 +3,7 @@ module ditdah
 go 1.27.0
 
 require (
+	github.com/adrg/xdg v0.5.3
 	github.com/gdamore/tcell/v2 v2.8.1
 	github.com/gen2brain/malgo v0.11.25
 	github.com/go-jet/jet/v2 v2.15.0

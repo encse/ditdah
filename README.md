@@ -36,9 +36,10 @@ Apple Silicon and Intel; the Apple Silicon build uses the Go SIMD experiment
 when the toolchain supports it and falls back to the scalar implementation
 otherwise.
 
-DitDah creates `logbook.db` in the directory from which it is started. Run
-it from a stable directory if you want the application to keep using the same
-logbook.
+DitDah stores its logbook in the platform's user application-data directory:
+`~/Library/Application Support/ditdah` on macOS, `%LOCALAPPDATA%\ditdah` on
+Windows, and `$XDG_DATA_HOME/ditdah` (normally `~/.local/share/ditdah`) on
+Linux.
 
 ### Build from source
 

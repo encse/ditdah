@@ -17,7 +17,7 @@ type aboutDialog struct {
 	handle modal.Handle
 }
 
-func openAbout(host ui.Application, version string) {
+func openAbout(host ui.Application, version string, dataDirectory string) {
 	controls := host.Components().Modal()
 	dialog := &aboutDialog{}
 
@@ -41,6 +41,17 @@ func openAbout(host ui.Application, version string) {
 	websiteView.SetStyle(components.TextViewAccent)
 	websiteView.SetTextAlign(tview.AlignCenter)
 
+	dataDirectoryLabel := controls.TextView()
+	dataDirectoryLabel.SetText("Data directory")
+	dataDirectoryLabel.SetStyle(components.TextViewMuted)
+	dataDirectoryLabel.SetTextAlign(tview.AlignCenter)
+
+	dataDirectoryView := controls.TextView()
+	dataDirectoryView.SetText(dataDirectory)
+	dataDirectoryView.SetTextAlign(tview.AlignCenter)
+	dataDirectoryView.SetWrap(true)
+	dataDirectoryView.SetWordWrap(false)
+
 	dialog.ok = controls.Button("OK")
 	dialog.ok.SetSelectedFunc(dialog.close)
 	buttons := controls.Flex(tview.FlexColumn).
@@ -48,12 +59,15 @@ func openAbout(host ui.Application, version string) {
 		AddItem(dialog.ok, 12, 0, false).
 		AddItem(nil, 0, 1, false)
 
-	dialog.Layout = modal.NewLayout(controls, " About ", 48).
+	dialog.Layout = modal.NewLayout(controls, " About ", 72).
 		Row(name, 1).
 		Row(versionView, 1).
 		Spacer().
 		Row(developer, 1).
 		Row(websiteView, 1).
+		Spacer().
+		Row(dataDirectoryLabel, 1).
+		Row(dataDirectoryView, 2).
 		Spacer().
 		Actions(buttons)
 	dialog.handle = host.OpenModalForCurrentLayer(dialog)

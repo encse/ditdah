@@ -79,7 +79,8 @@ This document records implementation decisions and future technical work.
 - [x] Build cgo-enabled Linux amd64, Windows amd64, macOS Intel, and SIMD-enabled macOS Apple Silicon release archives on native GitHub-hosted runners; fall back to the scalar implementation when the SIMD build is unavailable and publish version tags as GitHub releases.
 - [x] Embed the DitDah favicon as the Windows executable icon during release builds.
 - [x] Embed the release tag in every published binary and expose it through `ditdah --version`.
-- [x] Show the embedded version, developer callsign, and project website in an application About dialog.
+- [x] Show the embedded version, developer callsign, project website, and resolved data directory in an application About dialog.
+- [x] Store the SQLite logbook in the platform-native user data directory resolved by `adrg/xdg`.
 - [x] Implement QRZ synchronization on top of the validated credentials and stored synchronization state, retaining remote log IDs so edited records can be replaced without duplicates.
 - [x] Add the initial read-only logbook TUI with table, details, and search.
 - [x] Add QSO creation, editing, and confirmed deletion to the logbook TUI.

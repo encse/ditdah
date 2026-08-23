@@ -7,9 +7,11 @@ import (
 	"os/signal"
 
 	"ditdah/internal/application"
+
+	"github.com/adrg/xdg"
 )
 
-const databasePath = "logbook.db"
+const databaseFile = "ditdah/logbook.db"
 
 var version = "development"
 
@@ -17,6 +19,12 @@ func main() {
 	if len(os.Args) == 2 && os.Args[1] == "--version" {
 		fmt.Println(version)
 		return
+	}
+
+	databasePath, err := xdg.DataFile(databaseFile)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
 	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)

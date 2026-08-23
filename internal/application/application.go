@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 
 	"ditdah/internal/database"
 	decoderpage "ditdah/internal/decoder/tui"
@@ -37,7 +38,11 @@ func Run(ctx context.Context, databasePath string, version string) (err error) {
 		err = errors.Join(err, deps.close())
 	}()
 
-	app, initialPage := newTerminalApplication(deps, version)
+	app, initialPage := newTerminalApplication(
+		deps,
+		version,
+		filepath.Dir(databasePath),
+	)
 	if err := app.Run(ctx, initialPage); err != nil {
 		return fmt.Errorf("run terminal UI: %w", err)
 	}
@@ -48,6 +53,7 @@ func Run(ctx context.Context, databasePath string, version string) (err error) {
 func newTerminalApplication(
 	deps dependencies,
 	version string,
+	dataDirectory string,
 ) (tui.Application, tui.Page) {
 	app := tui.NewApplication()
 	qsoEditors := qsoeditor.New(
@@ -99,7 +105,7 @@ func newTerminalApplication(
 	app.AddMenuItem(
 		"About",
 		keybinding.OnRune('a', "about", func() {
-			openAbout(app, version)
+			openAbout(app, version, dataDirectory)
 		}),
 	)
 	return app, newLogbookPage()
