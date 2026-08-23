@@ -95,9 +95,10 @@ go test -race ./...
 Regenerate the application screenshots used by the website:
 
 ```bash
-go test -count=1 -tags screenshots -run '^TestScreenshot' \
-  ./internal/logbook/tui ./internal/qsoeditor/tui ./internal/decoder/tui
+vhs screenshots.tape
 ```
+
+This requires [VHS](https://github.com/charmbracelet/vhs).
 
 Database changes are versioned in `internal/database/migrations`. After adding a
 migration, regenerate the Jet database model and run the tests:

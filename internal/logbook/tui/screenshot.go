@@ -3,52 +3,25 @@
 package tui
 
 import (
-	"testing"
 	"time"
 
 	domain "ditdah/internal/logbook"
 	"ditdah/internal/optional"
-	"ditdah/internal/screenshots"
 	ui "ditdah/internal/tui"
-	"ditdah/internal/tui/keybinding"
-
-	"github.com/gdamore/tcell/v2"
 )
 
-func TestScreenshotLogbook(t *testing.T) {
-	app := ui.NewApplication()
-	addScreenshotNavigation(app)
-	page := newPage(app, nil, nil, func(ui.Owner, string) {}, func(ui.Owner, domain.QSO) {})
+// NewScreenshotPage creates the populated logbook shown in product images.
+func NewScreenshotPage(host ui.PageHost) ui.Page {
+	page := newPage(
+		host,
+		nil,
+		nil,
+		func(ui.Owner, string) {},
+		func(ui.Owner, domain.QSO) {},
+	)
 	page.qsos = screenshotQSOs()
 	page.applyFilter()
-
-	screen := screenshotScreen(t)
-	if err := ui.DrawScreenshot(app, page, nil, screen); err != nil {
-		t.Fatal(err)
-	}
-	if err := screenshots.WriteSVG(
-		screen,
-		"../../../docs/screenshots/logbook.svg",
-		"ditdah — logbook",
-	); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func screenshotScreen(t *testing.T) tcell.SimulationScreen {
-	t.Helper()
-	screen := tcell.NewSimulationScreen("UTF-8")
-	if err := screen.Init(); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(screen.Fini)
-	screen.SetSize(148, 42)
-	return screen
-}
-
-func addScreenshotNavigation(app ui.Application) {
-	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Morse decoder", func() {}))
-	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Logbook", func() {}))
+	return page
 }
 
 func screenshotQSOs() []domain.QSO {
@@ -61,10 +34,11 @@ func screenshotQSOs() []domain.QSO {
 	}
 	return []domain.QSO{
 		{
-			ID: "q1", StationCallsign: "HA7NCS", Callsign: "OH2BH",
+			ID: "q1", StationCallsign: "HA7NCS", Callsign: "HA5LA",
 			StartedAt: contact(21, 18, 40), FrequencyHz: optional.Some[int64](14_025_000),
-			Mode: "CW", RSTSent: "599", RSTReceived: "599", Name: "Martti",
-			QTH: "Kirkkonummi, Finland", Notes: "Relaxed evening QSO on 20 metres.",
+			Mode: "CW", RSTSent: "599", RSTReceived: "599", Name: `László "Laci" Áshin`,
+			ExchangeSent: "DAVID ERD", ExchangeReceived: "LACI BUDAPEST",
+			QTH: "Budapest, Hungary", Notes: "Relaxed evening QSO on 20 metres.",
 			QRZSyncedAt: synced(contact(21, 18, 40)),
 		},
 		{
