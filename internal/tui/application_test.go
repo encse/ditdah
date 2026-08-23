@@ -110,7 +110,7 @@ func TestApplicationMenuItemHandlesPhysicalMouseClick(t *testing.T) {
 	app.engine.SetScreen(screen)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- app.Run(ctx, page) }()
+	go func() { done <- app.Run(ctx, page, nil) }()
 	waitForApplicationSignal(t, drawn, "initial application draw")
 
 	// One physical click on the hamburger.
@@ -1199,7 +1199,7 @@ func startTestApplication(
 	app.engine.SetScreen(tcell.NewSimulationScreen("UTF-8"))
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan error, 1)
-	go func() { done <- app.Run(ctx, initialPage) }()
+	go func() { done <- app.Run(ctx, initialPage, nil) }()
 	waitForApplicationSignal(t, drawn, "application draw")
 	waitForApplicationCondition(t, app, "initial page", func() bool {
 		return app.activePage == initialPage
@@ -1251,8 +1251,42 @@ func finishTestApplication(
 
 func TestApplicationRequiresActivePageBeforeRun(t *testing.T) {
 	app := newApplication(nordTheme)
-	if err := app.Run(context.Background(), nil); err == nil {
+	if err := app.Run(context.Background(), nil, nil); err == nil {
 		t.Fatal("application ran without an active page")
+	}
+}
+
+func TestApplicationRunsStartupActionAfterShowingInitialPage(t *testing.T) {
+	app := newApplication(nordTheme).(*application)
+	page := &applicationTestPage{
+		id:      "decoder",
+		title:   "Decoder",
+		content: tview.NewBox(),
+	}
+	started := make(chan Page, 1)
+	app.engine.SetScreen(tcell.NewSimulationScreen("UTF-8"))
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan error, 1)
+	go func() {
+		done <- app.Run(ctx, page, func() { started <- app.activePage })
+	}()
+
+	select {
+	case active := <-started:
+		if active != page {
+			t.Fatalf("active page during startup = %v, want initial page", active)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("startup action was not called")
+	}
+	cancel()
+	select {
+	case err := <-done:
+		if err != nil {
+			t.Fatalf("Run() = %v", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("application did not stop")
 	}
 }
 
@@ -1277,7 +1311,7 @@ func TestApplicationRunWaitsForContextShutdown(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	runDone := make(chan error, 1)
 	go func() {
-		runDone <- app.Run(ctx, page)
+		runDone <- app.Run(ctx, page, nil)
 	}()
 
 	select {
@@ -1321,7 +1355,7 @@ func TestApplicationQuitWaitsForActivePageShutdown(t *testing.T) {
 	})
 	app.engine.SetScreen(tcell.NewSimulationScreen("UTF-8"))
 	runDone := make(chan error, 1)
-	go func() { runDone <- app.Run(t.Context(), page) }()
+	go func() { runDone <- app.Run(t.Context(), page, nil) }()
 	waitForApplicationSignal(t, drawn, "application draw")
 
 	if !app.exitBinding.Handle(tcell.NewEventKey(tcell.KeyRune, 'q', 0)) {

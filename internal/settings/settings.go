@@ -14,6 +14,7 @@ type Settings struct {
 	QRZPassword        string
 	QRZAPIKey          string
 	MorseInputDeviceID string
+	Configured         bool
 }
 
 // Store loads and saves the application's single settings record.

@@ -37,6 +37,7 @@ func TestSQLiteStoreSavesAndLoadsSettings(t *testing.T) {
 	want.StationCallsign = "HA7NCS"
 	want.QRZAPIKey = "api-key"
 	want.MorseInputDeviceID = "input-id"
+	want.Configured = true
 	if saved != want {
 		t.Fatalf("Save() = %#v, want %#v", saved, want)
 	}
@@ -61,6 +62,7 @@ func TestSQLiteStoreOverwritesSettings(t *testing.T) {
 		QRZPassword:        "secret",
 		QRZAPIKey:          "key",
 		MorseInputDeviceID: "capture-2",
+		Configured:         true,
 	}
 	if _, err := store.Save(ctx, want); err != nil {
 		t.Fatalf("second Save() error = %v", err)

@@ -8,10 +8,10 @@ import (
 
 	"ditdah/internal/syncutil"
 
-	"github.com/go-jet/jet/v2/qrm"
-	. "github.com/go-jet/jet/v2/sqlite"
 	dbmodel "ditdah/internal/database/dbgen/model"
 	. "ditdah/internal/database/dbgen/table"
+	"github.com/go-jet/jet/v2/qrm"
+	. "github.com/go-jet/jet/v2/sqlite"
 )
 
 const settingsID int64 = 1
@@ -54,6 +54,7 @@ func (s *sqliteStore) Save(
 	settings Settings,
 ) (Settings, error) {
 	settings = normalize(settings)
+	settings.Configured = true
 	stored := settingsToModel(settings)
 	statement := ApplicationSettings.
 		INSERT(ApplicationSettings.AllColumns).
@@ -72,6 +73,9 @@ func (s *sqliteStore) Save(
 			ApplicationSettings.MorseInputDeviceID.SET(
 				ApplicationSettings.EXCLUDED.MorseInputDeviceID,
 			),
+			ApplicationSettings.Configured.SET(
+				ApplicationSettings.EXCLUDED.Configured,
+			),
 		))
 
 	if _, err := statement.ExecContext(ctx, s.db); err != nil {
@@ -88,15 +92,21 @@ func settingsFromModel(stored dbmodel.ApplicationSettings) Settings {
 		QRZPassword:        stored.QrzPassword,
 		QRZAPIKey:          stored.QrzAPIKey,
 		MorseInputDeviceID: stored.MorseInputDeviceID,
+		Configured:         stored.Configured != 0,
 	}
 }
 
 func settingsToModel(settings Settings) dbmodel.ApplicationSettings {
+	configured := int64(0)
+	if settings.Configured {
+		configured = 1
+	}
 	return dbmodel.ApplicationSettings{
 		ID:                 settingsID,
 		StationCallsign:    settings.StationCallsign,
 		QrzPassword:        settings.QRZPassword,
 		QrzAPIKey:          settings.QRZAPIKey,
 		MorseInputDeviceID: settings.MorseInputDeviceID,
+		Configured:         configured,
 	}
 }

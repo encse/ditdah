@@ -37,13 +37,21 @@ func Run(ctx context.Context, databasePath string, version string) (err error) {
 	defer func() {
 		err = errors.Join(err, deps.close())
 	}()
+	configured, err := deps.stores.Settings.Load(ctx)
+	if err != nil {
+		return fmt.Errorf("load application settings: %w", err)
+	}
 
 	app, initialPage := newTerminalApplication(
 		deps,
 		version,
 		filepath.Dir(databasePath),
 	)
-	if err := app.Run(ctx, initialPage); err != nil {
+	var onStarted func()
+	if !configured.Configured {
+		onStarted = func() { openSettings(app, deps) }
+	}
+	if err := app.Run(ctx, initialPage, onStarted); err != nil {
 		return fmt.Errorf("run terminal UI: %w", err)
 	}
 
@@ -71,6 +79,9 @@ func newTerminalApplication(
 			qsoEditors.Edit,
 		)
 	}
+	showSettings := func() {
+		openSettings(app, deps)
+	}
 	newDecoderPage := decoderpage.NewFactory(
 		app,
 		deps.audio,
@@ -93,14 +104,7 @@ func newTerminalApplication(
 		"Settings",
 		's',
 		"settings",
-		func() {
-			settingspage.Open(
-				app,
-				deps.stores.Settings,
-				deps.qrz,
-				deps.audio,
-			)
-		},
+		showSettings,
 	)
 	app.AddMenuItem(
 		"About",
@@ -111,4 +115,13 @@ func newTerminalApplication(
 		},
 	)
 	return app, newDecoderPage()
+}
+
+func openSettings(app tui.Application, deps dependencies) {
+	settingspage.Open(
+		app,
+		deps.stores.Settings,
+		deps.qrz,
+		deps.audio,
+	)
 }

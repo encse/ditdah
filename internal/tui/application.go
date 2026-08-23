@@ -21,7 +21,7 @@ type Application interface {
 	AddMenuItem(label string, hotkey rune, description string, action func())
 	AddKeyBinding(binding keybinding.Binding)
 	Show(page Page) error
-	Run(ctx context.Context, initialPage Page) error
+	Run(ctx context.Context, initialPage Page, onStarted func()) error
 }
 
 type application struct {
@@ -40,6 +40,7 @@ type application struct {
 	root                tview.Primitive
 	appFocusables       []tview.Primitive
 	running             bool
+	onStarted           func()
 	layers              layerRuntime
 }
 
@@ -166,6 +167,11 @@ func (a *application) showPage(page Page) {
 	a.layout.Show(page)
 	a.buildApplicationMenu()
 	a.SetFocus(page.Content())
+	if a.onStarted != nil {
+		onStarted := a.onStarted
+		a.onStarted = nil
+		onStarted()
+	}
 }
 
 func (a *application) SetFocus(primitive tview.Primitive) {
@@ -322,7 +328,11 @@ func (a *application) update(update func()) {
 	})
 }
 
-func (a *application) Run(ctx context.Context, initialPage Page) error {
+func (a *application) Run(
+	ctx context.Context,
+	initialPage Page,
+	onStarted func(),
+) error {
 	if initialPage == nil {
 		return errors.New("run terminal application: nil initial page")
 	}
@@ -331,6 +341,8 @@ func (a *application) Run(ctx context.Context, initialPage Page) error {
 	}
 	initialLayer := newPageLayer(initialPage)
 	a.layers.initialize(initialLayer)
+	a.onStarted = onStarted
+	defer func() { a.onStarted = nil }()
 
 	runCtx, cancel := context.WithCancel(ctx)
 	defer cancel()

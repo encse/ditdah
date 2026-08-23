@@ -13,4 +13,5 @@ type ApplicationSettings struct {
 	QrzPassword        string
 	QrzAPIKey          string
 	MorseInputDeviceID string
+	Configured         int64
 }

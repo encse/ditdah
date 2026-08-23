@@ -38,6 +38,7 @@ This document records implementation decisions and future technical work.
 - [x] Let the overlay host focus each new layer exactly once; avoid re-focusing layers already selected by `tview.Pages`, because `tview.Application.SetFocus` blurs even when the target is unchanged.
 - [x] Add a settings modal for the station callsign and validated QRZ credentials, opened from the application menu.
 - [x] Own the Settings menu action at application composition level, persist the decoder audio input in the main Settings dialog, and let the decoder subscribe directly to settings changes for the duration of its `Run` lifecycle.
+- [x] Persist whether Settings has ever been saved and automatically open it once at application startup while it remains unconfigured.
 - [x] Show the Settings form without doing I/O or accepting a context in `Open`; load settings and audio devices and validate saved QRZ credentials inside its structured `Run` lifecycle, and run event-triggered saves and checks as owner-scoped background work.
 - [x] Edit QRZ login and Logbook API credentials in nested modal dialogs and persist staged changes only when the main settings dialog is confirmed.
 - [x] Add a structured footer component that renders contextual information and the currently available keybindings.
