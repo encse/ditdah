@@ -9,6 +9,7 @@ import (
 )
 
 const (
+	frameWidth               = 2
 	frameHeight              = 2
 	defaultHorizontalPadding = 2
 	defaultTopGap            = 1

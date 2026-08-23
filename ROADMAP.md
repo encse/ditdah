@@ -48,6 +48,8 @@ This document records implementation decisions and future technical work.
 - [x] Reconcile pages and nested modals through one application-owned layer stack: derive every layer context from the layer below it, bind modal requests to the exact parent stack entry, keep parent layers running, and hide a removed suffix only after all of its `Run` lifecycles return.
 - [x] Bind background work and queued UI updates directly to their page or dialog object, including owners covered by child modals; pin both in the owner task group, discard updates after that owner leaves the requested stack, and wait for running UI callbacks during shutdown.
 - [x] Share confirmation and message dialogs from the modal package; confirmation closes and invokes its callback only on OK, Cancel and Escape only close, and the owning page starts work and presents operation errors separately.
+- [x] Keep one empty row between confirmation text and its action buttons in every confirmation dialog.
+- [x] Derive error-dialog height from the wrapped message so operation errors are not truncated, and keep one empty row above its OK button.
 - [x] Keep trigger, latest-value mailbox, and multi-subscriber broadcaster helpers together in `internal/syncutil`; notifications remain non-blocking and coalesced without starting goroutines.
 - [x] Let the decoder and logbook page subscribe directly, for the duration of `Run`, to coalesced store change notifications emitted after successful mutations; do not forward those changes through application callbacks.
 - [x] Coordinate page changes through an initialized, latest-value mailbox inside the application run loop; scope each page and mailbox receiver to one local `errgroup` and wait for both before switching.

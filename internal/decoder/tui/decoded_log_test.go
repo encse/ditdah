@@ -73,8 +73,8 @@ func TestClearLogBindingRequiresConfirmation(t *testing.T) {
 		t.Fatal("opening confirmation cleared the log")
 	}
 	size := dialog.Size()
-	if size.Height != 6 {
-		t.Fatalf("clear dialog height = %d, want 6", size.Height)
+	if size.Height != 7 {
+		t.Fatalf("clear dialog height = %d, want 7", size.Height)
 	}
 	screen := tcell.NewSimulationScreen("UTF-8")
 	if err := screen.Init(); err != nil {

@@ -7,6 +7,8 @@ import (
 	"github.com/rivo/tview"
 )
 
+const messageDialogWidth = 58
+
 type messageDialog struct {
 	Layout
 	ok     components.Button
@@ -24,14 +26,19 @@ func OpenError(
 	messageView := controls.TextView()
 	messageView.SetText(message)
 	messageView.SetStyle(components.TextViewDanger)
+	messageView.SetWrap(true)
+	messageView.SetWordWrap(true)
+	messageWidth := messageDialogWidth - frameWidth - 2*defaultHorizontalPadding
+	messageHeight := max(1, len(tview.WordWrap(message, messageWidth)))
 	dialog.ok = controls.Button("OK")
 	dialog.ok.SetSelectedFunc(dialog.close)
 	buttons := controls.Flex(tview.FlexColumn).
 		AddItem(nil, 0, 1, false).
 		AddItem(dialog.ok, 12, 0, false).
 		AddItem(nil, 0, 1, false)
-	dialog.Layout = NewLayout(controls, title, 58).
-		Row(messageView, 1).
+	dialog.Layout = NewLayout(controls, title, messageDialogWidth).
+		Row(messageView, messageHeight).
+		Spacer().
 		Actions(buttons)
 	dialog.handle = host.OpenModal(owner, dialog)
 	return dialog

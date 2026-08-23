@@ -1,6 +1,7 @@
 package modal
 
 import (
+	"strings"
 	"testing"
 
 	"ditdah/internal/tui/components"
@@ -57,6 +58,23 @@ func TestConfirmCancelOnlyCloses(t *testing.T) {
 	}
 }
 
+func TestConfirmLeavesOneRowAboveActions(t *testing.T) {
+	host := newDialogTestHost()
+	dialog := OpenConfirm(
+		host,
+		newDialogTestOwner(),
+		" Confirm ",
+		"Synchronize pending QSOs with QRZ.com?",
+		"",
+		"Synchronize",
+		func() {},
+	)
+
+	if got := dialog.Size(); got != (Size{Width: 58, Height: 7}) {
+		t.Fatalf("dialog size = %#v, want 58x7", got)
+	}
+}
+
 func TestErrorMessageClosesWithOK(t *testing.T) {
 	host := newDialogTestHost()
 	dialog := OpenError(
@@ -65,11 +83,47 @@ func TestErrorMessageClosesWithOK(t *testing.T) {
 		" Error ",
 		"Error: disk failed",
 	)
+	if got := dialog.Size(); got != (Size{Width: 58, Height: 6}) {
+		t.Fatalf("dialog size = %#v, want 58x6", got)
+	}
 
 	pressDialogControl(t, dialog, 0)
 
 	if !host.handle.closed {
 		t.Fatal("OK did not close error message")
+	}
+}
+
+func TestErrorMessageGrowsToFitWrappedText(t *testing.T) {
+	host := newDialogTestHost()
+	dialog := OpenError(
+		host,
+		newDialogTestOwner(),
+		" Error ",
+		"Error: configure a QRZ.com Logbook API key in Settings first",
+	)
+
+	if got := dialog.Size(); got != (Size{Width: 58, Height: 7}) {
+		t.Fatalf("dialog size = %#v, want 58x7", got)
+	}
+	screen := tcell.NewSimulationScreen("UTF-8")
+	if err := screen.Init(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(screen.Fini)
+	screen.SetSize(58, 7)
+	dialog.Content().SetRect(0, 0, 58, 7)
+	dialog.Content().Draw(screen)
+
+	var rendered strings.Builder
+	for y := 0; y < 7; y++ {
+		for x := 0; x < 58; x++ {
+			character, _, _, _ := screen.GetContent(x, y)
+			rendered.WriteRune(character)
+		}
+	}
+	if !strings.Contains(rendered.String(), "Settings first") {
+		t.Fatalf("wrapped error message was truncated: %q", rendered.String())
 	}
 }
 

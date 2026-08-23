@@ -86,6 +86,7 @@ func openConfirm(
 	dialog.Layout = NewLayout(controls, title, 58).
 		Row(messageView, 1).
 		Row(detailView, 1).
+		Spacer().
 		Actions(buttons)
 	dialog.handle = host.OpenModal(owner, dialog)
 	return dialog
