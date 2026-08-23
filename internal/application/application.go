@@ -104,7 +104,7 @@ func newTerminalApplication(
 	)
 	app.AddMenuItem(
 		"About",
-		keybinding.OnRune('a', "about", func() {
+		keybinding.Action("about", func() {
 			openAbout(app, version, dataDirectory)
 		}),
 	)

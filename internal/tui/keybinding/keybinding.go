@@ -49,6 +49,11 @@ type Binding struct {
 	handler     func()
 }
 
+// Action creates an invokable action without a keyboard shortcut.
+func Action(description string, handler func()) Binding {
+	return Binding{description: description, handler: handler}
+}
+
 // On creates a binding accepting any of the supplied strokes.
 func On(
 	description string,

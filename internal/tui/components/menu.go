@@ -14,10 +14,11 @@ const (
 	menuItemShortcutGap       = 2
 )
 
-// MenuItem is one selectable action in a Menu.
+// MenuItem is one action or separator in a Menu.
 type MenuItem struct {
-	Label   string
-	Binding keybinding.Binding
+	Label     string
+	Binding   keybinding.Binding
+	Separator bool
 }
 
 // Menu is a menu-bar item which opens its actions in an overlay list.
@@ -164,48 +165,35 @@ func (m *menu) selectItem(index int) {
 	if index < 0 || index >= len(m.items) {
 		return
 	}
-	binding := m.items[index].Binding
+	item := m.items[index]
+	if item.Separator {
+		return
+	}
 	m.closePopup()
-	binding.Invoke()
+	item.Binding.Invoke()
 }
 
 type menuPopup struct {
 	*tview.Box
-	menu   *menu
-	list   *tview.List
-	x      int
-	y      int
-	width  int
-	height int
+	menu       *menu
+	selected   int
+	itemOffset int
+	x          int
+	y          int
+	width      int
+	height     int
 }
 
 func newMenuPopup(menu *menu) tview.Primitive {
-	list := tview.NewList().
-		ShowSecondaryText(false).
-		SetHighlightFullLine(true).
-		SetWrapAround(false).
-		SetMainTextStyle(tcell.StyleDefault.
-			Foreground(menu.listText).
-			Background(menu.listBackground)).
-		SetSelectedStyle(tcell.StyleDefault.
-			Foreground(menu.selectionText).
-			Background(menu.selectionBackground).
-			Bold(true))
-	list.SetBackgroundColor(menu.listBackground)
-	list.SetBorder(true).SetBorderColor(menu.borderColor)
-	for range menu.items {
-		list.AddItem("", "", 0, nil)
-	}
-
 	popup := &menuPopup{
-		Box:  tview.NewBox(),
-		menu: menu,
-		list: list,
+		Box: tview.NewBox().
+			SetBackgroundColor(menu.listBackground).
+			SetBorder(true).
+			SetBorderColor(menu.borderColor),
+		menu:     menu,
+		selected: -1,
 	}
-	list.SetSelectedFunc(func(index int, _ string, _ string, _ rune) {
-		menu.selectItem(index)
-	})
-	list.SetDoneFunc(menu.closePopup)
+	popup.selected = popup.nextItem(-1, 1)
 	return popup
 }
 
@@ -222,24 +210,90 @@ func (p *menuPopup) Draw(screen tcell.Screen) {
 	if p.width < 3 || p.height < 3 {
 		return
 	}
-	p.list.SetRect(p.x, p.y, p.width, p.height)
-	p.updateItemText()
-	p.list.Draw(screen)
+	p.Box.SetRect(p.x, p.y, p.width, p.height)
+	p.drawFrame(screen)
+	p.updateItemOffset()
+
+	innerWidth := p.width - 2
+	visibleRows := p.height - 2
+	for row := 0; row < visibleRows; row++ {
+		index := p.itemOffset + row
+		if index >= len(p.menu.items) {
+			break
+		}
+		y := p.y + 1 + row
+		item := p.menu.items[index]
+		if item.Separator {
+			p.drawSeparator(screen, y)
+			continue
+		}
+
+		style := tcell.StyleDefault.
+			Foreground(p.menu.listText).
+			Background(p.menu.listBackground)
+		if index == p.selected {
+			style = tcell.StyleDefault.
+				Foreground(p.menu.selectionText).
+				Background(p.menu.selectionBackground).
+				Bold(true)
+		}
+		fill(screen, p.x+1, y, innerWidth, style)
+		drawText(screen, menuItemText(item, innerWidth), p.x+1, y, innerWidth, style)
+	}
 }
 
-func (p *menuPopup) updateItemText() {
-	innerWidth := max(0, p.width-2)
-	for index, item := range p.menu.items {
-		shortcut := item.Binding.Hint().Keys
-		labelWidth := runewidth.StringWidth(item.Label)
-		shortcutWidth := runewidth.StringWidth(shortcut)
-		contentWidth := innerWidth - 2*menuItemHorizontalPadding
-		gap := max(menuItemShortcutGap, contentWidth-labelWidth-shortcutWidth)
-		padding := strings.Repeat(" ", menuItemHorizontalPadding)
-		text := padding + item.Label + strings.Repeat(" ", gap) +
-			shortcut + padding
-		p.list.SetItemText(index, text, "")
+func (p *menuPopup) drawFrame(screen tcell.Screen) {
+	background := tcell.StyleDefault.Background(p.menu.listBackground)
+	for y := p.y; y < p.y+p.height; y++ {
+		fill(screen, p.x, y, p.width, background)
 	}
+	border := tcell.StyleDefault.
+		Foreground(p.menu.borderColor).
+		Background(p.menu.listBackground)
+	for x := p.x + 1; x < p.x+p.width-1; x++ {
+		screen.SetContent(x, p.y, tview.Borders.Horizontal, nil, border)
+		screen.SetContent(x, p.y+p.height-1, tview.Borders.Horizontal, nil, border)
+	}
+	for y := p.y + 1; y < p.y+p.height-1; y++ {
+		screen.SetContent(p.x, y, tview.Borders.Vertical, nil, border)
+		screen.SetContent(p.x+p.width-1, y, tview.Borders.Vertical, nil, border)
+	}
+	screen.SetContent(p.x, p.y, tview.Borders.TopLeft, nil, border)
+	screen.SetContent(p.x+p.width-1, p.y, tview.Borders.TopRight, nil, border)
+	screen.SetContent(p.x, p.y+p.height-1, tview.Borders.BottomLeft, nil, border)
+	screen.SetContent(p.x+p.width-1, p.y+p.height-1, tview.Borders.BottomRight, nil, border)
+}
+
+func menuItemText(item MenuItem, width int) string {
+	shortcut := item.Binding.Hint().Keys
+	labelWidth := runewidth.StringWidth(item.Label)
+	shortcutWidth := runewidth.StringWidth(shortcut)
+	contentWidth := width - 2*menuItemHorizontalPadding
+	gap := max(menuItemShortcutGap, contentWidth-labelWidth-shortcutWidth)
+	padding := strings.Repeat(" ", menuItemHorizontalPadding)
+	return padding + item.Label + strings.Repeat(" ", gap) + shortcut + padding
+}
+
+func (p *menuPopup) drawSeparator(screen tcell.Screen, y int) {
+	style := tcell.StyleDefault.
+		Foreground(p.menu.borderColor).
+		Background(p.menu.listBackground)
+	screen.SetContent(p.x, y, tview.Borders.LeftT, nil, style)
+	for x := p.x + 1; x < p.x+p.width-1; x++ {
+		screen.SetContent(x, y, tview.Borders.Horizontal, nil, style)
+	}
+	screen.SetContent(p.x+p.width-1, y, tview.Borders.RightT, nil, style)
+}
+
+func (p *menuPopup) updateItemOffset() {
+	visibleRows := p.height - 2
+	if p.selected < p.itemOffset {
+		p.itemOffset = p.selected
+	}
+	if p.selected >= p.itemOffset+visibleRows {
+		p.itemOffset = p.selected - visibleRows + 1
+	}
+	p.itemOffset = max(0, min(p.itemOffset, len(p.menu.items)-visibleRows))
 }
 
 func (p *menuPopup) position(screen tcell.Screen) {
@@ -247,6 +301,9 @@ func (p *menuPopup) position(screen tcell.Screen) {
 	menuX, menuY, menuWidth, _ := p.menu.GetInnerRect()
 	wantedWidth := menuWidth
 	for _, item := range p.menu.items {
+		if item.Separator {
+			continue
+		}
 		shortcut := item.Binding.Hint().Keys
 		wantedWidth = max(
 			wantedWidth,
@@ -274,12 +331,11 @@ func (p *menuPopup) Focus(_ func(tview.Primitive)) {
 
 func (p *menuPopup) Blur() {
 	p.Box.Blur()
-	p.list.Blur()
 	p.menu.removePopup()
 }
 
 func (p *menuPopup) HasFocus() bool {
-	return p.Box.HasFocus() || p.list.HasFocus()
+	return p.Box.HasFocus()
 }
 
 func (p *menuPopup) InputHandler() func(
@@ -295,10 +351,38 @@ func (p *menuPopup) InputHandler() func(
 				return
 			}
 		}
-		if handler := p.list.InputHandler(); handler != nil {
-			handler(event, setFocus)
+		switch event.Key() {
+		case tcell.KeyTab, tcell.KeyDown:
+			p.selectNext(1)
+		case tcell.KeyBacktab, tcell.KeyUp:
+			p.selectNext(-1)
+		case tcell.KeyHome, tcell.KeyPgUp:
+			p.selected = p.nextItem(-1, 1)
+		case tcell.KeyEnd, tcell.KeyPgDn:
+			p.selected = p.nextItem(len(p.menu.items), -1)
+		case tcell.KeyEnter:
+			p.menu.selectItem(p.selected)
+		case tcell.KeyRune:
+			if event.Rune() == ' ' {
+				p.menu.selectItem(p.selected)
+			}
 		}
 	})
+}
+
+func (p *menuPopup) selectNext(direction int) {
+	if next := p.nextItem(p.selected, direction); next >= 0 {
+		p.selected = next
+	}
+}
+
+func (p *menuPopup) nextItem(from int, direction int) int {
+	for index := from + direction; index >= 0 && index < len(p.menu.items); index += direction {
+		if !p.menu.items[index].Separator {
+			return index
+		}
+	}
+	return -1
 }
 
 func (p *menuPopup) MouseHandler() mouseHandler {
@@ -314,21 +398,13 @@ func (p *menuPopup) MouseHandler() mouseHandler {
 		inside := x >= p.x && x < p.x+p.width &&
 			y >= p.y && y < p.y+p.height
 		if inside {
-			if handler := p.list.MouseHandler(); handler != nil {
-				listAction := action
-				// tview detects double-clicks globally, so a quick click on
-				// the hamburger followed by a click on an item arrives here
-				// as a double-click even though the controls differ.
-				if listAction == tview.MouseLeftDoubleClick {
-					listAction = tview.MouseLeftClick
-				}
-				consumed, _ := handler(
-					listAction,
-					event,
-					func(tview.Primitive) {},
-				)
-				if consumed {
-					return true, nil
+			if action == tview.MouseLeftClick ||
+				action == tview.MouseLeftDoubleClick {
+				itemIndex := p.itemOffset + y - p.y - 1
+				if itemIndex >= 0 && itemIndex < len(p.menu.items) &&
+					!p.menu.items[itemIndex].Separator {
+					p.selected = itemIndex
+					p.menu.selectItem(itemIndex)
 				}
 			}
 			return true, nil

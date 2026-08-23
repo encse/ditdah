@@ -68,6 +68,21 @@ func TestBindingCanBeInvokedWithoutKeyboardEvent(t *testing.T) {
 	}
 }
 
+func TestActionHasNoKeyboardShortcut(t *testing.T) {
+	handled := 0
+	action := Action("about", func() { handled++ })
+
+	if action.Handle(tcell.NewEventKey(tcell.KeyRune, 'a', 0)) {
+		t.Fatal("shortcut-free action handled a key")
+	}
+	if !action.Invoke() || handled != 1 {
+		t.Fatalf("action invocation returned false or called handler %d times", handled)
+	}
+	if got := Hints([]Binding{action}); len(got) != 0 {
+		t.Fatalf("shortcut-free action hints = %#v, want none", got)
+	}
+}
+
 func TestHintsKeepsApplicationKeysAndHidesConventionalKeys(t *testing.T) {
 	bindings := []Binding{
 		OnRune('/', "search", func() {}),

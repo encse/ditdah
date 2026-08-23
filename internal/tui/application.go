@@ -114,6 +114,7 @@ func (a *application) buildApplicationMenu() {
 		items = append(items, a.activePage.MenuItems()...)
 	}
 	if a.exitBindingSet {
+		items = append(items, components.MenuItem{Separator: true})
 		items = append(items, components.MenuItem{
 			Label:   "Exit",
 			Binding: a.exitBinding,
@@ -129,7 +130,9 @@ func (a *application) buildApplicationMenu() {
 		a.applicationBindings...,
 	)
 	for _, item := range items {
-		a.globalBindings = append(a.globalBindings, item.Binding)
+		if !item.Separator {
+			a.globalBindings = append(a.globalBindings, item.Binding)
+		}
 	}
 }
 

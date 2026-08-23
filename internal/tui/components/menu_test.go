@@ -85,6 +85,45 @@ func TestMenuPopupPassesOutsideClickThroughAfterClosing(t *testing.T) {
 	}
 }
 
+func TestMenuPopupDisplaysAndSkipsSeparator(t *testing.T) {
+	screen := newTestScreen(t)
+	overlays := &testOverlayHost{}
+	menu := newTestFactoryWithOverlays(overlays).Menu("File", []MenuItem{
+		{Label: "About", Binding: keybinding.Action("about", func() {})},
+		{Separator: true},
+		{Label: "Exit", Binding: keybinding.OnRune('q', "quit", func() {})},
+	})
+	menu.SetRect(0, 0, 6, 1)
+	menu.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	popup := overlays.current(t).(*menuPopup)
+	popup.SetRect(0, 0, 40, 12)
+	popup.Draw(screen)
+
+	assertRune(t, screen, 0, 3, tview.Borders.LeftT)
+	assertRune(t, screen, 1, 3, tview.Borders.Horizontal)
+	assertRune(t, screen, popup.width-1, 3, tview.Borders.RightT)
+	popup.InputHandler()(
+		tcell.NewEventKey(tcell.KeyDown, 0, 0),
+		func(tview.Primitive) {},
+	)
+	if got := popup.selected; got != 2 {
+		t.Fatalf("current item after Down = %d, want Exit at 2", got)
+	}
+
+	popup.selected = 0
+	popup.MouseHandler()(
+		tview.MouseLeftClick,
+		tcell.NewEventMouse(4, 3, tcell.Button1, 0),
+		func(tview.Primitive) {},
+	)
+	if got := popup.selected; got != 0 {
+		t.Fatalf("current item after separator click = %d, want About at 0", got)
+	}
+	if overlays.primitive == nil {
+		t.Fatal("separator click closed menu")
+	}
+}
+
 func TestMenuDoesNotChangeBackgroundWhenFocusedOrOpen(t *testing.T) {
 	screen := newTestScreen(t)
 	overlays := &testOverlayHost{}
