@@ -61,6 +61,29 @@ func TestPageHasEmptyDecoderOutputAndRightPanel(t *testing.T) {
 	}
 }
 
+func TestPageFactoryRestoresDecoderStateIntoFreshPage(t *testing.T) {
+	factory := NewFactory(newTestHost(), nil, nil, nil, nil)
+	first := factory().(*page)
+	first.callsigns = []string{"DL1ABC", "HA7NCS"}
+	first.selectedCallsign = "HA7NCS"
+	_, _ = first.decodedText.WriteString("CQ HA7NCS")
+
+	second := factory().(*page)
+
+	if second == first {
+		t.Fatal("factory reused the decoder page")
+	}
+	if got := strings.Join(second.callsigns, ","); got != "DL1ABC,HA7NCS" {
+		t.Fatalf("restored callsigns = %q, want DL1ABC,HA7NCS", got)
+	}
+	if second.selectedCallsign != "HA7NCS" {
+		t.Fatalf("selected callsign = %q, want HA7NCS", second.selectedCallsign)
+	}
+	if second.output.Text() == "" {
+		t.Fatal("restored decoder output is empty")
+	}
+}
+
 func TestPageWritesStreamingDecoderOutput(t *testing.T) {
 	device := audio.Device{ID: "radio", Name: "USB radio"}
 	source := newRecordingAudioSource(device)

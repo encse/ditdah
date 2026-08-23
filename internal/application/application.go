@@ -71,15 +71,13 @@ func newTerminalApplication(
 			qsoEditors.Edit,
 		)
 	}
-	newDecoderPage := func() tui.Page {
-		return decoderpage.New(
-			app,
-			deps.audio,
-			deps.stores.Settings,
-			deps.callsignLookup,
-			qsoEditors.Create,
-		)
-	}
+	newDecoderPage := decoderpage.NewFactory(
+		app,
+		deps.audio,
+		deps.stores.Settings,
+		deps.callsignLookup,
+		qsoEditors.Create,
+	)
 
 	app.AddKeyBinding(
 		keybinding.OnKey(tcell.KeyF1, "Logbook", func() {

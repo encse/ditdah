@@ -32,7 +32,14 @@ type lookupRequest struct {
 	callsign   string
 }
 
+type decoderState struct {
+	callsigns        []string
+	selectedCallsign string
+	decodedText      strings.Builder
+}
+
 type page struct {
+	*decoderState
 	host             ui.PageHost
 	source           audio.Source
 	settings         settings.Store
@@ -47,10 +54,7 @@ type page struct {
 	lookups          syncutil.Mailbox[lookupRequest]
 	showNewQSOEditor func(ui.Owner, string)
 
-	callsigns        []string
-	selectedCallsign string
 	lookupGeneration uint64
-	decodedText      strings.Builder
 }
 
 // New creates the page for live Morse decoder output.
@@ -71,6 +75,29 @@ func New(
 	)
 }
 
+// NewFactory creates fresh decoder pages which restore the current decoder
+// session state whenever the user navigates back to them.
+func NewFactory(
+	host ui.PageHost,
+	source audio.Source,
+	settingsStore settings.Store,
+	lookup callsign.Service,
+	showNewQSOEditor func(ui.Owner, string),
+) func() ui.Page {
+	state := &decoderState{}
+	return func() ui.Page {
+		return newPageWithState(
+			host,
+			source,
+			settingsStore,
+			lookup,
+			showNewQSOEditor,
+			state,
+			domain.NewStreaming,
+		)
+	}
+}
+
 func newPage(
 	host ui.PageHost,
 	source audio.Source,
@@ -79,8 +106,29 @@ func newPage(
 	showNewQSOEditor func(ui.Owner, string),
 	newStream streamFactory,
 ) *page {
+	return newPageWithState(
+		host,
+		source,
+		settingsStore,
+		lookup,
+		showNewQSOEditor,
+		&decoderState{},
+		newStream,
+	)
+}
+
+func newPageWithState(
+	host ui.PageHost,
+	source audio.Source,
+	settingsStore settings.Store,
+	lookup callsign.Service,
+	showNewQSOEditor func(ui.Owner, string),
+	state *decoderState,
+	newStream streamFactory,
+) *page {
 	controls := host.Components()
 	page := &page{
+		decoderState:     state,
 		host:             host,
 		source:           source,
 		settings:         settingsStore,
@@ -109,6 +157,7 @@ func newPage(
 	page.details.SetWrap(true)
 	page.details.SetWordWrap(true)
 	page.renderCallsigns()
+	page.renderDecodedText()
 
 	right := controls.Flex(tview.FlexRow).
 		AddItem(page.callsignList, 0, 1, true).

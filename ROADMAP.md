@@ -46,6 +46,7 @@ This document records implementation decisions and future technical work.
 - [x] Refactor the logbook view into a page, remove its duplicated outer layout, and load its data from the page-owned `Run(ctx)` lifecycle instead of doing I/O or accepting a context in `New`.
 - [x] Add a separate Morse decoder page and application-level F1/F2 navigation between it and the logbook.
 - [x] Give every page a context-bound `Run` lifecycle; cancel and wait for the active page before hiding it or stopping the terminal.
+- [x] Create a fresh decoder page for every navigation while retaining its decoded text, callsign list, and selection in decoder-owned session state.
 - [x] Reconcile pages and nested modals through one application-owned layer stack: derive every layer context from the layer below it, bind modal requests to the exact parent stack entry, keep parent layers running, and hide a removed suffix only after all of its `Run` lifecycles return.
 - [x] Bind background work and queued UI updates directly to their page or dialog object, including owners covered by child modals; pin both in the owner task group, discard updates after that owner leaves the requested stack, and wait for running UI callbacks during shutdown.
 - [x] Share confirmation and message dialogs from the modal package; confirmation closes and invokes its callback only on OK, Cancel and Escape only close, and the owning page starts work and presents operation errors separately.
