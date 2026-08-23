@@ -17,7 +17,7 @@ func TestTerminalApplicationCreatesInitialLogbookPage(t *testing.T) {
 			Settings: emptySettingsStore{},
 		},
 		qrz: unusedQRZService{},
-	})
+	}, "test-version")
 	if terminal == nil {
 		t.Fatal("newTerminalApplication() returned nil")
 	}

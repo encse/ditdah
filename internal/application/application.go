@@ -20,7 +20,7 @@ import (
 
 // Run opens the application database and runs the terminal UI until the user
 // quits or ctx is cancelled.
-func Run(ctx context.Context, databasePath string) (err error) {
+func Run(ctx context.Context, databasePath string, version string) (err error) {
 	db, err := database.OpenSQLite(databasePath)
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ func Run(ctx context.Context, databasePath string) (err error) {
 		err = errors.Join(err, deps.close())
 	}()
 
-	app, initialPage := newTerminalApplication(deps)
+	app, initialPage := newTerminalApplication(deps, version)
 	if err := app.Run(ctx, initialPage); err != nil {
 		return fmt.Errorf("run terminal UI: %w", err)
 	}
@@ -47,6 +47,7 @@ func Run(ctx context.Context, databasePath string) (err error) {
 
 func newTerminalApplication(
 	deps dependencies,
+	version string,
 ) (tui.Application, tui.Page) {
 	app := tui.NewApplication()
 	qsoEditors := qsoeditor.New(
@@ -93,6 +94,12 @@ func newTerminalApplication(
 				deps.qrz,
 				deps.audio,
 			)
+		}),
+	)
+	app.AddMenuItem(
+		"About",
+		keybinding.OnRune('a', "about", func() {
+			openAbout(app, version)
 		}),
 	)
 	return app, newLogbookPage()
