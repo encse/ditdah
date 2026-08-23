@@ -30,6 +30,7 @@ This document records implementation decisions and future technical work.
 - [x] Add a structured header component for fixed application navigation and status information; intentionally omit the redundant current-page title.
 - [x] Add an application header menu with an Exit action backed by the application shutdown path.
 - [x] Separate Exit from application actions with a frame-connected menu separator and allow menu-only actions without global keyboard shortcuts.
+- [x] Handle each displayed menu-item hotkey inside the open popup, closing it before invoking the action.
 - [x] Represent the fixed top navigation as one menu-bar component whose elements are the hamburger menu, F1 Logbook, and F2 Morse decoder; keep it outside contextual hint refreshes.
 - [x] Use a uniform two-cell gap around the hamburger and between top navigation actions, and keep the hamburger background unchanged while focused or open.
 - [x] Use an ASCII `[=]` menu marker because ambiguous-width Unicode symbols such as `☰` can desynchronize tcell's cursor position from the host terminal.

@@ -15,8 +15,10 @@ func TestApplicationMenuDisplaysModalColoredHamburger(t *testing.T) {
 		ModalTheme: nordTheme.modalComponents(),
 	})
 	menu := newApplicationMenu(controls, []components.MenuItem{{
-		Label:   "Exit",
-		Binding: keybinding.OnRune('q', "quit", func() {}),
+		Label:       "Exit",
+		Hotkey:      'q',
+		Description: "quit",
+		Action:      func() {},
 	}}, []keybinding.Binding{
 		keybinding.OnKey(tcell.KeyF1, "Logbook", func() {}),
 		keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {}),

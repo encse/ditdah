@@ -93,20 +93,24 @@ func newTerminalApplication(
 	)
 	app.AddMenuItem(
 		"Settings",
-		keybinding.OnRune('s', "settings", func() {
+		's',
+		"settings",
+		func() {
 			settingspage.Open(
 				app,
 				deps.stores.Settings,
 				deps.qrz,
 				deps.audio,
 			)
-		}),
+		},
 	)
 	app.AddMenuItem(
 		"About",
-		keybinding.Action("about", func() {
+		0,
+		"about",
+		func() {
 			openAbout(app, version, dataDirectory)
-		}),
+		},
 	)
 	return app, newLogbookPage()
 }

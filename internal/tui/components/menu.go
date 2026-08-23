@@ -16,9 +16,11 @@ const (
 
 // MenuItem is one action or separator in a Menu.
 type MenuItem struct {
-	Label     string
-	Binding   keybinding.Binding
-	Separator bool
+	Label       string
+	Hotkey      rune
+	Description string
+	Action      func()
+	Separator   bool
 }
 
 // Menu is a menu-bar item which opens its actions in an overlay list.
@@ -170,12 +172,15 @@ func (m *menu) selectItem(index int) {
 		return
 	}
 	m.closePopup()
-	item.Binding.Invoke()
+	if item.Action != nil {
+		item.Action()
+	}
 }
 
 type menuPopup struct {
 	*tview.Box
 	menu       *menu
+	bindings   []keybinding.Binding
 	selected   int
 	itemOffset int
 	x          int
@@ -193,16 +198,31 @@ func newMenuPopup(menu *menu) tview.Primitive {
 		menu:     menu,
 		selected: -1,
 	}
+	popup.bindings = append(popup.bindings, keybinding.OnKey(
+		tcell.KeyEscape,
+		"close",
+		menu.closePopup,
+	))
+	for index, item := range menu.items {
+		if item.Separator || item.Hotkey == 0 {
+			continue
+		}
+		itemIndex := index
+		popup.bindings = append(
+			popup.bindings,
+			keybinding.OnRune(
+				item.Hotkey,
+				item.Description,
+				func() { menu.selectItem(itemIndex) },
+			),
+		)
+	}
 	popup.selected = popup.nextItem(-1, 1)
 	return popup
 }
 
 func (p *menuPopup) KeyBindings() []keybinding.Binding {
-	return []keybinding.Binding{keybinding.OnKey(
-		tcell.KeyEscape,
-		"close",
-		p.menu.closePopup,
-	)}
+	return p.bindings
 }
 
 func (p *menuPopup) Draw(screen tcell.Screen) {
@@ -265,7 +285,7 @@ func (p *menuPopup) drawFrame(screen tcell.Screen) {
 }
 
 func menuItemText(item MenuItem, width int) string {
-	shortcut := item.Binding.Hint().Keys
+	shortcut := menuItemShortcut(item)
 	labelWidth := runewidth.StringWidth(item.Label)
 	shortcutWidth := runewidth.StringWidth(shortcut)
 	contentWidth := width - 2*menuItemHorizontalPadding
@@ -304,7 +324,7 @@ func (p *menuPopup) position(screen tcell.Screen) {
 		if item.Separator {
 			continue
 		}
-		shortcut := item.Binding.Hint().Keys
+		shortcut := menuItemShortcut(item)
 		wantedWidth = max(
 			wantedWidth,
 			runewidth.StringWidth(item.Label)+
@@ -323,6 +343,13 @@ func (p *menuPopup) position(screen tcell.Screen) {
 		p.height = min(wantedHeight, menuY)
 		p.y = menuY - p.height
 	}
+}
+
+func menuItemShortcut(item MenuItem) string {
+	if item.Hotkey == 0 {
+		return ""
+	}
+	return keybinding.OnRune(item.Hotkey, item.Description, nil).Hint().Keys
 }
 
 func (p *menuPopup) Focus(_ func(tview.Primitive)) {

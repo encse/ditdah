@@ -79,7 +79,9 @@ func TestApplicationMenuItemHandlesPhysicalMouseClick(t *testing.T) {
 	selected := make(chan struct{}, 1)
 	app.AddMenuItem(
 		"Settings",
-		keybinding.OnRune('s', "settings", func() { selected <- struct{}{} }),
+		's',
+		"settings",
+		func() { selected <- struct{}{} },
 	)
 	page := &applicationTestPage{
 		id:      "logbook",
@@ -162,7 +164,9 @@ func TestApplicationMenuItemsAlsoProvideGlobalBindings(t *testing.T) {
 	opened := 0
 	app.AddMenuItem(
 		"Settings",
-		keybinding.OnRune('s', "settings", func() { opened++ }),
+		's',
+		"settings",
+		func() { opened++ },
 	)
 	app.buildApplicationMenu()
 
@@ -220,10 +224,12 @@ func TestActivePageContributesApplicationMenuItems(t *testing.T) {
 		title:   "Decoder",
 		content: tview.NewBox(),
 		menuItems: []components.MenuItem{{
-			Label: "Morse input",
-			Binding: keybinding.OnRune('i', "Morse input", func() {
+			Label:       "Morse input",
+			Hotkey:      'i',
+			Description: "Morse input",
+			Action: func() {
 				handled++
-			}),
+			},
 		}},
 	}
 

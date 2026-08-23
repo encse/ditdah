@@ -1,7 +1,6 @@
 package components
 
 import (
-	"ditdah/internal/tui/keybinding"
 	"testing"
 
 	"github.com/gdamore/tcell/v2"
@@ -13,10 +12,10 @@ func TestMenuOpensBorderedPopupAndInvokesSelectedItem(t *testing.T) {
 	overlays := &testOverlayHost{}
 	invocations := 0
 	menu := newTestFactoryWithOverlays(overlays).Menu("File", []MenuItem{{
-		Label: "Exit",
-		Binding: keybinding.OnRune(
-			'q', "quit", func() { invocations++ },
-		),
+		Label:       "Exit",
+		Hotkey:      'q',
+		Description: "quit",
+		Action:      func() { invocations++ },
 	}})
 	menu.SetRect(5, 1, 10, 1)
 	menu.Draw(screen)
@@ -89,9 +88,9 @@ func TestMenuPopupDisplaysAndSkipsSeparator(t *testing.T) {
 	screen := newTestScreen(t)
 	overlays := &testOverlayHost{}
 	menu := newTestFactoryWithOverlays(overlays).Menu("File", []MenuItem{
-		{Label: "About", Binding: keybinding.Action("about", func() {})},
+		{Label: "About", Description: "about", Action: func() {}},
 		{Separator: true},
-		{Label: "Exit", Binding: keybinding.OnRune('q', "quit", func() {})},
+		{Label: "Exit", Hotkey: 'q', Description: "quit", Action: func() {}},
 	})
 	menu.SetRect(0, 0, 6, 1)
 	menu.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
@@ -121,6 +120,36 @@ func TestMenuPopupDisplaysAndSkipsSeparator(t *testing.T) {
 	}
 	if overlays.primitive == nil {
 		t.Fatal("separator click closed menu")
+	}
+}
+
+func TestOpenMenuHandlesItemHotkeyAfterClosing(t *testing.T) {
+	overlays := &testOverlayHost{}
+	invocations := 0
+	closedBeforeAction := false
+	menu := newTestFactoryWithOverlays(overlays).Menu("File", []MenuItem{{
+		Label:       "Settings",
+		Hotkey:      's',
+		Description: "settings",
+		Action: func() {
+			invocations++
+			closedBeforeAction = overlays.primitive == nil
+		},
+	}})
+	menu.SetRect(0, 0, 6, 1)
+	menu.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+	popup := overlays.current(t)
+
+	popup.InputHandler()(
+		tcell.NewEventKey(tcell.KeyRune, 's', 0),
+		func(tview.Primitive) {},
+	)
+
+	if invocations != 1 {
+		t.Fatalf("Settings invocations = %d, want 1", invocations)
+	}
+	if !closedBeforeAction {
+		t.Fatal("menu action ran before popup closed")
 	}
 }
 

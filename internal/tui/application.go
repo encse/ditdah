@@ -18,7 +18,7 @@ import (
 type Application interface {
 	PageHost
 	OpenModalForCurrentLayer(dialog modal.Dialog) modal.Handle
-	AddMenuItem(label string, binding keybinding.Binding)
+	AddMenuItem(label string, hotkey rune, description string, action func())
 	AddKeyBinding(binding keybinding.Binding)
 	Show(page Page) error
 	Run(ctx context.Context, initialPage Page) error
@@ -96,11 +96,15 @@ func newApplication(theme colorTheme) Application {
 
 func (a *application) AddMenuItem(
 	label string,
-	binding keybinding.Binding,
+	hotkey rune,
+	description string,
+	action func(),
 ) {
 	a.menuItems = append(a.menuItems, components.MenuItem{
-		Label:   label,
-		Binding: binding,
+		Label:       label,
+		Hotkey:      hotkey,
+		Description: description,
+		Action:      action,
 	})
 }
 
@@ -116,8 +120,10 @@ func (a *application) buildApplicationMenu() {
 	if a.exitBindingSet {
 		items = append(items, components.MenuItem{Separator: true})
 		items = append(items, components.MenuItem{
-			Label:   "Exit",
-			Binding: a.exitBinding,
+			Label:       "Exit",
+			Hotkey:      'q',
+			Description: "quit",
+			Action:      func() { a.exitBinding.Invoke() },
 		})
 	}
 	functionKeys, _ := keybinding.SplitFunctionBindings(a.applicationBindings)
@@ -130,8 +136,12 @@ func (a *application) buildApplicationMenu() {
 		a.applicationBindings...,
 	)
 	for _, item := range items {
-		if !item.Separator {
-			a.globalBindings = append(a.globalBindings, item.Binding)
+		if !item.Separator && item.Hotkey != 0 {
+			a.globalBindings = append(a.globalBindings, keybinding.OnRune(
+				item.Hotkey,
+				item.Description,
+				item.Action,
+			))
 		}
 	}
 }
