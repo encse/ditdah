@@ -83,6 +83,7 @@ This document records implementation decisions and future technical work.
 
 - [x] Publish a responsive static product site through GitHub Pages and use VHS to capture deterministic PNG screenshots of the real themed logbook, QSO editor, and populated Morse decoder from build-tagged fixtures.
 - [x] Build cgo-enabled Linux amd64, Windows amd64, macOS Intel, and SIMD-enabled macOS Apple Silicon release archives on native GitHub-hosted runners; fall back to the scalar implementation when the SIMD build is unavailable and publish version tags as GitHub releases.
+- [x] Create release tags from a validated version input in a manually dispatched GitHub Action and explicitly dispatch the existing release workflow for the new tag.
 - [x] Embed the DitDah favicon as the Windows executable icon during release builds.
 - [x] Embed the release tag in every published binary and expose it through `ditdah --version`.
 - [x] Show the embedded version, developer callsign, project website, and resolved data directory in an application About dialog.
