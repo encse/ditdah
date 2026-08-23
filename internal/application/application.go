@@ -80,13 +80,13 @@ func newTerminalApplication(
 	)
 
 	app.AddKeyBinding(
-		keybinding.OnKey(tcell.KeyF1, "Logbook", func() {
-			_ = app.Show(newLogbookPage())
+		keybinding.OnKey(tcell.KeyF1, "Morse decoder", func() {
+			_ = app.Show(newDecoderPage())
 		}),
 	)
 	app.AddKeyBinding(
-		keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {
-			_ = app.Show(newDecoderPage())
+		keybinding.OnKey(tcell.KeyF2, "Logbook", func() {
+			_ = app.Show(newLogbookPage())
 		}),
 	)
 	app.AddMenuItem(
@@ -110,5 +110,5 @@ func newTerminalApplication(
 			openAbout(app, version, dataDirectory)
 		},
 	)
-	return app, newLogbookPage()
+	return app, newDecoderPage()
 }

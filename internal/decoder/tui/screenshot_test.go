@@ -16,8 +16,8 @@ import (
 
 func TestScreenshotMorseDecoder(t *testing.T) {
 	app := ui.NewApplication()
-	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Logbook", func() {}))
-	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {}))
+	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Morse decoder", func() {}))
+	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Logbook", func() {}))
 	page := newPage(app, nil, nil, nil, nil, nil)
 	page.statusText = "Listening: USB Audio CODEC"
 	page.callsigns = []string{"OH2BH", "DL1ABC", "G3XYZ", "I2RTF"}

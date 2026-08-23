@@ -10,7 +10,7 @@ import (
 	"ditdah/internal/stores"
 )
 
-func TestTerminalApplicationCreatesInitialLogbookPage(t *testing.T) {
+func TestTerminalApplicationCreatesInitialDecoderPage(t *testing.T) {
 	terminal, initialPage := newTerminalApplication(dependencies{
 		stores: stores.Stores{
 			Logbook:  emptyLogbookStore{},
@@ -21,8 +21,8 @@ func TestTerminalApplicationCreatesInitialLogbookPage(t *testing.T) {
 	if terminal == nil {
 		t.Fatal("newTerminalApplication() returned nil")
 	}
-	if initialPage == nil || initialPage.ID() != "logbook" {
-		t.Fatalf("initial page = %v, want logbook", initialPage)
+	if initialPage == nil || initialPage.ID() != "morse-decoder" {
+		t.Fatalf("initial page = %v, want morse-decoder", initialPage)
 	}
 }
 

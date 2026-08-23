@@ -47,8 +47,8 @@ func screenshotScreen(t *testing.T) tcell.SimulationScreen {
 }
 
 func addScreenshotNavigation(app ui.Application) {
-	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Logbook", func() {}))
-	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {}))
+	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Morse decoder", func() {}))
+	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Logbook", func() {}))
 }
 
 func screenshotQSOs() []domain.QSO {

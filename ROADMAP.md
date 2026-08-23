@@ -31,7 +31,7 @@ This document records implementation decisions and future technical work.
 - [x] Add an application header menu with an Exit action backed by the application shutdown path.
 - [x] Separate Exit from application actions with a frame-connected menu separator and allow menu-only actions without global keyboard shortcuts.
 - [x] Handle each displayed menu-item hotkey inside the open popup, closing it before invoking the action.
-- [x] Represent the fixed top navigation as one menu-bar component whose elements are the hamburger menu, F1 Logbook, and F2 Morse decoder; keep it outside contextual hint refreshes.
+- [x] Represent the fixed top navigation as one menu-bar component whose elements are the hamburger menu, F1 Morse decoder, and F2 Logbook; keep it outside contextual hint refreshes.
 - [x] Use a uniform two-cell gap around the hamburger and between top navigation actions, and keep the hamburger background unchanged while focused or open.
 - [x] Use an ASCII `[=]` menu marker because ambiguous-width Unicode symbols such as `☰` can desynchronize tcell's cursor position from the host terminal.
 - [x] Make the header and footer keybinding hints clickable through the same binding handlers used by keyboard input, and retain function-key navigation while the application menu is open.
@@ -44,7 +44,7 @@ This document records implementation decisions and future technical work.
 - [x] Add a shared `Layout` that arranges the header, active page content, and footer.
 - [x] Define a `Page` abstraction that exposes its identity, title, content, and page-level keybindings without owning the shared header or footer.
 - [x] Refactor the logbook view into a page, remove its duplicated outer layout, and load its data from the page-owned `Run(ctx)` lifecycle instead of doing I/O or accepting a context in `New`.
-- [x] Add a separate Morse decoder page and application-level F1/F2 navigation between it and the logbook.
+- [x] Use the Morse decoder as the initial F1 page and the logbook as the secondary F2 page.
 - [x] Give every page a context-bound `Run` lifecycle; cancel and wait for the active page before hiding it or stopping the terminal.
 - [x] Create a fresh decoder page for every navigation while retaining its decoded text, callsign list, and selection in decoder-owned session state.
 - [x] Reconcile pages and nested modals through one application-owned layer stack: derive every layer context from the layer below it, bind modal requests to the exact parent stack entry, keep parent layers running, and hide a removed suffix only after all of its `Run` lifecycles return.

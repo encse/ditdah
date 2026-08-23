@@ -73,7 +73,7 @@ go run .
 3. Enter your station callsign and select the audio input connected to your
    receiver.
 4. Optionally configure QRZ.com credentials.
-5. Press `F1` for the logbook or `F2` for the Morse decoder.
+5. Press `F1` for the Morse decoder or `F2` for the logbook.
 
 Your terminal may request microphone permission when the decoder first opens.
 The selected input is remembered in `logbook.db`.

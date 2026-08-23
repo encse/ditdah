@@ -20,8 +20,8 @@ import (
 
 func TestScreenshotNewQSO(t *testing.T) {
 	app := ui.NewApplication()
-	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Logbook", func() {}))
-	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Morse decoder", func() {}))
+	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF1, "Morse decoder", func() {}))
+	app.AddKeyBinding(keybinding.OnKey(tcell.KeyF2, "Logbook", func() {}))
 	page := &screenshotPage{content: app.Components().TextView()}
 	editor := newQSOEditor(app, screenshotQSO(), nil, nil)
 
