@@ -11,7 +11,14 @@ import (
 
 const databasePath = "logbook.db"
 
+var version = "development"
+
 func main() {
+	if len(os.Args) == 2 && os.Args[1] == "--version" {
+		fmt.Println(version)
+		return
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 

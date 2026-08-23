@@ -78,6 +78,7 @@ This document records implementation decisions and future technical work.
 - [x] Publish a responsive static product site through GitHub Pages and generate deterministic SVG screenshots of the real themed logbook, QSO editor, and populated Morse decoder through test-only screenshot fixtures.
 - [x] Build cgo-enabled Linux amd64, Windows amd64, macOS Intel, and SIMD-enabled macOS Apple Silicon release archives on native GitHub-hosted runners; fall back to the scalar implementation when the SIMD build is unavailable and publish version tags as GitHub releases.
 - [x] Embed the DitDah favicon as the Windows executable icon during release builds.
+- [x] Embed the release tag in every published binary and expose it through `ditdah --version`.
 - [x] Implement QRZ synchronization on top of the validated credentials and stored synchronization state, retaining remote log IDs so edited records can be replaced without duplicates.
 - [x] Add the initial read-only logbook TUI with table, details, and search.
 - [x] Add QSO creation, editing, and confirmed deletion to the logbook TUI.

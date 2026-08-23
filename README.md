@@ -57,6 +57,8 @@ go build -o ditdah .
 
 On Windows, build and run `ditdah.exe` instead.
 
+Print the embedded build version with `ditdah --version`.
+
 For a quick development run without creating a binary:
 
 ```bash
