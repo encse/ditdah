@@ -123,5 +123,6 @@ func openSettings(app tui.Application, deps dependencies) {
 		deps.stores.Settings,
 		deps.qrz,
 		deps.audio,
+		deps.radio,
 	)
 }

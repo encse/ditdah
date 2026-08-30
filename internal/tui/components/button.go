@@ -9,6 +9,7 @@ import (
 type Button interface {
 	tview.Primitive
 	SetSelectedFunc(handler func())
+	SetDisabled(disabled bool)
 }
 
 type button struct {
@@ -62,4 +63,8 @@ func (b *button) MouseHandler() mouseHandler {
 
 func (b *button) SetSelectedFunc(handler func()) {
 	b.Button.SetSelectedFunc(handler)
+}
+
+func (b *button) SetDisabled(disabled bool) {
+	b.Button.SetDisabled(disabled)
 }

@@ -28,6 +28,10 @@ func TestSQLiteStoreSavesAndLoadsSettings(t *testing.T) {
 		QRZPassword:        " password with spaces ",
 		QRZAPIKey:          " api-key ",
 		MorseInputDeviceID: " input-id ",
+		RadioModelID:       3073,
+		RadioModelName:     " Icom IC-7300 ",
+		RadioSerialPort:    " /dev/cu.radio ",
+		RadioBaudRate:      19200,
 	}
 
 	saved, err := store.Save(ctx, want)
@@ -37,6 +41,8 @@ func TestSQLiteStoreSavesAndLoadsSettings(t *testing.T) {
 	want.StationCallsign = "HA7NCS"
 	want.QRZAPIKey = "api-key"
 	want.MorseInputDeviceID = "input-id"
+	want.RadioModelName = "Icom IC-7300"
+	want.RadioSerialPort = "/dev/cu.radio"
 	want.Configured = true
 	if saved != want {
 		t.Fatalf("Save() = %#v, want %#v", saved, want)

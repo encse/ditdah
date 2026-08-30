@@ -6,6 +6,7 @@ import (
 	"ditdah/internal/audio"
 	"ditdah/internal/callsign"
 	"ditdah/internal/qrz"
+	"ditdah/internal/radio"
 	"ditdah/internal/stores"
 )
 
@@ -15,6 +16,7 @@ type dependencies struct {
 	qrzSync        qrz.Synchronizer
 	callsignLookup callsign.Service
 	audio          audio.Source
+	radio          radio.Service
 }
 
 func newDependencies(db *sql.DB) (dependencies, error) {
@@ -38,6 +40,7 @@ func newDependencies(db *sql.DB) (dependencies, error) {
 			client,
 		),
 		audio: input,
+		radio: radio.New(),
 	}, nil
 }
 

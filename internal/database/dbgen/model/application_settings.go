@@ -14,4 +14,8 @@ type ApplicationSettings struct {
 	QrzAPIKey          string
 	MorseInputDeviceID string
 	Configured         int64
+	RadioModelID       int64
+	RadioModelName     string
+	RadioSerialPort    string
+	RadioBaudRate      int64
 }

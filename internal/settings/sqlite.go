@@ -73,6 +73,18 @@ func (s *sqliteStore) Save(
 			ApplicationSettings.MorseInputDeviceID.SET(
 				ApplicationSettings.EXCLUDED.MorseInputDeviceID,
 			),
+			ApplicationSettings.RadioModelID.SET(
+				ApplicationSettings.EXCLUDED.RadioModelID,
+			),
+			ApplicationSettings.RadioModelName.SET(
+				ApplicationSettings.EXCLUDED.RadioModelName,
+			),
+			ApplicationSettings.RadioSerialPort.SET(
+				ApplicationSettings.EXCLUDED.RadioSerialPort,
+			),
+			ApplicationSettings.RadioBaudRate.SET(
+				ApplicationSettings.EXCLUDED.RadioBaudRate,
+			),
 			ApplicationSettings.Configured.SET(
 				ApplicationSettings.EXCLUDED.Configured,
 			),
@@ -92,6 +104,10 @@ func settingsFromModel(stored dbmodel.ApplicationSettings) Settings {
 		QRZPassword:        stored.QrzPassword,
 		QRZAPIKey:          stored.QrzAPIKey,
 		MorseInputDeviceID: stored.MorseInputDeviceID,
+		RadioModelID:       int(stored.RadioModelID),
+		RadioModelName:     stored.RadioModelName,
+		RadioSerialPort:    stored.RadioSerialPort,
+		RadioBaudRate:      int(stored.RadioBaudRate),
 		Configured:         stored.Configured != 0,
 	}
 }
@@ -107,6 +123,10 @@ func settingsToModel(settings Settings) dbmodel.ApplicationSettings {
 		QrzPassword:        settings.QRZPassword,
 		QrzAPIKey:          settings.QRZAPIKey,
 		MorseInputDeviceID: settings.MorseInputDeviceID,
+		RadioModelID:       int64(settings.RadioModelID),
+		RadioModelName:     settings.RadioModelName,
+		RadioSerialPort:    settings.RadioSerialPort,
+		RadioBaudRate:      int64(settings.RadioBaudRate),
 		Configured:         configured,
 	}
 }

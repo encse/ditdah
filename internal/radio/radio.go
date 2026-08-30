@@ -1,0 +1,27 @@
+// Package radio exposes the application's read-only radio boundary.
+package radio
+
+import "context"
+
+// Config identifies the Hamlib backend and serial connection used by a radio.
+type Config struct {
+	ModelID   int
+	ModelName string
+	Port      string
+	BaudRate  int
+}
+
+// Model is a serial radio backend supported by Hamlib.
+type Model struct {
+	ID              int
+	Manufacturer    string
+	Name            string
+	DefaultBaudRate int
+}
+
+// Service discovers radios and performs read-only connection checks.
+type Service interface {
+	Models() ([]Model, error)
+	Ports() ([]string, error)
+	Check(ctx context.Context, config Config) (frequencyHz uint64, err error)
+}

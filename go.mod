@@ -10,6 +10,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.16
 	github.com/pressly/goose/v3 v3.27.3
 	github.com/rivo/tview v0.42.0
+	go.bug.st/serial v1.8.0
 	golang.org/x/sync v0.22.0
 	gonum.org/v1/gonum v0.17.0
 	modernc.org/sqlite v1.56.0

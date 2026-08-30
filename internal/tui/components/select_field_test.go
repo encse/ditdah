@@ -52,6 +52,66 @@ func TestSelectFieldOptionsCanBeReplaced(t *testing.T) {
 	}
 }
 
+func TestOpenSelectFieldJumpsToFirstOptionStartingWithTypedLetter(t *testing.T) {
+	overlays := &testOverlayHost{}
+	field := newTestFactoryWithOverlays(overlays).SelectField(
+		"Radio",
+		[]string{"Icom IC-7300", "ADAT ADT-200A", "Alinco DX-SR9", "Yaesu FT-710"},
+		0,
+		10,
+		0,
+	)
+	field.Focus(nil)
+	field.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+
+	popup := overlays.current(t)
+	popup.InputHandler()(
+		tcell.NewEventKey(tcell.KeyRune, 'a', 0),
+		func(tview.Primitive) {},
+	)
+	popup.InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		func(tview.Primitive) {},
+	)
+
+	index, value := field.CurrentOption()
+	if index != 1 || value != "ADAT ADT-200A" {
+		t.Fatalf(
+			"CurrentOption() = (%d, %q), want first A option",
+			index,
+			value,
+		)
+	}
+}
+
+func TestOpenSelectFieldLetterJumpIsCaseInsensitive(t *testing.T) {
+	overlays := &testOverlayHost{}
+	field := newTestFactoryWithOverlays(overlays).SelectField(
+		"Mode",
+		[]string{"CW", "data", "SSB"},
+		0,
+		6,
+		24,
+	)
+	field.Focus(nil)
+	field.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
+
+	popup := overlays.current(t)
+	popup.InputHandler()(
+		tcell.NewEventKey(tcell.KeyRune, 'D', 0),
+		func(tview.Primitive) {},
+	)
+	popup.InputHandler()(
+		tcell.NewEventKey(tcell.KeyEnter, 0, 0),
+		func(tview.Primitive) {},
+	)
+
+	index, value := field.CurrentOption()
+	if index != 1 || value != "data" {
+		t.Fatalf("CurrentOption() = (%d, %q), want (1, data)", index, value)
+	}
+}
+
 func TestSelectFieldPopupClosesWhenItLosesFocus(t *testing.T) {
 	overlays := &testOverlayHost{}
 	field := newTestFactoryWithOverlays(overlays).SelectField(

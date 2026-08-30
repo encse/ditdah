@@ -15,6 +15,7 @@ interface.
 - Record callsigns, date and time, frequency, mode, reports, exchanges, name,
   QTH, and notes.
 - Decode Morse code from a selectable live audio input.
+- Configure and verify a read-only Hamlib radio connection on macOS.
 - Maintain a callsign list beside the decoder and highlight the selected
   callsign in decoded text.
 - Look up callsign details through QRZ.com and reuse cached results.
@@ -52,6 +53,7 @@ Building requires:
 ```bash
 git clone https://github.com/encse/ditdah.git
 cd ditdah
+./scripts/build-hamlib.sh # macOS only
 go build -o ditdah .
 ./ditdah
 ```
@@ -66,7 +68,7 @@ For a quick development run without creating a binary:
 go run .
 ```
 
-Build the pinned static Hamlib dependency on macOS with:
+The macOS build requires the pinned static Hamlib dependency. Build it with:
 
 ```bash
 ./scripts/build-hamlib.sh
@@ -75,7 +77,7 @@ Build the pinned static Hamlib dependency on macOS with:
 The script downloads the verified Hamlib source archive and installs the
 headers and static library under `.build/hamlib`. Direct USB backends are
 disabled; radios exposed by the operating system as serial ports remain
-supported. The application does not link Hamlib yet.
+supported. cgo links this library into the resulting DitDah executable.
 
 ## First run
 

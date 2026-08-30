@@ -23,6 +23,10 @@ type applicationSettingsTable struct {
 	QrzAPIKey          sqlite.ColumnString
 	MorseInputDeviceID sqlite.ColumnString
 	Configured         sqlite.ColumnInteger
+	RadioModelID       sqlite.ColumnInteger
+	RadioModelName     sqlite.ColumnString
+	RadioSerialPort    sqlite.ColumnString
+	RadioBaudRate      sqlite.ColumnInteger
 
 	AllColumns     sqlite.ColumnList
 	MutableColumns sqlite.ColumnList
@@ -70,9 +74,13 @@ func newApplicationSettingsTableImpl(schemaName, tableName, alias string) applic
 		QrzAPIKeyColumn          = sqlite.StringColumn("qrz_api_key")
 		MorseInputDeviceIDColumn = sqlite.StringColumn("morse_input_device_id")
 		ConfiguredColumn         = sqlite.IntegerColumn("configured")
-		allColumns               = sqlite.ColumnList{IDColumn, StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn, ConfiguredColumn}
-		mutableColumns           = sqlite.ColumnList{StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn, ConfiguredColumn}
-		defaultColumns           = sqlite.ColumnList{IDColumn, StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn, ConfiguredColumn}
+		RadioModelIDColumn       = sqlite.IntegerColumn("radio_model_id")
+		RadioModelNameColumn     = sqlite.StringColumn("radio_model_name")
+		RadioSerialPortColumn    = sqlite.StringColumn("radio_serial_port")
+		RadioBaudRateColumn      = sqlite.IntegerColumn("radio_baud_rate")
+		allColumns               = sqlite.ColumnList{IDColumn, StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn, ConfiguredColumn, RadioModelIDColumn, RadioModelNameColumn, RadioSerialPortColumn, RadioBaudRateColumn}
+		mutableColumns           = sqlite.ColumnList{StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn, ConfiguredColumn, RadioModelIDColumn, RadioModelNameColumn, RadioSerialPortColumn, RadioBaudRateColumn}
+		defaultColumns           = sqlite.ColumnList{IDColumn, StationCallsignColumn, QrzPasswordColumn, QrzAPIKeyColumn, MorseInputDeviceIDColumn, ConfiguredColumn, RadioModelIDColumn, RadioModelNameColumn, RadioSerialPortColumn, RadioBaudRateColumn}
 	)
 
 	return applicationSettingsTable{
@@ -85,6 +93,10 @@ func newApplicationSettingsTableImpl(schemaName, tableName, alias string) applic
 		QrzAPIKey:          QrzAPIKeyColumn,
 		MorseInputDeviceID: MorseInputDeviceIDColumn,
 		Configured:         ConfiguredColumn,
+		RadioModelID:       RadioModelIDColumn,
+		RadioModelName:     RadioModelNameColumn,
+		RadioSerialPort:    RadioSerialPortColumn,
+		RadioBaudRate:      RadioBaudRateColumn,
 
 		AllColumns:     allColumns,
 		MutableColumns: mutableColumns,

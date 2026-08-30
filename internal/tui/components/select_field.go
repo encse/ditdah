@@ -2,6 +2,9 @@ package components
 
 import (
 	"fmt"
+	"strings"
+	"unicode"
+
 	"ditdah/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
@@ -15,6 +18,7 @@ type SelectField interface {
 	keybinding.BindingProvider
 	CurrentOption() (index int, value string)
 	SetOptions(options []string, selected int)
+	SetChangedFunc(handler func(index int, value string))
 }
 
 type selectField struct {
@@ -38,6 +42,7 @@ type selectField struct {
 	formFieldWidth      int
 	overlays            OverlayHost
 	overlay             Overlay
+	changed             func(index int, value string)
 }
 
 func newSelectField(
@@ -125,6 +130,10 @@ func (s *selectField) SetOptions(options []string, selected int) {
 	s.options = append(s.options[:0], options...)
 	s.selected = selected
 	s.highlighted = selected
+}
+
+func (s *selectField) SetChangedFunc(handler func(index int, value string)) {
+	s.changed = handler
 }
 
 func (s *selectField) KeyBindings() []keybinding.Binding {
@@ -274,10 +283,15 @@ func (s *selectField) removePopup() {
 }
 
 func (s *selectField) selectHighlighted() {
+	previous := s.selected
 	if s.highlighted >= 0 && s.highlighted < len(s.options) {
 		s.selected = s.highlighted
 	}
 	s.closePopup()
+	if s.selected != previous && s.changed != nil {
+		_, value := s.CurrentOption()
+		s.changed(s.selected, value)
+	}
 }
 
 type selectPopup struct {
@@ -400,10 +414,32 @@ func (p *selectPopup) InputHandler() func(
 				return
 			}
 		}
+		if event.Key() == tcell.KeyRune && unicode.IsLetter(event.Rune()) {
+			if index := firstOptionStartingWith(
+				p.selectField.options,
+				event.Rune(),
+			); index >= 0 {
+				p.list.SetCurrentItem(index)
+				return
+			}
+		}
 		if handler := p.list.InputHandler(); handler != nil {
 			handler(event, setFocus)
 		}
 	})
+}
+
+func firstOptionStartingWith(options []string, character rune) int {
+	wanted := unicode.ToLower(character)
+	for index, option := range options {
+		for _, first := range strings.TrimSpace(option) {
+			if unicode.ToLower(first) == wanted {
+				return index
+			}
+			break
+		}
+	}
+	return -1
 }
 
 func (p *selectPopup) MouseHandler() func(
