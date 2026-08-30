@@ -24,7 +24,7 @@ import (
 )
 
 func TestPageMetadata(t *testing.T) {
-	page := New(newTestHost(), nil, nil, nil, nil)
+	page := New(newTestHost(), nil, nil, nil, nil, nil)
 
 	if page.ID() != "morse-decoder" {
 		t.Fatalf("ID() = %q, want morse-decoder", page.ID())
@@ -100,7 +100,7 @@ func waitForPageStatus(
 }
 
 func TestPageHasEmptyDecoderOutputAndRightPanel(t *testing.T) {
-	page := New(newTestHost(), nil, nil, nil, nil).(*page)
+	page := New(newTestHost(), nil, nil, nil, nil, nil).(*page)
 	if page.output.Text() != "" {
 		t.Fatalf("output text = %q, want empty", page.output.Text())
 	}
@@ -122,7 +122,7 @@ func TestPageHasEmptyDecoderOutputAndRightPanel(t *testing.T) {
 }
 
 func TestPageFactoryRestoresDecoderStateIntoFreshPage(t *testing.T) {
-	factory := NewFactory(newTestHost(), nil, nil, nil, nil)
+	factory := NewFactory(newTestHost(), nil, nil, nil, nil, nil)
 	first := factory().(*page)
 	first.callsigns = []string{"DL1ABC", "HA7NCS"}
 	first.selectedCallsign = "HA7NCS"
@@ -159,6 +159,7 @@ func TestPageWritesStreamingDecoderOutput(t *testing.T) {
 		func() (domain.Streaming, error) {
 			return emittingStream{text: "CQ "}, nil
 		},
+		nil,
 	)
 	cancel, done := runDecoderPage(t, page)
 
@@ -189,6 +190,7 @@ func TestPageRestartsCaptureWhenSettingsChange(t *testing.T) {
 		nil,
 		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
+		nil,
 	)
 	cancel, done := runDecoderPage(t, page)
 
@@ -216,6 +218,7 @@ func TestHiddenPageDoesNotReactToSettingsUntilNextActivation(t *testing.T) {
 		nil,
 		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
+		nil,
 	)
 
 	if len(source.starts) != 0 {
@@ -242,6 +245,7 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 		nil,
 		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
+		nil,
 	)
 	cancel, done := runDecoderPage(t, page)
 
@@ -254,7 +258,7 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 }
 
 func TestPageDoesNotContributeMenuItems(t *testing.T) {
-	page := New(newTestHost(), nil, nil, nil, nil)
+	page := New(newTestHost(), nil, nil, nil, nil, nil)
 	items := page.MenuItems()
 	if len(items) != 0 {
 		t.Fatalf("MenuItems() = %#v, want none", items)
@@ -273,6 +277,7 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 		store,
 		nil,
 		editors.Create,
+		nil,
 	).(*page)
 	bindings := page.KeyBindings()
 	if len(bindings) != 4 || bindings[0].Hint().Keys != "a" ||
@@ -327,7 +332,7 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 
 func TestDeleteCallsignBindingRequiresConfirmation(t *testing.T) {
 	host := newTestHost()
-	page := New(host, nil, nil, nil, nil).(*page)
+	page := New(host, nil, nil, nil, nil, nil).(*page)
 	if err := page.addCallsign("DL1ABC"); err != nil {
 		t.Fatal(err)
 	}
@@ -370,7 +375,7 @@ func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
 			}),
 		},
 	}
-	page := New(host, nil, nil, lookup, nil).(*page)
+	page := New(host, nil, nil, lookup, nil, nil).(*page)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
@@ -403,7 +408,7 @@ func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
 
 func TestPageRetriesSelectedCallsignAfterReactivation(t *testing.T) {
 	lookup := &cancelingLookupService{requests: make(chan string, 2)}
-	page := New(newTestHost(), nil, nil, lookup, nil).(*page)
+	page := New(newTestHost(), nil, nil, lookup, nil, nil).(*page)
 	if err := page.addCallsign("DL1ABC"); err != nil {
 		t.Fatal(err)
 	}

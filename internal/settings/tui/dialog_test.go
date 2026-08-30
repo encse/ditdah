@@ -28,7 +28,7 @@ func TestSettingsIsUsableWhileCredentialValidationRuns(t *testing.T) {
 	host := newTestHost()
 	host.updated = make(chan struct{}, 1)
 
-	dialog := newDialog(host, store, service, nil)
+	dialog := newDialog(host, store, service, nil, nil)
 	if len(dialog.Focusables()) == 0 {
 		t.Fatal("settings controls are not immediately focusable")
 	}
@@ -56,7 +56,7 @@ func TestOpenValidatesStoredQRZCredentials(t *testing.T) {
 	host := newTestHost()
 	host.updated = make(chan struct{}, 3)
 
-	Open(host, store, service, nil)
+	Open(host, store, service, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 	cancel, done := runSettingsDialog(t, dialog)
 	defer stopSettingsDialog(t, cancel, done)
@@ -94,7 +94,7 @@ func TestSettingsRevalidatesQRZLoginWhenCallsignChanges(t *testing.T) {
 	host := newTestHost()
 	host.updated = make(chan struct{}, 3)
 	dialog := newDialog(
-		host, &recordingStore{loaded: values}, service, nil,
+		host, &recordingStore{loaded: values}, service, nil, nil,
 	)
 	cancel, done := runSettingsDialog(t, dialog)
 	defer stopSettingsDialog(t, cancel, done)
@@ -138,6 +138,7 @@ func TestSettingsSelectsSavedMorseInput(t *testing.T) {
 			{ID: "built-in", Name: "Built-in input", IsDefault: true},
 			{ID: "usb", Name: "USB radio"},
 		}},
+		nil,
 	)
 	dialog := host.lastDialog().(*dialog)
 	if store.loadCalls != 0 {
@@ -169,6 +170,7 @@ func TestSettingsSavesDefaultMorseInput(t *testing.T) {
 			{ID: "first", Name: "Line input"},
 			{ID: "default", Name: "USB radio", IsDefault: true},
 		}},
+		nil,
 	)
 	dialog := host.lastDialog().(*dialog)
 	loadSettingsDialog(t, host, dialog)
@@ -193,6 +195,7 @@ func TestSettingsShowsMorseInputEnumerationError(t *testing.T) {
 		&recordingStore{},
 		&recordingQRZService{},
 		recordingDeviceLister{err: errors.New("capture backend failed")},
+		nil,
 	)
 	dialog := host.lastDialog().(*dialog)
 	cancel, done := runSettingsDialog(t, dialog)
@@ -210,6 +213,7 @@ func TestSettingsButtonsReceiveMouseClicks(t *testing.T) {
 		host,
 		store,
 		&recordingQRZService{},
+		nil,
 		nil,
 	)
 	handle := &testHandle{}
@@ -261,7 +265,7 @@ func TestLoginValidatesAndStagesPasswordUntilSettingsAreSaved(t *testing.T) {
 	}}
 	service := &recordingQRZService{}
 	host := newTestHost()
-	Open(host, store, service, nil)
+	Open(host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
 	loadSettingsDialog(t, host, settings)
 
@@ -301,7 +305,7 @@ func TestFailedLoginRemainsOpenAndIsNotSaved(t *testing.T) {
 	store := &recordingStore{loaded: domain.Settings{StationCallsign: "HA7NCS"}}
 	service := &recordingQRZService{loginErr: errors.New("password incorrect")}
 	host := newTestHost()
-	Open(host, store, service, nil)
+	Open(host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
 	loadSettingsDialog(t, host, settings)
 
@@ -325,7 +329,7 @@ func TestAPIKeyUpdateValidatesAndStagesKeyUntilSettingsAreSaved(t *testing.T) {
 	store := &recordingStore{loaded: domain.Settings{StationCallsign: "HA7NCS"}}
 	service := &recordingQRZService{}
 	host := newTestHost()
-	Open(host, store, service, nil)
+	Open(host, store, service, nil, nil)
 	settings := host.lastDialog().(*dialog)
 	loadSettingsDialog(t, host, settings)
 
@@ -360,7 +364,7 @@ func TestClearActionsStageEmptyCredentialsUntilSettingsAreSaved(t *testing.T) {
 		QRZAPIKey:       "key",
 	}}
 	host := newTestHost()
-	Open(host, store, &recordingQRZService{}, nil)
+	Open(host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 	loadSettingsDialog(t, host, dialog)
 
@@ -388,7 +392,7 @@ func TestClearActionsStageEmptyCredentialsUntilSettingsAreSaved(t *testing.T) {
 func TestSubmitSavesCallsignAndClosesSettings(t *testing.T) {
 	store := &recordingStore{}
 	host := newTestHost()
-	Open(host, store, &recordingQRZService{}, nil)
+	Open(host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 	loadSettingsDialog(t, host, dialog)
 
@@ -410,7 +414,7 @@ func TestCancelDiscardsStagedCredentialChanges(t *testing.T) {
 		QRZAPIKey:       "key",
 	}}
 	host := newTestHost()
-	Open(host, store, &recordingQRZService{}, nil)
+	Open(host, store, &recordingQRZService{}, nil, nil)
 	dialog := host.lastDialog().(*dialog)
 	loadSettingsDialog(t, host, dialog)
 

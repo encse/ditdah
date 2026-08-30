@@ -46,6 +46,9 @@ func TestFactoryCreatesResolvedQSOForOwner(t *testing.T) {
 	if !present || frequency != 14_074_000 {
 		t.Fatalf("new QSO frequency = %d, %v", frequency, present)
 	}
+	if editor.frequency.Value() != "14.074" {
+		t.Fatalf("frequency field = %q, want 14.074", editor.frequency.Value())
+	}
 
 	editor.ok.InputHandler()(tcell.NewEventKey(tcell.KeyEnter, 0, 0), nil)
 
@@ -71,6 +74,9 @@ func TestFactoryDoesNotFillNewQSOFrequencyFromRadioError(t *testing.T) {
 	editor := host.modal.(*qsoEditor)
 	if _, present := editor.qso.FrequencyHz.Get(); present {
 		t.Fatal("new QSO frequency was filled from an error status")
+	}
+	if editor.frequency.Value() != "" {
+		t.Fatalf("frequency field = %q, want empty", editor.frequency.Value())
 	}
 }
 

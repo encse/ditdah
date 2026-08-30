@@ -67,7 +67,7 @@ func New(
 	settingsStore settings.Store,
 	lookup callsign.Service,
 	showNewQSOEditor func(ui.Owner, string),
-	radios ...radio.StatusSource,
+	radioSource radio.StatusSource,
 ) ui.Page {
 	return newPage(
 		host,
@@ -76,7 +76,7 @@ func New(
 		lookup,
 		showNewQSOEditor,
 		domain.NewStreaming,
-		radios...,
+		radioSource,
 	)
 }
 
@@ -88,7 +88,7 @@ func NewFactory(
 	settingsStore settings.Store,
 	lookup callsign.Service,
 	showNewQSOEditor func(ui.Owner, string),
-	radios ...radio.StatusSource,
+	radioSource radio.StatusSource,
 ) func() ui.Page {
 	state := &decoderState{}
 	return func() ui.Page {
@@ -100,7 +100,7 @@ func NewFactory(
 			showNewQSOEditor,
 			state,
 			domain.NewStreaming,
-			radios...,
+			radioSource,
 		)
 	}
 }
@@ -112,7 +112,7 @@ func newPage(
 	lookup callsign.Service,
 	showNewQSOEditor func(ui.Owner, string),
 	newStream streamFactory,
-	radios ...radio.StatusSource,
+	radioSource radio.StatusSource,
 ) *page {
 	return newPageWithState(
 		host,
@@ -122,7 +122,7 @@ func newPage(
 		showNewQSOEditor,
 		&decoderState{},
 		newStream,
-		radios...,
+		radioSource,
 	)
 }
 
@@ -134,7 +134,7 @@ func newPageWithState(
 	showNewQSOEditor func(ui.Owner, string),
 	state *decoderState,
 	newStream streamFactory,
-	radios ...radio.StatusSource,
+	radioSource radio.StatusSource,
 ) *page {
 	controls := host.Components()
 	page := &page{
@@ -142,14 +142,12 @@ func newPageWithState(
 		host:             host,
 		source:           source,
 		settings:         settingsStore,
+		radio:            radioSource,
 		lookup:           lookup,
 		newStream:        newStream,
 		lookups:          syncutil.NewMailbox(lookupRequest{}),
 		showNewQSOEditor: showNewQSOEditor,
 		audioStatus:      "Paused",
-	}
-	if len(radios) > 0 {
-		page.radio = radios[0]
 	}
 	output := controls.TextView()
 	output.SetStyle(components.TextViewPrimary)

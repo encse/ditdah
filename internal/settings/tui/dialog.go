@@ -75,9 +75,9 @@ func Open(
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
-	radios ...radio.Monitor,
+	radioMonitor radio.Monitor,
 ) {
-	dialog := newDialog(host, store, qrzService, inputs, radios...)
+	dialog := newDialog(host, store, qrzService, inputs, radioMonitor)
 	dialog.handle = host.OpenModalForCurrentLayer(dialog)
 }
 
@@ -86,7 +86,7 @@ func newDialog(
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
-	radios ...radio.Monitor,
+	radioMonitor radio.Monitor,
 ) *dialog {
 	controls := host.Components().Modal()
 	dialog := &dialog{
@@ -94,9 +94,7 @@ func newDialog(
 		store:  store,
 		qrz:    qrzService,
 		inputs: inputs,
-	}
-	if len(radios) > 0 {
-		dialog.radio = radios[0]
+		radio:  radioMonitor,
 	}
 	dialog.stationCallsign = dialog.input(
 		controls,
