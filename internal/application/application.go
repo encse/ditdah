@@ -80,6 +80,7 @@ func newTerminalApplication(
 		deps.stores.Logbook,
 		deps.stores.Settings,
 		deps.callsignLookup,
+		deps.radio,
 	)
 	newLogbookPage := func() tui.Page {
 		return logbookpage.New(
@@ -99,6 +100,7 @@ func newTerminalApplication(
 		deps.stores.Settings,
 		deps.callsignLookup,
 		qsoEditors.Create,
+		deps.radio,
 	)
 
 	app.AddKeyBinding(

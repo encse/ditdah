@@ -61,19 +61,6 @@ func TestRadioDialogChecksAndAcceptsConnectionOnOK(t *testing.T) {
 	}
 }
 
-func TestFormatFrequencyUsesMHzWithOnlyNecessaryPrecision(t *testing.T) {
-	tests := map[uint64]string{
-		28_039_000: "28.039 MHz",
-		28_039_600: "28.0396 MHz",
-		28_039_601: "28.039601 MHz",
-	}
-	for frequency, want := range tests {
-		if got := formatFrequency(frequency); got != want {
-			t.Errorf("formatFrequency(%d) = %q, want %q", frequency, got, want)
-		}
-	}
-}
-
 func TestRadioDialogPaintsItsModalBackground(t *testing.T) {
 	modalBackground := tcell.NewRGBColor(190, 190, 190)
 	host := newTestHost()

@@ -11,6 +11,7 @@ import (
 	"ditdah/internal/callsign"
 	domain "ditdah/internal/decoder"
 	"ditdah/internal/optional"
+	"ditdah/internal/radio"
 	"ditdah/internal/settings"
 	"ditdah/internal/syncutil"
 	ui "ditdah/internal/tui"
@@ -43,6 +44,7 @@ type page struct {
 	host             ui.PageHost
 	source           audio.Source
 	settings         settings.Store
+	radio            radio.StatusSource
 	lookup           callsign.Service
 	newStream        streamFactory
 	content          tview.Primitive
@@ -50,7 +52,8 @@ type page struct {
 	right            tview.Primitive
 	callsignList     components.Table
 	details          components.TextView
-	statusText       string
+	audioStatus      string
+	radioStatus      string
 	lookups          syncutil.Mailbox[lookupRequest]
 	showNewQSOEditor func(ui.Owner, string)
 
@@ -64,6 +67,7 @@ func New(
 	settingsStore settings.Store,
 	lookup callsign.Service,
 	showNewQSOEditor func(ui.Owner, string),
+	radios ...radio.StatusSource,
 ) ui.Page {
 	return newPage(
 		host,
@@ -72,6 +76,7 @@ func New(
 		lookup,
 		showNewQSOEditor,
 		domain.NewStreaming,
+		radios...,
 	)
 }
 
@@ -83,6 +88,7 @@ func NewFactory(
 	settingsStore settings.Store,
 	lookup callsign.Service,
 	showNewQSOEditor func(ui.Owner, string),
+	radios ...radio.StatusSource,
 ) func() ui.Page {
 	state := &decoderState{}
 	return func() ui.Page {
@@ -94,6 +100,7 @@ func NewFactory(
 			showNewQSOEditor,
 			state,
 			domain.NewStreaming,
+			radios...,
 		)
 	}
 }
@@ -105,6 +112,7 @@ func newPage(
 	lookup callsign.Service,
 	showNewQSOEditor func(ui.Owner, string),
 	newStream streamFactory,
+	radios ...radio.StatusSource,
 ) *page {
 	return newPageWithState(
 		host,
@@ -114,6 +122,7 @@ func newPage(
 		showNewQSOEditor,
 		&decoderState{},
 		newStream,
+		radios...,
 	)
 }
 
@@ -125,6 +134,7 @@ func newPageWithState(
 	showNewQSOEditor func(ui.Owner, string),
 	state *decoderState,
 	newStream streamFactory,
+	radios ...radio.StatusSource,
 ) *page {
 	controls := host.Components()
 	page := &page{
@@ -136,7 +146,10 @@ func newPageWithState(
 		newStream:        newStream,
 		lookups:          syncutil.NewMailbox(lookupRequest{}),
 		showNewQSOEditor: showNewQSOEditor,
-		statusText:       "Paused",
+		audioStatus:      "Paused",
+	}
+	if len(radios) > 0 {
+		page.radio = radios[0]
 	}
 	output := controls.TextView()
 	output.SetStyle(components.TextViewPrimary)
@@ -192,7 +205,12 @@ func (p *page) KeyBindings() []keybinding.Binding {
 
 func (p *page) MenuItems() []components.MenuItem { return nil }
 
-func (p *page) Status() string { return p.statusText }
+func (p *page) Status() string {
+	if p.radioStatus == "" {
+		return p.audioStatus
+	}
+	return p.radioStatus + "  " + p.audioStatus
+}
 
 // Run decodes audio while the page is visible. Input changes end only the
 // current audio session; the page run continues with the saved input.
@@ -210,7 +228,31 @@ func (p *page) Run(ctx context.Context) {
 		p.runLookups(ctx)
 		return nil
 	})
+	group.Go(func() error {
+		p.runRadioStatus(ctx)
+		return nil
+	})
 	_ = group.Wait()
+}
+
+func (p *page) runRadioStatus(ctx context.Context) {
+	if p.radio == nil {
+		return
+	}
+	changes := p.radio.Subscribe()
+	defer changes.Close()
+	for ctx.Err() == nil {
+		status := p.radio.Status()
+		p.host.Update(p, func() {
+			p.radioStatus = ""
+			if status.Error == "" && status.FrequencyHz > 0 {
+				p.radioStatus = ui.FormatFrequencyMHz(status.FrequencyHz)
+			}
+		})
+		if err := changes.Wait(ctx); err != nil {
+			return
+		}
+	}
 }
 
 func (p *page) runDecoder(ctx context.Context) {
@@ -398,7 +440,7 @@ func (p *page) appendDecoded(ctx context.Context, text string) error {
 
 func (p *page) setStatus(status string) {
 	p.host.Update(p, func() {
-		p.statusText = status
+		p.audioStatus = status
 	})
 }
 

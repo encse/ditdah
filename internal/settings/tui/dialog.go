@@ -552,7 +552,7 @@ func (d *dialog) showRadioInfo() {
 
 func (d *dialog) showRadioConnected(frequency uint64) {
 	d.radioInfo.SetStyle(components.TextViewAccent)
-	d.radioInfo.SetText(formatFrequency(frequency))
+	d.radioInfo.SetText(ui.FormatFrequencyMHz(frequency))
 }
 
 func (d *dialog) showRadioFailure(err error) {

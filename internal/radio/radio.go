@@ -37,11 +37,21 @@ type Service interface {
 	Check(ctx context.Context, config Config) (frequencyHz uint64, err error)
 }
 
+// StatusReader exposes the latest monitored radio result.
+type StatusReader interface {
+	Status() Status
+}
+
+// StatusSource publishes changes to the latest monitored radio result.
+type StatusSource interface {
+	StatusReader
+	Subscribe() syncutil.Subscription
+}
+
 // Monitor continuously reads the configured radio for the application
 // lifetime and publishes coalesced status-change notifications.
 type Monitor interface {
 	Service
+	StatusSource
 	Run(ctx context.Context)
-	Status() Status
-	Subscribe() syncutil.Subscription
 }

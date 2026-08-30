@@ -12,6 +12,7 @@ import (
 	domain "ditdah/internal/decoder"
 	logbookdomain "ditdah/internal/logbook"
 	"ditdah/internal/optional"
+	"ditdah/internal/radio"
 	"ditdah/internal/settings"
 	"ditdah/internal/syncutil"
 	ui "ditdah/internal/tui"
@@ -36,6 +37,65 @@ func TestPageMetadata(t *testing.T) {
 	}
 	if len(page.Focusables()) != 3 {
 		t.Fatalf("Focusables() = %d items, want output, callsigns, details", len(page.Focusables()))
+	}
+}
+
+func TestPageDisplaysSubscribedRadioFrequencyBeforeAudioStatus(t *testing.T) {
+	host := newTestHost()
+	host.updated = make(chan struct{}, 4)
+	radioStatus := newDecoderRadioStatus(radio.Status{FrequencyHz: 14_074_000})
+	device := audio.Device{ID: "radio", Name: "USB radio"}
+	source := newRecordingAudioSource(device)
+	store := &decoderSettingsStore{values: settings.Settings{
+		MorseInputDeviceID: device.ID,
+	}}
+	page := newPage(
+		host,
+		source,
+		store,
+		nil,
+		nil,
+		func() (domain.Streaming, error) { return emittingStream{}, nil },
+		radioStatus,
+	)
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		page.Run(ctx)
+		close(done)
+	}()
+
+	waitForAudioStart(t, source.starts, device.ID)
+	waitForPageStatus(t, host, page, "14.074 MHz  Listening: USB radio")
+	radioStatus.set(radio.Status{Error: "radio did not answer"})
+	waitForPageStatus(t, host, page, "Listening: USB radio")
+
+	cancel()
+	waitForRun(t, done)
+	select {
+	case <-radioStatus.closed:
+	default:
+		t.Fatal("decoder page did not close its radio subscription")
+	}
+}
+
+func waitForPageStatus(
+	t *testing.T,
+	host *testHost,
+	page *page,
+	want string,
+) {
+	t.Helper()
+	deadline := time.After(time.Second)
+	for {
+		select {
+		case <-host.updated:
+			if host.pageStatus(page) == want {
+				return
+			}
+		case <-deadline:
+			t.Fatalf("Status() = %q, want %q", host.pageStatus(page), want)
+		}
 	}
 }
 
@@ -510,11 +570,58 @@ type testHost struct {
 	controls components.Factory
 	updated  chan struct{}
 	opened   modal.Dialog
+	uiMu     sync.Mutex
 }
 
 type recordingQSOEditors struct {
 	createdOwner    ui.Owner
 	createdCallsign string
+}
+
+type decoderRadioStatus struct {
+	mu      sync.Mutex
+	status  radio.Status
+	changes syncutil.Broadcaster
+	closed  chan struct{}
+}
+
+func newDecoderRadioStatus(status radio.Status) *decoderRadioStatus {
+	return &decoderRadioStatus{
+		status:  status,
+		changes: syncutil.NewBroadcaster(),
+		closed:  make(chan struct{}),
+	}
+}
+
+func (s *decoderRadioStatus) Status() radio.Status {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.status
+}
+
+func (s *decoderRadioStatus) Subscribe() syncutil.Subscription {
+	return &decoderRadioSubscription{
+		Subscription: s.changes.Subscribe(),
+		closed:       s.closed,
+	}
+}
+
+func (s *decoderRadioStatus) set(status radio.Status) {
+	s.mu.Lock()
+	s.status = status
+	s.mu.Unlock()
+	s.changes.Activate()
+}
+
+type decoderRadioSubscription struct {
+	syncutil.Subscription
+	closed chan struct{}
+	once   sync.Once
+}
+
+func (s *decoderRadioSubscription) Close() {
+	s.Subscription.Close()
+	s.once.Do(func() { close(s.closed) })
 }
 
 func (f *recordingQSOEditors) Create(owner ui.Owner, callsign string) {
@@ -579,14 +686,22 @@ func (h testHost) SetFocus(tview.Primitive) {}
 
 func (h testHost) Refresh() {}
 
-func (h testHost) Update(_ ui.Owner, update func()) bool {
+func (h *testHost) Update(_ ui.Owner, update func()) bool {
+	h.uiMu.Lock()
 	if update != nil {
 		update()
 	}
+	h.uiMu.Unlock()
 	if h.updated != nil {
 		h.updated <- struct{}{}
 	}
 	return true
+}
+
+func (h *testHost) pageStatus(page *page) string {
+	h.uiMu.Lock()
+	defer h.uiMu.Unlock()
+	return page.Status()
 }
 
 func (h testHost) Components() components.Factory { return h.controls }

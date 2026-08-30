@@ -4,11 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
 	"ditdah/internal/callsign"
 	domain "ditdah/internal/logbook"
+	"ditdah/internal/optional"
+	"ditdah/internal/radio"
 	"ditdah/internal/settings"
 	ui "ditdah/internal/tui"
 )
@@ -24,6 +27,7 @@ type factory struct {
 	store    domain.Store
 	settings settings.Store
 	lookup   callsign.Service
+	radio    radio.StatusReader
 }
 
 // New creates a QSO editor factory.
@@ -32,12 +36,14 @@ func New(
 	store domain.Store,
 	settingsStore settings.Store,
 	lookup callsign.Service,
+	radioStatus radio.StatusReader,
 ) Factory {
 	return &factory{
 		host:     host,
 		store:    store,
 		settings: settingsStore,
 		lookup:   lookup,
+		radio:    radioStatus,
 	}
 }
 
@@ -46,6 +52,13 @@ func (f *factory) Create(owner ui.Owner, contactedCallsign string) {
 		Callsign:  strings.ToUpper(strings.TrimSpace(contactedCallsign)),
 		StartedAt: time.Now(),
 		Mode:      "CW",
+	}
+	if f.radio != nil {
+		status := f.radio.Status()
+		if status.Error == "" && status.FrequencyHz > 0 &&
+			status.FrequencyHz <= math.MaxInt64 {
+			qso.FrequencyHz = optional.Some(int64(status.FrequencyHz))
+		}
 	}
 	f.host.Background(owner, func(ctx context.Context) {
 		err := f.resolveDraft(ctx, &qso)

@@ -3,7 +3,6 @@ package tui
 import (
 	"context"
 	"errors"
-	"fmt"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -260,13 +259,4 @@ func selectedPort(saved string, ports []string) int {
 		return 0
 	}
 	return -1
-}
-
-func formatFrequency(frequency uint64) string {
-	megahertz := frequency / 1_000_000
-	fraction := fmt.Sprintf("%06d", frequency%1_000_000)
-	for len(fraction) > 3 && fraction[len(fraction)-1] == '0' {
-		fraction = fraction[:len(fraction)-1]
-	}
-	return fmt.Sprintf("%d.%s MHz", megahertz, fraction)
 }
