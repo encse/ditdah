@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
 	"ditdah/internal/radio"
-	domain "ditdah/internal/settings"
+	"ditdah/internal/syncutil"
 	"ditdah/internal/tui/components"
 
 	"github.com/gdamore/tcell/v2"
@@ -57,6 +58,19 @@ func TestRadioDialogChecksAndAcceptsConnectionOnOK(t *testing.T) {
 	}
 	if accepted != want || acceptedFrequency != 14_074_000 {
 		t.Fatalf("accepted = %#v, %d, want %#v, 14074000", accepted, acceptedFrequency, want)
+	}
+}
+
+func TestFormatFrequencyUsesMHzWithOnlyNecessaryPrecision(t *testing.T) {
+	tests := map[uint64]string{
+		28_039_000: "28.039 MHz",
+		28_039_600: "28.0396 MHz",
+		28_039_601: "28.039601 MHz",
+	}
+	for frequency, want := range tests {
+		if got := formatFrequency(frequency); got != want {
+			t.Errorf("formatFrequency(%d) = %q, want %q", frequency, got, want)
+		}
 	}
 }
 
@@ -180,45 +194,53 @@ func TestRadioDialogKeepsFailedConnectionOpen(t *testing.T) {
 	}
 }
 
-func TestSettingsChecksStoredRadioWhenOpened(t *testing.T) {
-	want := radio.Config{
-		ModelID:   3073,
-		ModelName: "Icom IC-7300",
-		Port:      "/dev/cu.radio",
-		BaudRate:  19200,
-	}
+func TestSettingsDisplaysRadioUpdatesAndUnsubscribesOnStop(t *testing.T) {
 	service := &recordingRadioService{
-		frequency:     7_030_000,
-		checkRequests: make(chan radio.Config, 1),
+		status:             radio.Status{Error: "radio did not answer"},
+		subscriptionClosed: make(chan struct{}),
 	}
 	host := newTestHost()
 	settings := newDialog(
 		host,
-		&recordingStore{loaded: domain.Settings{
-			RadioModelID:    want.ModelID,
-			RadioModelName:  want.ModelName,
-			RadioSerialPort: want.Port,
-			RadioBaudRate:   want.BaudRate,
-		}},
+		&recordingStore{},
 		&recordingQRZService{},
 		nil,
 		service,
 	)
-	if _, loaded := settings.load(t.Context()); !loaded {
-		t.Fatal("settings did not load")
-	}
-	settings.validateStoredRadio(t.Context())
-	var checked radio.Config
+	host.updated = make(chan struct{}, 2)
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		settings.runRadioStatus(ctx)
+		close(done)
+	}()
 	select {
-	case checked = <-service.checkRequests:
+	case <-host.updated:
 	case <-time.After(time.Second):
-		t.Fatal("stored radio was not checked")
+		t.Fatal("settings did not display the subscribed radio status")
 	}
-	if checked != want {
-		t.Fatalf("checked config = %#v, want %#v", checked, want)
+	if !strings.Contains(settings.radioInfo.Text(), "radio did not answer") {
+		t.Fatalf("radio error = %q", settings.radioInfo.Text())
 	}
-	if !strings.Contains(settings.radioStatus.Text(), "7.030 MHz") {
-		t.Fatalf("radio status = %q", settings.radioStatus.Text())
+	service.setStatus(radio.Status{FrequencyHz: 7_030_000})
+	select {
+	case <-host.updated:
+	case <-time.After(time.Second):
+		t.Fatal("settings did not display the changed radio status")
+	}
+	if settings.radioInfo.Text() != "7.030 MHz" {
+		t.Fatalf("radio info = %q, want 7.030 MHz", settings.radioInfo.Text())
+	}
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("settings Run did not stop")
+	}
+	select {
+	case <-service.subscriptionClosed:
+	default:
+		t.Fatal("settings did not close its radio subscription")
 	}
 }
 
@@ -246,8 +268,8 @@ func TestSettingsStagesTestedRadioUntilMainSettingsAreSaved(t *testing.T) {
 	if store.saveCalls != 0 {
 		t.Fatalf("save calls before main OK = %d, want 0", store.saveCalls)
 	}
-	if !strings.Contains(settings.radioInfo.Text(), "Icom IC-7300") {
-		t.Fatalf("radio info = %q", settings.radioInfo.Text())
+	if settings.radioInfo.Text() != "14.074 MHz" {
+		t.Fatalf("radio info = %q, want 14.074 MHz", settings.radioInfo.Text())
 	}
 	settings.submit()
 	if store.saved.RadioModelID != 3073 ||
@@ -285,13 +307,17 @@ func runRadioDialogUntilLoaded(
 }
 
 type recordingRadioService struct {
-	models        []radio.Model
-	ports         []string
-	frequency     uint64
-	modelsErr     error
-	portsErr      error
-	checkErr      error
-	checkRequests chan radio.Config
+	models             []radio.Model
+	ports              []string
+	frequency          uint64
+	modelsErr          error
+	portsErr           error
+	checkErr           error
+	checkRequests      chan radio.Config
+	status             radio.Status
+	changes            syncutil.Broadcaster
+	mu                 sync.Mutex
+	subscriptionClosed chan struct{}
 }
 
 func (s *recordingRadioService) Models() ([]radio.Model, error) {
@@ -310,4 +336,52 @@ func (s *recordingRadioService) Check(
 		s.checkRequests <- config
 	}
 	return s.frequency, s.checkErr
+}
+
+func (s *recordingRadioService) Run(ctx context.Context) { <-ctx.Done() }
+
+func (s *recordingRadioService) Status() radio.Status {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.status == (radio.Status{}) {
+		return radio.Status{Error: "Radio is not configured"}
+	}
+	return s.status
+}
+
+func (s *recordingRadioService) Subscribe() syncutil.Subscription {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.changes == nil {
+		s.changes = syncutil.NewBroadcaster()
+	}
+	subscription := s.changes.Subscribe()
+	if s.subscriptionClosed == nil {
+		return subscription
+	}
+	return &closingSubscription{
+		Subscription: subscription,
+		closed:       s.subscriptionClosed,
+	}
+}
+
+func (s *recordingRadioService) setStatus(status radio.Status) {
+	s.mu.Lock()
+	s.status = status
+	changes := s.changes
+	s.mu.Unlock()
+	if changes != nil {
+		changes.Activate()
+	}
+}
+
+type closingSubscription struct {
+	syncutil.Subscription
+	closed chan struct{}
+	once   sync.Once
+}
+
+func (s *closingSubscription) Close() {
+	s.Subscription.Close()
+	s.once.Do(func() { close(s.closed) })
 }

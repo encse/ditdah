@@ -35,14 +35,13 @@ type dialog struct {
 	loadErr    error
 	devicesErr error
 	inputs     audio.DeviceLister
-	radio      radio.Service
+	radio      radio.Monitor
 
 	stationCallsign  components.InputField
 	morseInput       components.SelectField
 	loginStatus      components.TextView
 	apiKeyStatus     components.TextView
 	radioInfo        components.TextView
-	radioStatus      components.TextView
 	message          components.TextView
 	login            components.Button
 	clearLogin       components.Button
@@ -76,7 +75,7 @@ func Open(
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
-	radios ...radio.Service,
+	radios ...radio.Monitor,
 ) {
 	dialog := newDialog(host, store, qrzService, inputs, radios...)
 	dialog.handle = host.OpenModalForCurrentLayer(dialog)
@@ -87,7 +86,7 @@ func newDialog(
 	store domain.Store,
 	qrzService qrz.Service,
 	inputs audio.DeviceLister,
-	radios ...radio.Service,
+	radios ...radio.Monitor,
 ) *dialog {
 	controls := host.Components().Modal()
 	dialog := &dialog{
@@ -120,7 +119,6 @@ func newDialog(
 	dialog.loginStatus = controls.TextView()
 	dialog.apiKeyStatus = controls.TextView()
 	dialog.radioInfo = controls.TextView()
-	dialog.radioStatus = controls.TextView()
 	dialog.message = controls.TextView()
 	dialog.message.SetStyle(components.TextViewDanger)
 	dialog.message.SetTextAlign(tview.AlignCenter)
@@ -163,7 +161,7 @@ func (d *dialog) KeyBindings() []keybinding.Binding {
 }
 
 func (d *dialog) Run(ctx context.Context) {
-	apiKey, loaded := d.load(ctx)
+	values, loaded := d.load(ctx)
 	if !loaded {
 		<-ctx.Done()
 		return
@@ -172,17 +170,17 @@ func (d *dialog) Run(ctx context.Context) {
 	group, runCtx := errgroup.WithContext(ctx)
 	group.Go(func() error { return d.runLoginChecks(runCtx) })
 	group.Go(func() error {
-		d.validateStoredAPIKey(runCtx, apiKey)
+		d.validateStoredAPIKey(runCtx, values.QRZAPIKey)
 		return nil
 	})
 	group.Go(func() error {
-		d.validateStoredRadio(runCtx)
+		d.runRadioStatus(runCtx)
 		return nil
 	})
 	_ = group.Wait()
 }
 
-func (d *dialog) load(ctx context.Context) (string, bool) {
+func (d *dialog) load(ctx context.Context) (domain.Settings, bool) {
 	values, loadErr := d.store.Load(ctx)
 	var devices []audio.Device
 	var devicesErr error
@@ -192,7 +190,7 @@ func (d *dialog) load(ctx context.Context) (string, bool) {
 		devices, devicesErr = d.inputs.Devices()
 	}
 	if ctx.Err() != nil {
-		return "", false
+		return domain.Settings{}, false
 	}
 	d.host.Update(d, func() {
 		d.values = values
@@ -207,13 +205,12 @@ func (d *dialog) load(ctx context.Context) (string, bool) {
 		)
 		d.showInitialCredentialStatuses()
 		d.showRadioInfo()
-		d.showInitialRadioStatus()
 		if loadErr != nil {
 			d.showError(fmt.Errorf("load settings: %w", loadErr))
 		}
 		d.showInitialDeviceError()
 	})
-	return values.QRZAPIKey, loadErr == nil
+	return values, loadErr == nil
 }
 
 func deviceOptions(devices []audio.Device) []string {
@@ -508,32 +505,29 @@ func (d *dialog) showAPIKeyStatus(validationErr error) {
 	}
 }
 
-func (d *dialog) validateStoredRadio(ctx context.Context) {
-	config := d.radioConfig()
+func (d *dialog) runRadioStatus(ctx context.Context) {
 	generation := d.radioGeneration.Load()
-	if config.ModelID == 0 {
-		return
-	}
 	if d.radio == nil {
+		return
+	}
+	changes := d.radio.Subscribe()
+	defer changes.Close()
+	for ctx.Err() == nil {
+		status := d.radio.Status()
 		d.host.Update(d, func() {
-			d.showRadioFailure(errors.New("Hamlib is unavailable"))
+			if generation != d.radioGeneration.Load() {
+				return
+			}
+			if status.Error != "" {
+				d.showRadioFailure(errors.New(status.Error))
+				return
+			}
+			d.showRadioConnected(status.FrequencyHz)
 		})
-		return
-	}
-	frequency, err := d.radio.Check(ctx, config)
-	if ctx.Err() != nil {
-		return
-	}
-	d.host.Update(d, func() {
-		if generation != d.radioGeneration.Load() {
+		if err := changes.Wait(ctx); err != nil {
 			return
 		}
-		if err != nil {
-			d.showRadioFailure(err)
-			return
-		}
-		d.showRadioConnected(frequency)
-	})
+	}
 }
 
 func (d *dialog) radioConfig() radio.Config {
@@ -552,33 +546,18 @@ func (d *dialog) showRadioInfo() {
 		d.radioInfo.SetText("Not configured")
 		return
 	}
-	d.radioInfo.SetStyle(components.TextViewPrimary)
-	d.radioInfo.SetText(fmt.Sprintf(
-		"%s — %s @ %d",
-		config.ModelName,
-		config.Port,
-		config.BaudRate,
-	))
-}
-
-func (d *dialog) showInitialRadioStatus() {
-	if d.values.RadioModelID == 0 {
-		d.radioStatus.SetStyle(components.TextViewMuted)
-		d.radioStatus.SetText("")
-		return
-	}
-	d.radioStatus.SetStyle(components.TextViewMuted)
-	d.radioStatus.SetText("Checking...")
+	d.radioInfo.SetStyle(components.TextViewMuted)
+	d.radioInfo.SetText("Checking...")
 }
 
 func (d *dialog) showRadioConnected(frequency uint64) {
-	d.radioStatus.SetStyle(components.TextViewAccent)
-	d.radioStatus.SetText(formatFrequency(frequency))
+	d.radioInfo.SetStyle(components.TextViewAccent)
+	d.radioInfo.SetText(formatFrequency(frequency))
 }
 
 func (d *dialog) showRadioFailure(err error) {
-	d.radioStatus.SetStyle(components.TextViewDanger)
-	d.radioStatus.SetText("Check failed: " + err.Error())
+	d.radioInfo.SetStyle(components.TextViewDanger)
+	d.radioInfo.SetText("Check failed: " + err.Error())
 }
 
 func (d *dialog) showError(err error) {
@@ -612,19 +591,17 @@ func (d *dialog) layout(controls components.Factory) modal.Layout {
 		d.radioInfo,
 		d.configureRadio,
 	)
-	radioStatusRow := settingStatusRow(controls, d.radioStatus)
 	fields := controls.Grid().
-		SetRows(1, 1, 1, 1, 1, 1, 1, 1, 1, 1).
+		SetRows(1, 1, 1, 1, 1, 1, 1, 1, 1).
 		SetColumns(0).
 		AddItem(d.stationCallsign, 0, 0, 1, 1, 0, 0, false).
 		AddItem(d.morseInput, 2, 0, 1, 1, 0, 0, false).
 		AddItem(loginRow, 4, 0, 1, 1, 0, 0, false).
 		AddItem(apiKeyRow, 6, 0, 1, 1, 0, 0, false).
-		AddItem(radioRow, 8, 0, 1, 1, 0, 0, false).
-		AddItem(radioStatusRow, 9, 0, 1, 1, 0, 0, false)
+		AddItem(radioRow, 8, 0, 1, 1, 0, 0, false)
 	buttons := centeredButtons(controls, d.ok, d.cancel)
 	return modal.NewLayout(controls, " Settings ", 72).
-		Row(fields, 10).
+		Row(fields, 9).
 		Spacer().
 		Row(d.message, 1).
 		Actions(buttons)
@@ -644,16 +621,6 @@ func settingActionRow(
 		AddItem(labelView, 0, 0, 1, 1, 0, 0, false).
 		AddItem(info, 0, 1, 1, 1, 0, 0, false).
 		AddItem(action, 0, 3, 1, 1, 0, 0, false)
-}
-
-func settingStatusRow(
-	controls components.Factory,
-	status tview.Primitive,
-) tview.Primitive {
-	return controls.Grid().
-		SetRows(1).
-		SetColumns(settingsLabelWidth, 0).
-		AddItem(status, 0, 1, 1, 1, 0, 0, false)
 }
 
 func selectedMorseInput(id string, devices []audio.Device) int {

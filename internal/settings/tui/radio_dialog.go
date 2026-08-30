@@ -263,5 +263,10 @@ func selectedPort(saved string, ports []string) int {
 }
 
 func formatFrequency(frequency uint64) string {
-	return fmt.Sprintf("Connected: %.3f MHz", float64(frequency)/1_000_000)
+	megahertz := frequency / 1_000_000
+	fraction := fmt.Sprintf("%06d", frequency%1_000_000)
+	for len(fraction) > 3 && fraction[len(fraction)-1] == '0' {
+		fraction = fraction[:len(fraction)-1]
+	}
+	return fmt.Sprintf("%d.%s MHz", megahertz, fraction)
 }

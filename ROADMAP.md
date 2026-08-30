@@ -84,7 +84,7 @@ This document records implementation decisions and future technical work.
 - [x] Pin Hamlib 4.7.2 by checksum and add a macOS build which produces a static `libhamlib.a` without libusb or the C++ binding.
 - [x] Link the pinned Hamlib archive into the macOS application behind a read-only Go interface, and enumerate serial ports through `go.bug.st/serial`.
 - [x] Persist radio model, serial port, and explicit baud rate; configure them in a nested Settings modal which can only be accepted after a successful frequency read.
-- [x] Recheck the saved radio connection asynchronously whenever Settings opens, without exposing radio control operations.
+- [x] Run an application-lifetime, settings-aware radio monitor which polls the configured rig once per second, publishes frequency or error state changes, and lets lifecycle-bound UI consumers subscribe without exposing radio control operations.
 - [ ] Add Linux and Windows builds for the pinned static Hamlib dependency.
 - [x] Publish a responsive static product site through GitHub Pages and use VHS to capture deterministic PNG screenshots of the real themed logbook, QSO editor, and populated Morse decoder from build-tagged fixtures.
 - [x] Build cgo-enabled Linux amd64, Windows amd64, macOS Intel, and SIMD-enabled macOS Apple Silicon release archives on native GitHub-hosted runners; fall back to the scalar implementation when the SIMD build is unavailable and publish version tags as GitHub releases.

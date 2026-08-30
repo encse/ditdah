@@ -16,7 +16,7 @@ type dependencies struct {
 	qrzSync        qrz.Synchronizer
 	callsignLookup callsign.Service
 	audio          audio.Source
-	radio          radio.Service
+	radio          radio.Monitor
 }
 
 func newDependencies(db *sql.DB) (dependencies, error) {
@@ -40,7 +40,7 @@ func newDependencies(db *sql.DB) (dependencies, error) {
 			client,
 		),
 		audio: input,
-		radio: radio.New(),
+		radio: radio.NewMonitor(allStores.Settings, radio.New()),
 	}, nil
 }
 

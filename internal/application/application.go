@@ -17,6 +17,7 @@ import (
 	"ditdah/internal/tui/keybinding"
 
 	"github.com/gdamore/tcell/v2"
+	"golang.org/x/sync/errgroup"
 )
 
 // Run opens the application database and runs the terminal UI until the user
@@ -51,7 +52,17 @@ func Run(ctx context.Context, databasePath string, version string) (err error) {
 	if !configured.Configured {
 		onStarted = func() { openSettings(app, deps) }
 	}
-	if err := app.Run(ctx, initialPage, onStarted); err != nil {
+	runCtx, cancel := context.WithCancel(ctx)
+	group, runCtx := errgroup.WithContext(runCtx)
+	group.Go(func() error {
+		deps.radio.Run(runCtx)
+		return nil
+	})
+	group.Go(func() error {
+		defer cancel()
+		return app.Run(runCtx, initialPage, onStarted)
+	})
+	if err := group.Wait(); err != nil {
 		return fmt.Errorf("run terminal UI: %w", err)
 	}
 

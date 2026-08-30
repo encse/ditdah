@@ -357,7 +357,6 @@ func (a *application) Run(
 			EnableMouse(true).
 			Run()
 	})
-
 	layerErr := a.layers.Run(runCtx, a)
 	cancel()
 	a.engine.Stop()
