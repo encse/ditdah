@@ -66,6 +66,17 @@ For a quick development run without creating a binary:
 go run .
 ```
 
+Build the pinned static Hamlib dependency on macOS with:
+
+```bash
+./scripts/build-hamlib.sh
+```
+
+The script downloads the verified Hamlib source archive and installs the
+headers and static library under `.build/hamlib`. Direct USB backends are
+disabled; radios exposed by the operating system as serial ports remain
+supported. The application does not link Hamlib yet.
+
 ## First run
 
 1. Start DitDah in a terminal.
