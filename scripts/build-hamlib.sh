@@ -5,7 +5,7 @@ set -eu
 hamlib_version="4.7.2"
 hamlib_sha256="ae1fcf2dbc80ea0786ea8f047b09399c3f7737d1930442f61a031708ed33e88f"
 hamlib_url="https://github.com/Hamlib/Hamlib/releases/download/${hamlib_version}/hamlib-${hamlib_version}.tar.gz"
-build_recipe="static-without-libusb-v2"
+build_recipe="static-without-libusb-v3"
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repository_dir=$(dirname "$script_dir")
@@ -108,6 +108,9 @@ cd "${work_dir}/build"
 logical_cpus=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 1)
 make -j "$logical_cpus"
 make install
+
+# Hamlib's LICENSE refers to AUTHORS, which `make install` does not install.
+cp "${source_dir}/AUTHORS" "${install_dir}/share/doc/hamlib/AUTHORS"
 
 if [ ! -f "$library" ]; then
     echo "Hamlib build did not produce $library" >&2

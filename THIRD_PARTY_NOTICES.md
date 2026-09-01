@@ -5,10 +5,10 @@
 DitDah includes Hamlib 4.7.2, statically linked into the executable.
 
 The Hamlib frontend and backend libraries are licensed under the GNU Lesser
-General Public License, version 2.1 or (at your option) any later version. A
-copy of that license is included as `HAMLIB-LICENSE` in every DitDah release
-archive. Hamlib's copyright and licensing notice is included as
-`HAMLIB-NOTICE`.
+General Public License, version 2.1 or (at your option) any later version.
+Hamlib's original `LICENSE`, `COPYING`, `COPYING.LIB`, `AUTHORS`, and
+`README.md` files are preserved under `licenses/hamlib/` in every DitDah
+release archive.
 
 The complete, unmodified Hamlib 4.7.2 source archive is published alongside
 the DitDah binaries in the corresponding GitHub release and is also available

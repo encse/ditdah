@@ -96,8 +96,8 @@ jobs:
             go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
           fi
           cp README.md LICENSE THIRD_PARTY_NOTICES.md package/
-          cp .build/hamlib/4.7.2/*/share/doc/hamlib/COPYING.LIB package/HAMLIB-LICENSE
-          cp .build/hamlib/4.7.2/*/share/doc/hamlib/LICENSE package/HAMLIB-NOTICE
+          mkdir -p package/licenses/hamlib
+          cp .build/hamlib/4.7.2/*/share/doc/hamlib/{AUTHORS,COPYING,COPYING.LIB,LICENSE,README.md} package/licenses/hamlib/
           tar -czf "${{ matrix.artifact }}.tar.gz" -C package .
 
       - name: Build
@@ -108,8 +108,8 @@ jobs:
           go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 --icon docs/icon.png --manifest none
           go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
           cp README.md LICENSE THIRD_PARTY_NOTICES.md package/
-          cp .build/hamlib/4.7.2/*/share/doc/hamlib/COPYING.LIB package/HAMLIB-LICENSE
-          cp .build/hamlib/4.7.2/*/share/doc/hamlib/LICENSE package/HAMLIB-NOTICE
+          mkdir -p package/licenses/hamlib
+          cp .build/hamlib/4.7.2/*/share/doc/hamlib/{AUTHORS,COPYING,COPYING.LIB,LICENSE,README.md} package/licenses/hamlib/
 
       - name: Package Windows build
         if: runner.os == 'Windows'
