@@ -72,6 +72,17 @@ supported. The script supports amd64 Linux and Windows (from an MSYS2 MINGW64
 shell), plus amd64 and arm64 macOS. cgo links this library into the resulting
 DitDah executable.
 
+To rebuild DitDah against a modified Hamlib source tree, pass its path to the
+script:
+
+```bash
+DITDAH_HAMLIB_SOURCE_DIR=/path/to/hamlib ./scripts/build-hamlib.sh
+go build -o ditdah .
+```
+
+Hamlib licensing and source details are recorded in
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+
 ## First run
 
 1. Start DitDah in a terminal.

@@ -10,6 +10,17 @@ build_recipe="static-without-libusb-v2"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repository_dir=$(dirname "$script_dir")
 build_root=${DITDAH_HAMLIB_BUILD_ROOT:-"${repository_dir}/.build/hamlib"}
+source_dir=${DITDAH_HAMLIB_SOURCE_DIR:-}
+custom_source=false
+
+if [ -n "$source_dir" ]; then
+    custom_source=true
+    source_dir=$(CDPATH= cd -- "$source_dir" && pwd)
+    if [ ! -x "${source_dir}/configure" ]; then
+        echo "Hamlib source directory does not contain an executable configure script: $source_dir" >&2
+        exit 1
+    fi
+fi
 
 case "$(uname -s):$(uname -m)" in
     Darwin:arm64)
@@ -54,35 +65,40 @@ build_stamp="${install_dir}/.ditdah-build"
 
 mkdir -p "$download_dir" "$install_dir"
 
-if [ -f "$library" ] && [ -f "$build_stamp" ] &&
+if [ -z "$source_dir" ] && [ -f "$library" ] && [ -f "$build_stamp" ] &&
     [ "$(sed -n '1p' "$build_stamp")" = "$build_recipe" ]; then
     echo "Hamlib ${hamlib_version} static library:"
     echo "$library"
     exit 0
 fi
 
-if [ ! -f "$archive" ]; then
-    echo "Downloading Hamlib ${hamlib_version}"
-    curl --fail --location --retry 3 --output "${archive}.download" "$hamlib_url"
-    mv "${archive}.download" "$archive"
-fi
+if [ -z "$source_dir" ]; then
+    if [ ! -f "$archive" ]; then
+        echo "Downloading Hamlib ${hamlib_version}"
+        curl --fail --location --retry 3 --output "${archive}.download" "$hamlib_url"
+        mv "${archive}.download" "$archive"
+    fi
 
-actual_sha256=$($checksum_command "$archive" | awk '{print $1}')
-if [ "$actual_sha256" != "$hamlib_sha256" ]; then
-    echo "Hamlib archive checksum mismatch" >&2
-    echo "expected: $hamlib_sha256" >&2
-    echo "actual:   $actual_sha256" >&2
-    exit 1
+    actual_sha256=$($checksum_command "$archive" | awk '{print $1}')
+    if [ "$actual_sha256" != "$hamlib_sha256" ]; then
+        echo "Hamlib archive checksum mismatch" >&2
+        echo "expected: $hamlib_sha256" >&2
+        echo "actual:   $actual_sha256" >&2
+        exit 1
+    fi
 fi
 
 work_dir=$(mktemp -d "${build_root}/work.XXXXXX")
 trap 'rm -rf "$work_dir"' EXIT HUP INT TERM
 
-tar -xzf "$archive" -C "$work_dir"
+if [ -z "$source_dir" ]; then
+    tar -xzf "$archive" -C "$work_dir"
+    source_dir="${work_dir}/hamlib-${hamlib_version}"
+fi
 mkdir -p "${work_dir}/build"
 cd "${work_dir}/build"
 
-"${work_dir}/hamlib-${hamlib_version}/configure" \
+"${source_dir}/configure" \
     --prefix="$install_dir" \
     --disable-shared \
     --enable-static \
@@ -98,7 +114,11 @@ if [ ! -f "$library" ]; then
     exit 1
 fi
 
-printf '%s\n' "$build_recipe" > "$build_stamp"
+if [ "$custom_source" = true ]; then
+    printf '%s\n' "custom-source" > "$build_stamp"
+else
+    printf '%s\n' "$build_recipe" > "$build_stamp"
+fi
 
 echo "Hamlib ${hamlib_version} static library:"
 echo "$library"

@@ -55,6 +55,12 @@ jobs:
           path-type: inherit
           install: make mingw-w64-x86_64-gcc
 
+      - name: Restore Hamlib build
+        uses: actions/cache@v5
+        with:
+          path: .build/hamlib
+          key: hamlib-4.7.2-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-hamlib.sh') }}
+
       - name: Build Hamlib
         if: runner.os != 'Windows'
         shell: bash
@@ -89,7 +95,9 @@ jobs:
           else
             go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
           fi
-          cp README.md package/
+          cp README.md LICENSE THIRD_PARTY_NOTICES.md package/
+          cp .build/hamlib/4.7.2/*/share/doc/hamlib/COPYING.LIB package/HAMLIB-LICENSE
+          cp .build/hamlib/4.7.2/*/share/doc/hamlib/LICENSE package/HAMLIB-NOTICE
           tar -czf "${{ matrix.artifact }}.tar.gz" -C package .
 
       - name: Build
@@ -99,7 +107,9 @@ jobs:
           mkdir -p package
           go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 --icon docs/icon.png --manifest none
           go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
-          cp README.md package/
+          cp README.md LICENSE THIRD_PARTY_NOTICES.md package/
+          cp .build/hamlib/4.7.2/*/share/doc/hamlib/COPYING.LIB package/HAMLIB-LICENSE
+          cp .build/hamlib/4.7.2/*/share/doc/hamlib/LICENSE package/HAMLIB-NOTICE
 
       - name: Package Windows build
         if: runner.os == 'Windows'
@@ -111,6 +121,14 @@ jobs:
         with:
           name: ${{ matrix.artifact }}
           path: ${{ matrix.artifact }}.*
+          if-no-files-found: error
+
+      - name: Upload Hamlib source
+        if: matrix.artifact == 'ditdah-linux-amd64'
+        uses: actions/upload-artifact@v7
+        with:
+          name: hamlib-4.7.2-source
+          path: .build/hamlib/downloads/hamlib-4.7.2.tar.gz
           if-no-files-found: error
 
   release:

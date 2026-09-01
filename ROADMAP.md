@@ -87,6 +87,8 @@ This document records implementation decisions and future technical work.
 - [x] Run an application-lifetime, settings-aware radio monitor which polls the configured rig once per second, publishes frequency or error state changes, and lets lifecycle-bound UI consumers subscribe without exposing radio control operations.
 - [x] Show live monitored frequency before the Morse decoder audio status through a page-lifecycle subscription, and prefill new (but not edited) QSOs from the monitor's current successful frequency state.
 - [x] Add Linux and Windows builds for the pinned static Hamlib dependency and link them into the native release binaries.
+- [x] Distribute the MIT and Hamlib LGPL notices with every release, publish the exact Hamlib source archive, and support relinking against a modified Hamlib source tree.
+- [x] Cache each platform's pinned Hamlib build in GitHub Actions and invalidate it when the build recipe changes.
 - [x] Publish a responsive static product site through GitHub Pages and use VHS to capture deterministic PNG screenshots of the real themed logbook, QSO editor, and populated Morse decoder from build-tagged fixtures.
 - [x] Build cgo-enabled Linux amd64, Windows amd64, macOS Intel, and SIMD-enabled macOS Apple Silicon release archives on native GitHub-hosted runners; fall back to the scalar implementation when the SIMD build is unavailable and publish version tags as GitHub releases.
 - [x] Create release tags from a validated version input in a manually dispatched GitHub Action and explicitly dispatch the existing release workflow for the new tag.

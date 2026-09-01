@@ -1,5 +1,6 @@
 //go:build (darwin || linux || windows) && cgo
 
+// Native Hamlib integration for supported desktop platforms.
 package radio
 
 /*
