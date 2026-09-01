@@ -1,9 +1,7 @@
 # DitDah
 
-DitDah is a local-first terminal application for amateur-radio operators.
-It combines a searchable QSO logbook with live Morse decoding, callsign lookup,
-and optional QRZ.com synchronization in one keyboard- and mouse-friendly
-interface.
+DitDah is a terminal companion for amateur-radio operators, built to support
+contacts from Morse decoding to logging.
 
 [Website](https://encse.github.io/ditdah/) ·
 [Downloads](https://github.com/encse/ditdah/releases) ·
@@ -11,17 +9,10 @@ interface.
 
 ## Features
 
-- Create, edit, search, and delete QSOs.
-- Record callsigns, date and time, frequency, mode, reports, exchanges, name,
-  QTH, and notes.
-- Decode Morse code from a selectable live audio input.
-- Configure and verify a read-only Hamlib radio connection on macOS.
-- Maintain a callsign list beside the decoder and highlight the selected
-  callsign in decoded text.
-- Look up callsign details through QRZ.com and reuse cached results.
-- Upload pending QSOs to QRZ Logbook and replace previously synchronized records
-  after edits.
-- Keep the logbook and settings in a local SQLite database.
+- Manage QSOs in a built-in logbook and synchronize them with QRZ Logbook.
+- Decode Morse code from live audio input.
+- Track the connected radio's frequency and automatically fill it into new
+  QSOs.
 - Use the full interface with either the keyboard or mouse.
 
 ## Installation
@@ -53,7 +44,7 @@ Building requires:
 ```bash
 git clone https://github.com/encse/ditdah.git
 cd ditdah
-./scripts/build-hamlib.sh # macOS only
+./scripts/build-hamlib.sh
 go build -o ditdah .
 ./ditdah
 ```
@@ -68,7 +59,7 @@ For a quick development run without creating a binary:
 go run .
 ```
 
-The macOS build requires the pinned static Hamlib dependency. Build it with:
+The build requires the pinned static Hamlib dependency. Build it with:
 
 ```bash
 ./scripts/build-hamlib.sh
@@ -77,16 +68,17 @@ The macOS build requires the pinned static Hamlib dependency. Build it with:
 The script downloads the verified Hamlib source archive and installs the
 headers and static library under `.build/hamlib`. Direct USB backends are
 disabled; radios exposed by the operating system as serial ports remain
-supported. cgo links this library into the resulting DitDah executable.
+supported. The script supports amd64 Linux and Windows (from an MSYS2 MINGW64
+shell), plus amd64 and arm64 macOS. cgo links this library into the resulting
+DitDah executable.
 
 ## First run
 
 1. Start DitDah in a terminal.
-2. Open the `[=]` menu and select **Settings**.
-3. Enter your station callsign and select the audio input connected to your
+2. Enter your station callsign and select the audio input connected to your
    receiver.
-4. Optionally configure QRZ.com credentials.
-5. Press `F1` for the Morse decoder or `F2` for the logbook.
+3. Optionally configure QRZ.com credentials.
+4. Press `F1` for the Morse decoder or `F2` for the logbook.
 
 Your terminal may request microphone permission when the decoder first opens.
 The selected input is remembered in `logbook.db`.

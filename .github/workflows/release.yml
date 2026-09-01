@@ -47,7 +47,31 @@ jobs:
           go-version-file: go.mod
           cache: true
 
+      - name: Set up MSYS2
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          path-type: inherit
+          install: make mingw-w64-x86_64-gcc
+
+      - name: Build Hamlib
+        if: runner.os != 'Windows'
+        shell: bash
+        run: ./scripts/build-hamlib.sh
+
+      - name: Build Hamlib
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        run: ./scripts/build-hamlib.sh
+
       - name: Test
+        if: runner.os != 'Windows'
+        run: go test ./...
+
+      - name: Test
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
         run: go test ./...
 
       - name: Build
@@ -70,15 +94,17 @@ jobs:
 
       - name: Build
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: msys2 {0}
         run: |
-          New-Item -ItemType Directory -Path package
+          mkdir -p package
           go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 --icon docs/icon.png --manifest none
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          go build -trimpath -ldflags "-X main.version=$env:GITHUB_REF_NAME" -o "package/${{ matrix.executable }}" .
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          Copy-Item README.md package/
-          Compress-Archive -Path package/* -DestinationPath "${{ matrix.artifact }}.zip"
+          go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
+          cp README.md package/
+
+      - name: Package Windows build
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path package/* -DestinationPath "${{ matrix.artifact }}.zip"
 
       - name: Upload build
         uses: actions/upload-artifact@v7

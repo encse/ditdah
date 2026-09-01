@@ -1,4 +1,4 @@
-//go:build !darwin || !cgo
+//go:build (!darwin && !linux && !windows) || !cgo
 
 package radio
 

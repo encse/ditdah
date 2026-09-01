@@ -1,4 +1,4 @@
-//go:build darwin && cgo
+//go:build (darwin || linux || windows) && cgo
 
 package radio
 
@@ -7,6 +7,10 @@ package radio
 #cgo darwin,arm64 LDFLAGS: ${SRCDIR}/../../.build/hamlib/4.7.2/darwin-arm64/lib/libhamlib.a
 #cgo darwin,amd64 CFLAGS: -I${SRCDIR}/../../.build/hamlib/4.7.2/darwin-amd64/include
 #cgo darwin,amd64 LDFLAGS: ${SRCDIR}/../../.build/hamlib/4.7.2/darwin-amd64/lib/libhamlib.a
+#cgo linux,amd64 CFLAGS: -I${SRCDIR}/../../.build/hamlib/4.7.2/linux-amd64/include
+#cgo linux,amd64 LDFLAGS: ${SRCDIR}/../../.build/hamlib/4.7.2/linux-amd64/lib/libhamlib.a -ldl -lm -pthread
+#cgo windows,amd64 CFLAGS: -I${SRCDIR}/../../.build/hamlib/4.7.2/windows-amd64/include
+#cgo windows,amd64 LDFLAGS: ${SRCDIR}/../../.build/hamlib/4.7.2/windows-amd64/lib/libhamlib.a -lws2_32 -liphlpapi -lwinmm
 
 #include <hamlib/rig.h>
 #include <stdlib.h>
@@ -106,6 +110,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -160,7 +165,7 @@ func (s *hamlibService) Ports() ([]string, error) {
 	}
 	filtered := ports[:0]
 	for _, port := range ports {
-		if strings.HasPrefix(port, "/dev/tty.") {
+		if runtime.GOOS == "darwin" && strings.HasPrefix(port, "/dev/tty.") {
 			continue
 		}
 		filtered = append(filtered, port)

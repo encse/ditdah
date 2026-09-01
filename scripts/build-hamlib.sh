@@ -5,36 +5,46 @@ set -eu
 hamlib_version="4.7.2"
 hamlib_sha256="ae1fcf2dbc80ea0786ea8f047b09399c3f7737d1930442f61a031708ed33e88f"
 hamlib_url="https://github.com/Hamlib/Hamlib/releases/download/${hamlib_version}/hamlib-${hamlib_version}.tar.gz"
-build_recipe="static-without-libusb-v1"
+build_recipe="static-without-libusb-v2"
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 repository_dir=$(dirname "$script_dir")
 build_root=${DITDAH_HAMLIB_BUILD_ROOT:-"${repository_dir}/.build/hamlib"}
 
-if [ "$(uname -s)" != "Darwin" ]; then
-    echo "build-hamlib.sh currently supports macOS only" >&2
-    exit 1
-fi
-
-case "$(uname -m)" in
-    arm64)
+case "$(uname -s):$(uname -m)" in
+    Darwin:arm64)
         target="darwin-arm64"
         ;;
-    x86_64)
+    Darwin:x86_64)
         target="darwin-amd64"
         ;;
+    Linux:x86_64)
+        target="linux-amd64"
+        ;;
+    MINGW64_NT-*:x86_64|MSYS_NT-*:x86_64)
+        target="windows-amd64"
+        ;;
     *)
-        echo "unsupported macOS architecture: $(uname -m)" >&2
+        echo "unsupported platform: $(uname -s) $(uname -m)" >&2
         exit 1
         ;;
 esac
 
-for command_name in curl make shasum tar; do
+for command_name in curl make tar; do
     if ! command -v "$command_name" >/dev/null 2>&1; then
         echo "required command not found: $command_name" >&2
         exit 1
     fi
 done
+
+if command -v sha256sum >/dev/null 2>&1; then
+    checksum_command="sha256sum"
+elif command -v shasum >/dev/null 2>&1; then
+    checksum_command="shasum -a 256"
+else
+    echo "required command not found: sha256sum or shasum" >&2
+    exit 1
+fi
 
 download_dir="${build_root}/downloads"
 install_dir="${build_root}/${hamlib_version}/${target}"
@@ -57,7 +67,7 @@ if [ ! -f "$archive" ]; then
     mv "${archive}.download" "$archive"
 fi
 
-actual_sha256=$(shasum -a 256 "$archive" | awk '{print $1}')
+actual_sha256=$($checksum_command "$archive" | awk '{print $1}')
 if [ "$actual_sha256" != "$hamlib_sha256" ]; then
     echo "Hamlib archive checksum mismatch" >&2
     echo "expected: $hamlib_sha256" >&2
@@ -79,7 +89,7 @@ cd "${work_dir}/build"
     --without-cxx-binding \
     --without-libusb
 
-logical_cpus=$(sysctl -n hw.logicalcpu 2>/dev/null || echo 1)
+logical_cpus=$(getconf _NPROCESSORS_ONLN 2>/dev/null || sysctl -n hw.logicalcpu 2>/dev/null || echo 1)
 make -j "$logical_cpus"
 make install
 
