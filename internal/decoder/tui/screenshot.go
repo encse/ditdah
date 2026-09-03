@@ -10,11 +10,15 @@ import (
 
 // NewScreenshotPage creates the populated decoder shown in product images.
 func NewScreenshotPage(host ui.PageHost) ui.Page {
-	page := newPage(host, nil, nil, nil, nil, nil, nil)
+	page := newPage(host, nil, nil, nil, nil, nil, nil, nil)
 	page.audioStatus = "Listening: USB Audio CODEC"
 	page.radioStatus = "14.025 MHz"
 	page.callsigns = []string{"HA5LA", "DL1ABC", "G3XYZ", "I2RTF"}
 	page.selectedCallsign = "HA5LA"
+	page.loggedCallsigns = map[string]struct{}{
+		"HA5LA":  {},
+		"DL1ABC": {},
+	}
 	page.renderCallsigns()
 	_, _ = page.decodedText.WriteString(
 		"CQ CQ CQ DE HA5LA HA5LA K\n\n" +

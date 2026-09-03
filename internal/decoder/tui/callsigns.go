@@ -12,38 +12,57 @@ import (
 
 func (p *page) newCallsignList(controls components.Factory) components.Table {
 	table := controls.Table(" Callsigns ")
-	table.SetFixedRows(0)
+	table.SetFixedRows(1)
 	table.SetSelectionChangedFunc(func(row, _ int) {
-		p.selectCallsign(row)
+		p.selectCallsign(row - 1)
 	})
 	return table
 }
 
 func (p *page) renderCallsigns() {
 	p.callsignList.Clear()
+	p.callsignList.SetCell(0, 0, components.TableCell{
+		Text:     "Callsign",
+		Style:    components.TableCellHeader,
+		Disabled: true,
+	})
+	p.callsignList.SetCell(0, 1, components.TableCell{
+		Text:      "Logbook",
+		Style:     components.TableCellHeader,
+		Disabled:  true,
+		Expansion: 1,
+	})
 	selectedRow := -1
 	for index, value := range p.callsigns {
-		p.callsignList.SetCell(index, 0, components.TableCell{
-			Text:      value,
+		row := index + 1
+		p.callsignList.SetCell(row, 0, components.TableCell{
+			Text: value,
+		})
+		marker := ""
+		if _, logged := p.loggedCallsigns[value]; logged {
+			marker = "✓"
+		}
+		p.callsignList.SetCell(row, 1, components.TableCell{
+			Text:      marker,
 			Expansion: 1,
 		})
 		if value == p.selectedCallsign {
-			selectedRow = index
+			selectedRow = row
 		}
 	}
 	if len(p.callsigns) == 0 {
-		p.callsignList.SetCell(0, 0, components.TableCell{
+		p.callsignList.SetCell(1, 0, components.TableCell{
 			Text:      "No callsigns.",
 			Style:     components.TableCellMuted,
 			Disabled:  true,
 			Expansion: 1,
 		})
 		p.selectedCallsign = ""
-		p.callsignList.Select(0, 0)
+		p.callsignList.Select(1, 0)
 		return
 	}
 	if selectedRow < 0 {
-		selectedRow = 0
+		selectedRow = 1
 		p.selectedCallsign = p.callsigns[0]
 	}
 	p.callsignList.Select(selectedRow, 0)

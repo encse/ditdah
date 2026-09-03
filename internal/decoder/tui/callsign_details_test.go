@@ -26,7 +26,7 @@ func TestCallsignDetailsAlignLabelsAndValues(t *testing.T) {
 	view.SetRect(0, 0, 48, 8)
 	view.Draw(screen)
 
-	assertCallsignDetailsRune(t, screen, 2, 1, 'C')
+	assertCallsignDetailsRune(t, screen, 1, 1, 'C')
 	assertCallsignDetailsRune(t, screen, 11, 1, 'H')
 	assertCallsignDetailsRune(t, screen, 11, 2, 'L')
 	assertCallsignDetailsRune(t, screen, 11, 3, 'L')
@@ -45,8 +45,8 @@ func TestCallsignDetailsIndentWrappedValues(t *testing.T) {
 	view.SetRect(0, 0, 24, 8)
 	view.Draw(screen)
 
-	assertCallsignDetailsRune(t, screen, 7, 1, 'L')
-	assertCallsignDetailsRune(t, screen, 7, 2, 'v')
+	assertCallsignDetailsRune(t, screen, 11, 1, 'L')
+	assertCallsignDetailsRune(t, screen, 11, 2, 'L')
 }
 
 func newCallsignDetailsScreen(

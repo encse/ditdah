@@ -101,6 +101,7 @@ func newTerminalApplication(
 		deps.callsignLookup,
 		qsoEditors.Create,
 		deps.radio,
+		deps.stores.Logbook,
 	)
 
 	app.AddKeyBinding(

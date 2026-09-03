@@ -24,7 +24,7 @@ import (
 )
 
 func TestPageMetadata(t *testing.T) {
-	page := New(newTestHost(), nil, nil, nil, nil, nil)
+	page := New(newTestHost(), nil, nil, nil, nil, nil, nil)
 
 	if page.ID() != "morse-decoder" {
 		t.Fatalf("ID() = %q, want morse-decoder", page.ID())
@@ -57,6 +57,7 @@ func TestPageDisplaysSubscribedRadioFrequencyBeforeAudioStatus(t *testing.T) {
 		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
 		radioStatus,
+		nil,
 	)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
@@ -100,7 +101,7 @@ func waitForPageStatus(
 }
 
 func TestPageHasEmptyDecoderOutputAndRightPanel(t *testing.T) {
-	page := New(newTestHost(), nil, nil, nil, nil, nil).(*page)
+	page := New(newTestHost(), nil, nil, nil, nil, nil, nil).(*page)
 	if page.output.Text() != "" {
 		t.Fatalf("output text = %q, want empty", page.output.Text())
 	}
@@ -122,7 +123,7 @@ func TestPageHasEmptyDecoderOutputAndRightPanel(t *testing.T) {
 }
 
 func TestPageFactoryRestoresDecoderStateIntoFreshPage(t *testing.T) {
-	factory := NewFactory(newTestHost(), nil, nil, nil, nil, nil)
+	factory := NewFactory(newTestHost(), nil, nil, nil, nil, nil, nil)
 	first := factory().(*page)
 	first.callsigns = []string{"DL1ABC", "HA7NCS"}
 	first.selectedCallsign = "HA7NCS"
@@ -160,6 +161,7 @@ func TestPageWritesStreamingDecoderOutput(t *testing.T) {
 			return emittingStream{text: "CQ "}, nil
 		},
 		nil,
+		nil,
 	)
 	cancel, done := runDecoderPage(t, page)
 
@@ -191,6 +193,7 @@ func TestPageRestartsCaptureWhenSettingsChange(t *testing.T) {
 		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
 		nil,
+		nil,
 	)
 	cancel, done := runDecoderPage(t, page)
 
@@ -219,6 +222,7 @@ func TestHiddenPageDoesNotReactToSettingsUntilNextActivation(t *testing.T) {
 		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
 		nil,
+		nil,
 	)
 
 	if len(source.starts) != 0 {
@@ -246,6 +250,7 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 		nil,
 		func() (domain.Streaming, error) { return emittingStream{}, nil },
 		nil,
+		nil,
 	)
 	cancel, done := runDecoderPage(t, page)
 
@@ -258,7 +263,7 @@ func TestPageWaitsForInputChangeAfterMissingSelection(t *testing.T) {
 }
 
 func TestPageDoesNotContributeMenuItems(t *testing.T) {
-	page := New(newTestHost(), nil, nil, nil, nil, nil)
+	page := New(newTestHost(), nil, nil, nil, nil, nil, nil)
 	items := page.MenuItems()
 	if len(items) != 0 {
 		t.Fatalf("MenuItems() = %#v, want none", items)
@@ -277,6 +282,7 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 		store,
 		nil,
 		editors.Create,
+		nil,
 		nil,
 	).(*page)
 	bindings := page.KeyBindings()
@@ -297,8 +303,8 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 	if page.selectedCallsign != "HA7NCS" {
 		t.Fatalf("selected callsign = %q, want HA7NCS", page.selectedCallsign)
 	}
-	if row, _ := page.callsignList.Selection(); row != 1 {
-		t.Fatalf("selected table row = %d, want second data row 1", row)
+	if row, _ := page.callsignList.Selection(); row != 2 {
+		t.Fatalf("selected table row = %d, want second data row 2", row)
 	}
 	if err := page.addCallsign("DL1ABC"); err == nil {
 		t.Fatal("duplicate callsign was added")
@@ -325,14 +331,82 @@ func TestPageAddsSelectsAndDeletesCallsigns(t *testing.T) {
 			page.selectedCallsign,
 		)
 	}
-	if row, _ := page.callsignList.Selection(); row != 0 {
-		t.Fatalf("selected table row after delete = %d, want first data row 0", row)
+	if row, _ := page.callsignList.Selection(); row != 1 {
+		t.Fatalf("selected table row after delete = %d, want first data row 1", row)
+	}
+}
+
+func TestPageMarksCallsignsPresentInLogbookAndRefreshes(t *testing.T) {
+	host := newTestHost()
+	host.updated = make(chan struct{}, 2)
+	store := newDecoderLogbookStore([]logbookdomain.QSO{{Callsign: "DL1ABC"}})
+	page := New(host, nil, nil, nil, nil, nil, store).(*page)
+	page.callsigns = []string{"DL1ABC", "HA7NCS"}
+	page.renderCallsigns()
+
+	ctx, cancel := context.WithCancel(t.Context())
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		page.runLogbookStatus(ctx)
+	}()
+
+	waitForSignal(t, host.updated, "initial logbook callsigns")
+	assertCallsignMarker(t, page, 0, "✓")
+	assertCallsignMarker(t, page, 1, "")
+
+	store.setQSOs([]logbookdomain.QSO{{Callsign: "ha7ncs"}})
+	waitForSignal(t, host.updated, "changed logbook callsigns")
+	assertCallsignMarker(t, page, 0, "")
+	assertCallsignMarker(t, page, 1, "✓")
+
+	cancel()
+	waitForRun(t, done)
+}
+
+func TestCallsignListAlignsMarkersAfterLongestCallsign(t *testing.T) {
+	page := New(newTestHost(), nil, nil, nil, nil, nil, nil).(*page)
+	page.callsigns = []string{"HA5LA", "ABCDEFGHIJ"}
+	page.loggedCallsigns = map[string]struct{}{
+		"HA5LA":      {},
+		"ABCDEFGHIJ": {},
+	}
+	page.renderCallsigns()
+
+	screen := tcell.NewSimulationScreen("UTF-8")
+	if err := screen.Init(); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(screen.Fini)
+	screen.SetSize(30, 5)
+	page.callsignList.SetRect(0, 0, 30, 5)
+	page.callsignList.Draw(screen)
+
+	for _, row := range []int{2, 3} {
+		character, _, _, _ := screen.GetContent(12, row)
+		if character != '✓' {
+			t.Fatalf("marker at row %d = %q, want checkmark", row, character)
+		}
+	}
+	character, _, _, _ := screen.GetContent(10, 3)
+	if character != 'J' {
+		t.Fatalf("long callsign ended with %q, want J", character)
+	}
+}
+
+func assertCallsignMarker(t *testing.T, page *page, row int, want string) {
+	t.Helper()
+	table := page.callsignList.(interface {
+		GetCell(row int, column int) *tview.TableCell
+	})
+	if got := table.GetCell(row+1, 1).Text; got != want {
+		t.Fatalf("callsign marker at row %d = %q, want %q", row, got, want)
 	}
 }
 
 func TestDeleteCallsignBindingRequiresConfirmation(t *testing.T) {
 	host := newTestHost()
-	page := New(host, nil, nil, nil, nil, nil).(*page)
+	page := New(host, nil, nil, nil, nil, nil, nil).(*page)
 	if err := page.addCallsign("DL1ABC"); err != nil {
 		t.Fatal(err)
 	}
@@ -375,7 +449,7 @@ func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
 			}),
 		},
 	}
-	page := New(host, nil, nil, lookup, nil, nil).(*page)
+	page := New(host, nil, nil, lookup, nil, nil, nil).(*page)
 	ctx, cancel := context.WithCancel(t.Context())
 	done := make(chan struct{})
 	go func() {
@@ -409,7 +483,7 @@ func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
 
 func TestPageRetriesSelectedCallsignAfterReactivation(t *testing.T) {
 	lookup := &cancelingLookupService{requests: make(chan string, 2)}
-	page := New(newTestHost(), nil, nil, lookup, nil, nil).(*page)
+	page := New(newTestHost(), nil, nil, lookup, nil, nil, nil).(*page)
 	if err := page.addCallsign("DL1ABC"); err != nil {
 		t.Fatal(err)
 	}
@@ -623,6 +697,44 @@ type decoderRadioSubscription struct {
 	syncutil.Subscription
 	closed chan struct{}
 	once   sync.Once
+}
+
+type decoderLogbookStore struct {
+	logbookdomain.Store
+	mu      sync.Mutex
+	qsos    []logbookdomain.QSO
+	changes syncutil.Broadcaster
+}
+
+func newDecoderLogbookStore(qsos []logbookdomain.QSO) *decoderLogbookStore {
+	return &decoderLogbookStore{
+		qsos:    qsos,
+		changes: syncutil.NewBroadcaster(),
+	}
+}
+
+func (s *decoderLogbookStore) List(
+	_ context.Context,
+	filter logbookdomain.Filter,
+) ([]logbookdomain.QSO, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if filter.Offset >= len(s.qsos) {
+		return nil, nil
+	}
+	end := min(len(s.qsos), filter.Offset+filter.Limit)
+	return append([]logbookdomain.QSO(nil), s.qsos[filter.Offset:end]...), nil
+}
+
+func (s *decoderLogbookStore) Subscribe() syncutil.Subscription {
+	return s.changes.Subscribe()
+}
+
+func (s *decoderLogbookStore) setQSOs(qsos []logbookdomain.QSO) {
+	s.mu.Lock()
+	s.qsos = append([]logbookdomain.QSO(nil), qsos...)
+	s.mu.Unlock()
+	s.changes.Activate()
 }
 
 func (s *decoderRadioSubscription) Close() {

@@ -105,6 +105,7 @@ This document records implementation decisions and future technical work.
 - [x] Connect the selected live audio capture device to the streaming decoder and Morse output panel; coalesce saved input changes through a trigger and restart only the current audio session.
 - [x] Align QRZ lookup labels and values into consistent columns on the Morse decoder page.
 - [x] Add a decoder-page callsign list with `a`/`Enter`/`d` actions and cached QRZ.com details for the selected entry in the lower-right panel.
+- [x] Show logbook presence in a labeled second decoder callsign-list column and refresh its checkmarks through a page-lifecycle logbook subscription.
 - [x] Run decoder callsign lookups in a context-bound page worker which is always joined by `Run`; retry the selected callsign on page reactivation without detached goroutines.
 - [x] Highlight every substring occurrence of the selected decoder callsign in the decoded log, add a confirmed clear-log action, and follow new output only while the view is already scrolled to the end.
 - [x] Require confirmation before deleting a callsign from the decoder list.

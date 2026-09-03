@@ -10,6 +10,7 @@ import (
 	"ditdah/internal/audio"
 	"ditdah/internal/callsign"
 	domain "ditdah/internal/decoder"
+	"ditdah/internal/logbook"
 	"ditdah/internal/radio"
 	"ditdah/internal/settings"
 	"ditdah/internal/syncutil"
@@ -45,6 +46,7 @@ type page struct {
 	settings         settings.Store
 	radio            radio.StatusSource
 	lookup           callsign.Service
+	logbook          logbook.Store
 	newStream        streamFactory
 	content          tview.Primitive
 	output           components.TextView
@@ -57,6 +59,7 @@ type page struct {
 	showNewQSOEditor func(ui.Owner, string)
 
 	lookupGeneration uint64
+	loggedCallsigns  map[string]struct{}
 }
 
 // New creates the page for live Morse decoder output.
@@ -67,6 +70,7 @@ func New(
 	lookup callsign.Service,
 	showNewQSOEditor func(ui.Owner, string),
 	radioSource radio.StatusSource,
+	logbookStore logbook.Store,
 ) ui.Page {
 	return newPage(
 		host,
@@ -76,6 +80,7 @@ func New(
 		showNewQSOEditor,
 		domain.NewStreaming,
 		radioSource,
+		logbookStore,
 	)
 }
 
@@ -88,6 +93,7 @@ func NewFactory(
 	lookup callsign.Service,
 	showNewQSOEditor func(ui.Owner, string),
 	radioSource radio.StatusSource,
+	logbookStore logbook.Store,
 ) func() ui.Page {
 	state := &decoderState{}
 	return func() ui.Page {
@@ -100,6 +106,7 @@ func NewFactory(
 			state,
 			domain.NewStreaming,
 			radioSource,
+			logbookStore,
 		)
 	}
 }
@@ -112,6 +119,7 @@ func newPage(
 	showNewQSOEditor func(ui.Owner, string),
 	newStream streamFactory,
 	radioSource radio.StatusSource,
+	logbookStore logbook.Store,
 ) *page {
 	return newPageWithState(
 		host,
@@ -122,6 +130,7 @@ func newPage(
 		&decoderState{},
 		newStream,
 		radioSource,
+		logbookStore,
 	)
 }
 
@@ -134,6 +143,7 @@ func newPageWithState(
 	state *decoderState,
 	newStream streamFactory,
 	radioSource radio.StatusSource,
+	logbookStore logbook.Store,
 ) *page {
 	controls := host.Components()
 	page := &page{
@@ -143,6 +153,7 @@ func newPageWithState(
 		settings:         settingsStore,
 		radio:            radioSource,
 		lookup:           lookup,
+		logbook:          logbookStore,
 		newStream:        newStream,
 		lookups:          syncutil.NewMailbox(lookupRequest{}),
 		showNewQSOEditor: showNewQSOEditor,
@@ -225,7 +236,60 @@ func (p *page) Run(ctx context.Context) {
 		p.runRadioStatus(ctx)
 		return nil
 	})
+	group.Go(func() error {
+		p.runLogbookStatus(ctx)
+		return nil
+	})
 	_ = group.Wait()
+}
+
+func (p *page) runLogbookStatus(ctx context.Context) {
+	if p.logbook == nil {
+		return
+	}
+	changes := p.logbook.Subscribe()
+	defer changes.Close()
+
+	for ctx.Err() == nil {
+		loggedCallsigns, err := p.loadLoggedCallsigns(ctx)
+		if ctx.Err() != nil {
+			return
+		}
+		if err == nil {
+			p.host.Update(p, func() {
+				p.loggedCallsigns = loggedCallsigns
+				p.renderCallsigns()
+			})
+		}
+		if err := changes.Wait(ctx); err != nil {
+			return
+		}
+	}
+}
+
+func (p *page) loadLoggedCallsigns(
+	ctx context.Context,
+) (map[string]struct{}, error) {
+	const pageSize = 500
+	result := make(map[string]struct{})
+	for offset := 0; ; offset += pageSize {
+		qsos, err := p.logbook.List(ctx, logbook.Filter{
+			Limit:  pageSize,
+			Offset: offset,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, qso := range qsos {
+			callsign := strings.ToUpper(strings.TrimSpace(qso.Callsign))
+			if callsign != "" {
+				result[callsign] = struct{}{}
+			}
+		}
+		if len(qsos) < pageSize {
+			return result, nil
+		}
+	}
 }
 
 func (p *page) runRadioStatus(ctx context.Context) {

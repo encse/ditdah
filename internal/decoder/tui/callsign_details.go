@@ -12,6 +12,11 @@ import (
 	"github.com/rivo/tview"
 )
 
+const (
+	callsignDetailLabelWidth = 8
+	callsignDetailColumnGap  = 2
+)
+
 type callsignDetailField struct {
 	label string
 	value string
@@ -111,12 +116,8 @@ func renderCallsignDetails(fields []callsignDetailField, width int) string {
 	if width < 1 {
 		return ""
 	}
-	labelWidth := 0
-	for _, field := range fields {
-		labelWidth = max(labelWidth, runewidth.StringWidth(field.label))
-	}
-	labelWidth = min(labelWidth, max(1, width-3))
-	valueWidth := width - labelWidth - 2
+	labelWidth := min(callsignDetailLabelWidth, max(1, width-3))
+	valueWidth := width - labelWidth - callsignDetailColumnGap
 
 	var text strings.Builder
 	for _, field := range fields {
@@ -141,9 +142,8 @@ func renderCallsignDetails(fields []callsignDetailField, width int) string {
 			} else {
 				label = strings.Repeat(" ", labelWidth)
 			}
-			text.WriteByte(' ')
 			text.WriteString(label)
-			text.WriteByte(' ')
+			text.WriteString(strings.Repeat(" ", callsignDetailColumnGap))
 			text.WriteString(tview.Escape(value))
 			text.WriteByte('\n')
 		}
