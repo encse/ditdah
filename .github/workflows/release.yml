@@ -86,14 +86,14 @@ jobs:
         run: |
           mkdir -p package
           if [[ "${{ matrix.simd }}" == "true" ]]; then
-            if GOEXPERIMENT=simd go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .; then
+            if GOEXPERIMENT=simd go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .; then
               echo "Built with the Go SIMD experiment."
             else
               echo "::warning::SIMD build failed; falling back to the scalar implementation."
-              go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
+              go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
             fi
           else
-            go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
+            go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
           fi
           cp README.md LICENSE THIRD_PARTY_NOTICES.md package/
           mkdir -p package/licenses/hamlib
@@ -106,7 +106,11 @@ jobs:
         run: |
           mkdir -p package
           go run github.com/tc-hib/go-winres@v0.3.3 simply --arch amd64 --icon docs/icon.png --manifest none
-          go build -trimpath -ldflags "-X main.version=${GITHUB_REF_NAME}" -o "package/${{ matrix.executable }}" .
+          go build -trimpath -ldflags "-s -w -X main.version=${GITHUB_REF_NAME} -linkmode external -extldflags=-static" -o "package/${{ matrix.executable }}" .
+          if objdump -p "package/${{ matrix.executable }}" | grep -qi 'DLL Name: libwinpthread-1.dll'; then
+            echo "::error::Windows executable unexpectedly depends on libwinpthread-1.dll"
+            exit 1
+          fi
           cp README.md LICENSE THIRD_PARTY_NOTICES.md package/
           mkdir -p package/licenses/hamlib
           cp .build/hamlib/4.7.2/*/share/doc/hamlib/{AUTHORS,COPYING,COPYING.LIB,LICENSE,README.md} package/licenses/hamlib/
