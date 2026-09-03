@@ -10,7 +10,6 @@ import (
 	"ditdah/internal/audio"
 	"ditdah/internal/callsign"
 	domain "ditdah/internal/decoder"
-	"ditdah/internal/optional"
 	"ditdah/internal/radio"
 	"ditdah/internal/settings"
 	"ditdah/internal/syncutil"
@@ -51,7 +50,7 @@ type page struct {
 	output           components.TextView
 	right            tview.Primitive
 	callsignList     components.Table
-	details          components.TextView
+	details          *callsignDetailsView
 	audioStatus      string
 	radioStatus      string
 	lookups          syncutil.Mailbox[lookupRequest]
@@ -161,12 +160,8 @@ func newPageWithState(
 
 	page.output = output
 	page.callsignList = page.newCallsignList(controls)
-	page.details = controls.TextView()
+	page.details = newCallsignDetailsView(controls)
 	page.details.SetStyle(components.TextViewPrimary)
-	page.details.SetBorder(" QRZ.com ")
-	page.details.SetScrollable(true)
-	page.details.SetWrap(true)
-	page.details.SetWordWrap(true)
 	page.renderCallsigns()
 	page.renderDecodedText()
 
@@ -315,11 +310,11 @@ func (p *page) showLookupResult(
 		}
 		if err != nil {
 			p.details.SetStyle(components.TextViewDanger)
-			p.details.SetText("Error: " + err.Error())
+			p.details.setMessage("Error: " + err.Error())
 			return
 		}
 		p.details.SetStyle(components.TextViewPrimary)
-		p.details.SetText(formatCallsignDetails(entry))
+		p.details.setEntry(entry)
 	})
 }
 
@@ -328,32 +323,6 @@ func (p *page) openCreateQSO() {
 		return
 	}
 	p.showNewQSOEditor(p, p.selectedCallsign)
-}
-
-func formatCallsignDetails(entry callsign.Entry) string {
-	if entry.Status == callsign.StatusError {
-		return strings.TrimSpace(entry.Error)
-	}
-	record, present := entry.Record.Get()
-	if !present {
-		return "No QRZ.com details available."
-	}
-	lines := []string{"Callsign: " + record.Callsign}
-	appendOptionalDetail := func(label string, value optional.Value[string]) {
-		if text, ok := value.Get(); ok && strings.TrimSpace(text) != "" {
-			lines = append(lines, label+": "+text)
-		}
-	}
-	appendOptionalDetail("Name", record.Name)
-	appendOptionalDetail("Nickname", record.Nickname)
-	appendOptionalDetail("QTH", record.QTH)
-	appendOptionalDetail("State", record.State)
-	appendOptionalDetail("Country", record.Country)
-	appendOptionalDetail("Grid", record.Grid)
-	appendOptionalDetail("CQ zone", record.CQZone)
-	appendOptionalDetail("ITU zone", record.ITUZone)
-	appendOptionalDetail("QRZ", record.QRZURL)
-	return strings.Join(lines, "\n")
 }
 
 func (p *page) runSession(

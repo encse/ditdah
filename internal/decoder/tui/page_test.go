@@ -396,9 +396,10 @@ func TestPageLooksUpSelectedCallsignDuringRun(t *testing.T) {
 	}
 	close(lookup.release)
 	waitForSignal(t, host.updated, "callsign details update")
-	if details := page.details.Text(); !strings.Contains(details, "Name: Jane Doe") ||
-		!strings.Contains(details, "Country: Germany") ||
-		!strings.Contains(details, "Grid: JO62") {
+	details := renderCallsignDetails(page.details.fields, 46)
+	if !strings.Contains(details, "Name") || !strings.Contains(details, "Jane Doe") ||
+		!strings.Contains(details, "Country") || !strings.Contains(details, "Germany") ||
+		!strings.Contains(details, "Grid") || !strings.Contains(details, "JO62") {
 		t.Fatalf("details = %q", details)
 	}
 

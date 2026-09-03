@@ -70,10 +70,10 @@ func (p *page) requestSelectedCallsign() {
 	}
 	if request.callsign == "" {
 		p.details.SetStyle(components.TextViewPrimary)
-		p.details.SetText("")
+		p.details.setMessage("")
 	} else {
 		p.details.SetStyle(components.TextViewMuted)
-		p.details.SetText("Loading " + request.callsign + "...")
+		p.details.setMessage("Loading " + request.callsign + "...")
 	}
 	p.lookups.Send(request)
 	p.host.Refresh()

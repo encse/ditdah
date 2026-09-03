@@ -26,7 +26,7 @@ func NewScreenshotPage(host ui.PageHost) ui.Page {
 			"NAME DAVID QTH ERD\n",
 	)
 	page.renderDecodedText()
-	page.details.SetText(formatCallsignDetails(callsign.Entry{
+	page.details.setEntry(callsign.Entry{
 		Status: callsign.StatusReady,
 		Record: optional.Some(callsign.Record{
 			Callsign: "HA5LA",
@@ -38,6 +38,6 @@ func NewScreenshotPage(host ui.PageHost) ui.Page {
 			CQZone:   optional.Some("15"),
 			ITUZone:  optional.Some("28"),
 		}),
-	}))
+	})
 	return page
 }
