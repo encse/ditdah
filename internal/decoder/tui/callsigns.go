@@ -52,7 +52,7 @@ func (p *page) renderCallsigns() {
 	}
 	if len(p.callsigns) == 0 {
 		p.callsignList.SetCell(1, 0, components.TableCell{
-			Text:      "No callsigns.",
+			Text:      "Press 'a' to add callsigns.",
 			Style:     components.TableCellMuted,
 			Disabled:  true,
 			Expansion: 1,
