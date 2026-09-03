@@ -124,8 +124,9 @@ go generate ./internal/database
 go test ./...
 ```
 
-Create a release from **Actions → Tag release → Run workflow**. Enter a version
-without the `v` prefix, such as `0.2.0`. The workflow creates `v0.2.0` on the
-selected commit and starts the existing release build automatically.
+Create a release from **Actions → Release → Run workflow**. Enter a version
+without the `v` prefix, such as `1.2.0`. The workflow validates the version,
+builds and tests every supported platform, then creates the `v1.2.0` tag and
+publishes the GitHub Release from the selected commit.
 
 Technical decisions and planned work are tracked in [ROADMAP.md](ROADMAP.md).
